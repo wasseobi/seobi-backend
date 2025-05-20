@@ -14,13 +14,11 @@ def create_app():
     Migrate(app, db)
     CORS(app)
 
-    XAPIKEY = os.getenv("XAPIKEY")
-
     # --- API Key 인증 추가 ---
     @app.before_request
     def check_api_key():
         api_key = request.headers.get("x-api-key")
-        if api_key != XAPIKEY:
+        if api_key != "seobi-api-A_MXGlYFhOHhZI54RsvlqOtl_1bceIABmInRddAGScU":
             abort(401)
     # --- 인증 끝 ---
 
