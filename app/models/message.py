@@ -13,8 +13,8 @@ class Message(db.Model):
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey(
         'user.id'), nullable=False)
     content = db.Column(db.Text, nullable=True)
-    role = db.Column(ENUM('user', 'assistant', name='role_enum'),
-                     nullable=False, default='user')
+    role = db.Column(ENUM('user', 'assistant', 'system', 'tool', name='role_enum'),
+                     nullable=False)
     timestamp = db.Column(db.DateTime(
         timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     vector = db.Column(Vector(1536), nullable=True)
