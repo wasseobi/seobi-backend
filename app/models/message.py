@@ -1,4 +1,4 @@
-from models.db import db
+from app.models.db import db
 import uuid
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import UUID, ENUM

@@ -1,4 +1,4 @@
-from models.db import db
+from app.models.db import db
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, timezone
