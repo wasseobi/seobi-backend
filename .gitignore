@@ -1,2 +1,7 @@
 .env
 certs
+
+__pycache__/
+*.pyc
+*.log
+uv.lock
