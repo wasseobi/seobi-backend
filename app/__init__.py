@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request, abort
 from flask_migrate import Migrate
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -13,6 +13,16 @@ def create_app():
     db.init_app(app)
     Migrate(app, db)
     CORS(app)
+
+    XAPIKEY = os.getenv("XAPIKEY")
+
+    # --- API Key 인증 추가 ---
+    @app.before_request
+    def check_api_key():
+        api_key = request.headers.get("x-api-key")
+        if api_key != XAPIKEY:
+            abort(401)
+    # --- 인증 끝 ---
 
     # Blueprint 등록
     from app.routes.user import user_bp
