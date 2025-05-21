@@ -18,3 +18,7 @@ class Message(db.Model):
     timestamp = db.Column(db.DateTime(
         timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     vector = db.Column(Vector(1536), nullable=True)
+
+    # Relationships
+    session = db.relationship('Session', back_populates='messages')
+    user = db.relationship('User', back_populates='messages')
