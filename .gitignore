@@ -1,12 +1,61 @@
-# Python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Python virtual environment
+# Virtual Environment
 .venv/
+venv/
+ENV/
+env/
+
+# Environment Variables
 .env
+.env.*
 
-certs
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
 
+# Project specific
+certs/
 *.log
 uv.lock
+.pytest_cache/
+.coverage
+htmlcov/
+*.pem
+*.cert
+*.crt
+*.key
+*.p12
+*.pfx
+
+# Database
+*.sqlite3
+*.db
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
