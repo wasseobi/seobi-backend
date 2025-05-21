@@ -7,6 +7,7 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://www.postgresql.org)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0.41-red.svg)](https://www.sqlalchemy.org)
 [![uv](https://img.shields.io/badge/uv-latest-orange.svg)](https://github.com/astral-sh/uv)
+[![Swagger](https://img.shields.io/badge/Swagger-3.0-green.svg)](https://swagger.io)
 
 ## 1. 프로젝트 구조
 
@@ -70,6 +71,16 @@ seobi-backend/
    - `.env` 파일을 root directory에 생성 및 설정(설정값은 팀원에게 확인)
    - `.certificate.pem` 파일을 root directory에 저장(파일 요청은 팀원에게 문의)
 
+### 가상환경 활성화
+
+```bash
+# 가상환경 생성
+uv venv
+
+# 가상환경 활성화
+source .venv/bin/activate
+```
+
 ### 의존성 설치
 
 ```bash
@@ -97,6 +108,19 @@ python main.py
 - `/messages`: 메시지 관리
 - `/mcp_servers`: MCP 서버 관리
 - `/mcp_server_activations`: MCP 서버 활성화 관리
+
+### API 문서화 (Swagger UI)
+
+API 문서는 Swagger UI를 통해 제공됩니다:
+
+- URL: `http://localhost:5000/docs`
+- 기능:
+  - 모든 API 엔드포인트 목록 및 상세 설명
+  - 요청/응답 모델 스키마
+  - API 테스트 인터페이스
+  - 인증이 필요한 엔드포인트의 경우 인증 토큰 입력 가능
+
+API 문서는 Flask-RESTX를 사용하여 자동으로 생성되며, 각 엔드포인트의 코드에 포함된 데코레이터와 docstring을 기반으로 문서가 생성됩니다.
 
 ## 6. 개발 가이드
 
