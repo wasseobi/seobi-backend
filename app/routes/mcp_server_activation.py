@@ -70,10 +70,6 @@ class ActivationList(Resource):
             'mcp_server_id': str(activation.mcp_server_id),
             'name': activation.name,
             'envs': activation.envs
-            'user_id': str(activation.user_id),
-            'mcp_server_id': str(activation.mcp_server_id),
-            'name': activation.name,
-            'envs': activation.envs
         }, 201
 
 @ns.route('/<uuid:activation_id>')
