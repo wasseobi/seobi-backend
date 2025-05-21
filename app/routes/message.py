@@ -1,45 +1,128 @@
-from flask import Blueprint, request, jsonify
-from app.models import Message, db
+from flask import request
+from flask_restx import Resource, Namespace, fields
+from app.models import db, Message
+from app import api
+import uuid
 
-message_bp = Blueprint('message', __name__)
+# Create namespace
+ns = Namespace('messages', description='Message operations')
 
-@message_bp.route('', methods=['POST'])
-def create_message():
-    data = request.json
-    session_id = data.get('session_id')
-    user_id = data.get('user_id')
-    content = data.get('content')
-    role = data.get('role', 'user')
-    message = Message(session_id=session_id, user_id=user_id, content=content, role=role)
-    db.session.add(message)
-    db.session.commit()
-    return jsonify({'id': str(message.id), 'session_id': str(message.session_id), 'user_id': str(message.user_id), 'content': message.content, 'role': message.role, 'timestamp': message.timestamp.isoformat(), 'vector': list(message.vector) if message.vector else None}), 201
+# Define models for documentation
+message_model = ns.model('Message', {
+    'id': fields.String(readonly=True, description='Message identifier (UUID)'),
+    'session_id': fields.String(required=True, description='Session identifier (UUID)'),
+    'user_id': fields.String(required=True, description='User identifier (UUID)'),
+    'content': fields.String(required=True, description='Message content'),
+    'role': fields.String(required=True, description='Message role (user/assistant)'),
+    'timestamp': fields.DateTime(readonly=True, description='Creation timestamp'),
+    'vector': fields.List(fields.Float, description='Message vector embedding', required=False)
+})
 
-@message_bp.route('', methods=['GET'])
-def get_messages():
-    messages = Message.query.all()
-    return jsonify([
-        {'id': str(m.id), 'session_id': str(m.session_id), 'user_id': str(m.user_id), 'content': m.content, 'role': m.role, 'timestamp': m.timestamp.isoformat(), 'vector': list(m.vector) if m.vector else None}
-        for m in messages
-    ])
+message_input = ns.model('MessageInput', {
+    'session_id': fields.String(required=True, description='Session identifier (UUID)'),
+    'user_id': fields.String(required=True, description='User identifier (UUID)'),
+    'content': fields.String(required=True, description='Message content'),
+    'role': fields.String(required=True, description='Message role (user/assistant)')
+})
 
-@message_bp.route('/<uuid:message_id>', methods=['GET'])
-def get_message(message_id):
-    message = Message.query.get_or_404(message_id)
-    return jsonify({'id': str(message.id), 'session_id': str(message.session_id), 'user_id': str(message.user_id), 'content': message.content, 'role': message.role, 'timestamp': message.timestamp.isoformat(), 'vector': list(message.vector) if message.vector else None})
+message_update = ns.model('MessageUpdate', {
+    'content': fields.String(description='Message content'),
+    'role': fields.String(description='Message role (user/assistant)')
+})
 
-@message_bp.route('/<uuid:message_id>', methods=['PUT'])
-def update_message(message_id):
-    message = Message.query.get_or_404(message_id)
-    data = request.json
-    message.content = data.get('content', message.content)
-    message.role = data.get('role', message.role)
-    db.session.commit()
-    return jsonify({'id': str(message.id), 'session_id': str(message.session_id), 'user_id': str(message.user_id), 'content': message.content, 'role': message.role, 'timestamp': message.timestamp.isoformat(), 'vector': list(message.vector) if message.vector else None})
+@ns.route('')
+class MessageList(Resource):
+    @ns.doc('list_messages')
+    @ns.marshal_list_with(message_model)
+    def get(self):
+        """List all messages"""
+        messages = Message.query.all()
+        return [
+            {
+                'id': str(m.id),
+                'session_id': str(m.session_id),
+                'user_id': str(m.user_id),
+                'content': m.content,
+                'role': m.role,
+                'timestamp': m.timestamp,
+                'vector': list(m.vector) if m.vector else None
+            }
+            for m in messages
+        ]
 
-@message_bp.route('/<uuid:message_id>', methods=['DELETE'])
-def delete_message(message_id):
-    message = Message.query.get_or_404(message_id)
-    db.session.delete(message)
-    db.session.commit()
-    return '', 204 
+    @ns.doc('create_message')
+    @ns.expect(message_input)
+    @ns.marshal_with(message_model, code=201)
+    def post(self):
+        """Create a new message"""
+        data = request.json
+        message = Message(
+            session_id=data['session_id'],
+            user_id=data['user_id'],
+            content=data['content'],
+            role=data.get('role', 'user')
+        )
+        db.session.add(message)
+        db.session.commit()
+        return {
+            'id': str(message.id),
+            'session_id': str(message.session_id),
+            'user_id': str(message.user_id),
+            'content': message.content,
+            'role': message.role,
+            'timestamp': message.timestamp,
+            'vector': list(message.vector) if message.vector else None
+        }, 201
+
+@ns.route('/<uuid:message_id>')
+@ns.param('message_id', 'The message identifier (UUID)')
+@ns.response(404, 'Message not found')
+class MessageResource(Resource):
+    @ns.doc('get_message')
+    @ns.marshal_with(message_model)
+    def get(self, message_id):
+        """Get a message by ID"""
+        message = Message.query.get_or_404(message_id)
+        return {
+            'id': str(message.id),
+            'session_id': str(message.session_id),
+            'user_id': str(message.user_id),
+            'content': message.content,
+            'role': message.role,
+            'timestamp': message.timestamp,
+            'vector': list(message.vector) if message.vector else None
+        }
+
+    @ns.doc('update_message')
+    @ns.expect(message_update)
+    @ns.marshal_with(message_model)
+    def put(self, message_id):
+        """Update a message"""
+        message = Message.query.get_or_404(message_id)
+        data = request.json
+        if 'content' in data:
+            message.content = data['content']
+        if 'role' in data:
+            message.role = data['role']
+        db.session.commit()
+        return {
+            'id': str(message.id),
+            'session_id': str(message.session_id),
+            'user_id': str(message.user_id),
+            'content': message.content,
+            'role': message.role,
+            'timestamp': message.timestamp,
+            'vector': list(message.vector) if message.vector else None
+        }
+
+    @ns.doc('delete_message')
+    @ns.response(204, 'Message deleted')
+    def delete(self, message_id):
+        """Delete a message"""
+        message = Message.query.get_or_404(message_id)
+        db.session.delete(message)
+        db.session.commit()
+        return '', 204
+
+# Register the namespace
+api.add_namespace(ns) 
