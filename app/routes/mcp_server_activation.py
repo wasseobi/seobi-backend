@@ -9,23 +9,23 @@ ns = Namespace('mcp_server_activations', description='MCP Server Activation oper
 
 # Define models for documentation
 activation_model = ns.model('ActiveMCPServer', {
-    'id': fields.String(readonly=True, description='Activation UUID'),
-    'user_id': fields.String(required=True, description='User UUID'),
-    'mcp_server_id': fields.String(required=True, description='MCP Server ID'),
-    'name': fields.String(required=True, description='Activation name'),
-    'envs': fields.Raw(description='Activation environment variables', required=False)
+    'id': fields.String(readonly=True, description='Activation UUID', example='b3e1c2d4-5678-4a12-9f34-123456789abc'),
+    'user_id': fields.String(required=True, description='User UUID', example='a1b2c3d4-5678-4e12-9f34-abcdef123456'),
+    'mcp_server_id': fields.String(required=True, description='MCP Server ID', example='server-001'),
+    'name': fields.String(required=True, description='Activation name', example='테스트 서버 활성화'),
+    'envs': fields.Raw(description='Activation environment variables', required=False, example={'API_KEY': 'xxxx', 'DEBUG': 'true'})
 })
 
 activation_input = ns.model('ActivationInput', {
-    'user_id': fields.String(required=True, description='User UUID'),
-    'mcp_server_id': fields.String(required=True, description='MCP Server ID'),
-    'name': fields.String(required=True, description='Activation name'),
-    'envs': fields.Raw(description='Activation environment variables', required=False)
+    'user_id': fields.String(required=True, description='User UUID', example='a1b2c3d4-5678-4e12-9f34-abcdef123456'),
+    'mcp_server_id': fields.String(required=True, description='MCP Server ID', example='server-001'),
+    'name': fields.String(required=True, description='Activation name', example='테스트 서버 활성화'),
+    'envs': fields.Raw(description='Activation environment variables', required=False, example={'API_KEY': 'xxxx', 'DEBUG': 'true'})
 })
 
 activation_update = ns.model('ActivationUpdate', {
-    'status': fields.String(description='Server status (active/inactive)'),
-    'error_message': fields.String(description='Error message if activation failed')
+    'name': fields.String(description='Activation name'),
+    'envs': fields.Raw(description='Activation environment variables', required=False)
 })
 
 @ns.route('')
@@ -38,11 +38,10 @@ class ActivationList(Resource):
         return [
             {
                 'id': str(activation.id),
-                'server_id': str(activation.server_id),
-                'status': activation.status,
-                'started_at': activation.started_at,
-                'ended_at': activation.ended_at,
-                'error_message': activation.error_message
+                'user_id': str(activation.user_id),
+                'mcp_server_id': str(activation.mcp_server_id),
+                'name': activation.name,
+                'envs': activation.envs
             }
             for activation in activations
         ]
@@ -58,11 +57,19 @@ class ActivationList(Resource):
             mcp_server_id=data['mcp_server_id'],
             name=data['name'],
             envs=data.get('envs', {})
+            user_id=data['user_id'],
+            mcp_server_id=data['mcp_server_id'],
+            name=data['name'],
+            envs=data.get('envs', {})
         )
         db.session.add(activation)
         db.session.commit()
         return {
             'id': str(activation.id),
+            'user_id': str(activation.user_id),
+            'mcp_server_id': str(activation.mcp_server_id),
+            'name': activation.name,
+            'envs': activation.envs
             'user_id': str(activation.user_id),
             'mcp_server_id': str(activation.mcp_server_id),
             'name': activation.name,
@@ -80,11 +87,10 @@ class ActivationResource(Resource):
         activation = ActiveMCPServer.query.get_or_404(activation_id)
         return {
             'id': str(activation.id),
-            'server_id': str(activation.server_id),
-            'status': activation.status,
-            'started_at': activation.started_at,
-            'ended_at': activation.ended_at,
-            'error_message': activation.error_message
+            'user_id': str(activation.user_id),
+            'mcp_server_id': str(activation.mcp_server_id),
+            'name': activation.name,
+            'envs': activation.envs
         }
 
     @ns.doc('update_activation')
@@ -94,18 +100,17 @@ class ActivationResource(Resource):
         """Update an activation"""
         activation = ActiveMCPServer.query.get_or_404(activation_id)
         data = request.json
-        if 'status' in data:
-            activation.status = data['status']
-        if 'error_message' in data:
-            activation.error_message = data['error_message']
+        if 'name' in data:
+            activation.name = data['name']
+        if 'envs' in data:
+            activation.envs = data['envs']
         db.session.commit()
         return {
             'id': str(activation.id),
-            'server_id': str(activation.server_id),
-            'status': activation.status,
-            'started_at': activation.started_at,
-            'ended_at': activation.ended_at,
-            'error_message': activation.error_message
+            'user_id': str(activation.user_id),
+            'mcp_server_id': str(activation.mcp_server_id),
+            'name': activation.name,
+            'envs': activation.envs
         }
 
     @ns.doc('delete_activation')
@@ -118,4 +123,5 @@ class ActivationResource(Resource):
         return '', 204
 
 # Register the namespace
+api.add_namespace(ns)
 api.add_namespace(ns)

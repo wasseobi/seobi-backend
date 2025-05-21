@@ -9,26 +9,26 @@ ns = Namespace('mcp_servers', description='MCP Server operations')
 
 # Define models for documentation
 mcp_server_model = ns.model('MCPServer', {
-    'id': fields.String(readonly=True, description='Server ID'),
-    'name': fields.String(description='Server name', required=False),
-    'command': fields.String(description='Command', required=False),
-    'arguments': fields.List(fields.String, description='Command arguments', required=False),
-    'required_envs': fields.List(fields.String, description='Required environment variables', required=False)
+    'id': fields.String(readonly=True, description='Server ID', example='server-001'),
+    'name': fields.String(description='Server name', required=False, example='My MCP Server'),
+    'command': fields.String(description='Command', required=False, example='python main.py'),
+    'arguments': fields.List(fields.String, description='Command arguments', required=False, example=['--port', '8080']),
+    'required_envs': fields.List(fields.String, description='Required environment variables', required=False, example=['API_KEY', 'DEBUG'])
 })
 
 mcp_server_input = ns.model('MCPServerInput', {
-    'id': fields.String(required=True, description='Server ID'),
-    'name': fields.String(description='Server name', required=False),
-    'command': fields.String(description='Command', required=False),
-    'arguments': fields.List(fields.String, description='Command arguments', required=False),
-    'required_envs': fields.List(fields.String, description='Required environment variables', required=False)
+    'id': fields.String(required=True, description='Server ID', example='server-001'),
+    'name': fields.String(description='Server name', required=False, example='My MCP Server'),
+    'command': fields.String(description='Command', required=False, example='python main.py'),
+    'arguments': fields.List(fields.String, description='Command arguments', required=False, example=['--port', '8080']),
+    'required_envs': fields.List(fields.String, description='Required environment variables', required=False, example=['API_KEY', 'DEBUG'])
 })
 
 mcp_server_update = ns.model('MCPServerUpdate', {
-    'name': fields.String(description='Server name'),
-    'command': fields.String(description='Command'),
-    'arguments': fields.List(fields.String, description='Command arguments'),
-    'required_envs': fields.List(fields.String, description='Required environment variables')
+    'name': fields.String(description='Server name', example='My MCP Server'),
+    'command': fields.String(description='Command', example='python main.py'),
+    'arguments': fields.List(fields.String, description='Command arguments', example=['--port', '8080']),
+    'required_envs': fields.List(fields.String, description='Required environment variables', example=['API_KEY', 'DEBUG'])
 })
 
 @ns.route('')
@@ -42,10 +42,9 @@ class MCPServerList(Resource):
             {
                 'id': str(server.id),
                 'name': server.name,
-                'host': server.host,
-                'port': server.port,
-                'created_at': server.created_at,
-                'updated_at': server.updated_at
+                'command': server.command,
+                'arguments': server.arguments,
+                'required_envs': server.required_envs
             }
             for server in servers
         ]
@@ -85,10 +84,9 @@ class MCPServerResource(Resource):
         return {
             'id': str(server.id),
             'name': server.name,
-            'host': server.host,
-            'port': server.port,
-            'created_at': server.created_at,
-            'updated_at': server.updated_at
+            'command': server.command,
+            'arguments': server.arguments,
+            'required_envs': server.required_envs
         }
 
     @ns.doc('update_mcp_server')
@@ -100,18 +98,19 @@ class MCPServerResource(Resource):
         data = request.json
         if 'name' in data:
             server.name = data['name']
-        if 'host' in data:
-            server.host = data['host']
-        if 'port' in data:
-            server.port = data['port']
+        if 'command' in data:
+            server.command = data['command']
+        if 'arguments' in data:
+            server.arguments = data['arguments']
+        if 'required_envs' in data:
+            server.required_envs = data['required_envs']
         db.session.commit()
         return {
             'id': str(server.id),
             'name': server.name,
-            'host': server.host,
-            'port': server.port,
-            'created_at': server.created_at,
-            'updated_at': server.updated_at
+            'command': server.command,
+            'arguments': server.arguments,
+            'required_envs': server.required_envs
         }
 
     @ns.doc('delete_mcp_server')

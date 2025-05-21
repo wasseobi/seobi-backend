@@ -10,14 +10,14 @@ ns = Namespace('users', description='User operations')
 # Define input model for documentation
 user_input = ns.model('UserInput', {
     'username': fields.String(required=True, description='Username', example='testuser'),
-    'email': fields.String(required=True, description='Email address', example='test@example.com')
+    'email': fields.String(required=True, description='Email address', example='test@example.com'),
 })
 
 # Automatically create response model from User class
 user_model = ns.model('User', {
-    'id': fields.String(description='User UUID', attribute='id'),
-    'username': fields.String(required=True, description='Username'),
-    'email': fields.String(required=True, description='Email address')
+    'id': fields.String(description='User UUID', example='a1b2c3d4-5678-4e12-9f34-abcdef123456'),
+    'username': fields.String(required=True, description='Username', example='testuser'),
+    'email': fields.String(required=True, description='Email address', example='test@example.com')
 })
 
 @ns.route('/')
@@ -38,7 +38,6 @@ class UserList(Resource):
             username=data['username'],
             email=data['email']
         )
-        user.set_password(data['password'])
         db.session.add(user)
         db.session.commit()
         return user, 201
@@ -63,8 +62,6 @@ class UserResource(Resource):
         data = request.json
         user.username = data.get('username', user.username)
         user.email = data.get('email', user.email)
-        if 'password' in data:
-            user.set_password(data['password'])
         db.session.commit()
         return user
 
