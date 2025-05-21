@@ -57,10 +57,6 @@ class ActivationList(Resource):
             mcp_server_id=data['mcp_server_id'],
             name=data['name'],
             envs=data.get('envs', {})
-            user_id=data['user_id'],
-            mcp_server_id=data['mcp_server_id'],
-            name=data['name'],
-            envs=data.get('envs', {})
         )
         db.session.add(activation)
         db.session.commit()
