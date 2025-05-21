@@ -9,25 +9,25 @@ ns = Namespace('messages', description='Message operations')
 
 # Define models for documentation
 message_model = ns.model('Message', {
-    'id': fields.String(readonly=True, description='Message identifier (UUID)'),
-    'session_id': fields.String(required=True, description='Session identifier (UUID)'),
-    'user_id': fields.String(required=True, description='User identifier (UUID)'),
-    'content': fields.String(required=True, description='Message content'),
-    'role': fields.String(required=True, description='Message role (user/assistant)'),
+    'id': fields.String(readonly=True, description='Message UUID'),
+    'session_id': fields.String(required=True, description='Session UUID'),
+    'user_id': fields.String(required=True, description='User UUID'),
+    'content': fields.String(description='Message content'),
+    'role': fields.String(required=True, description='Message role (user/assistant/system/tool)', example='user'),
     'timestamp': fields.DateTime(readonly=True, description='Creation timestamp'),
     'vector': fields.List(fields.Float, description='Message vector embedding', required=False)
 })
 
 message_input = ns.model('MessageInput', {
-    'session_id': fields.String(required=True, description='Session identifier (UUID)'),
-    'user_id': fields.String(required=True, description='User identifier (UUID)'),
-    'content': fields.String(required=True, description='Message content'),
-    'role': fields.String(required=True, description='Message role (user/assistant)')
+    'session_id': fields.String(required=True, description='Session UUID'),
+    'user_id': fields.String(required=True, description='User UUID'),
+    'content': fields.String(description='Message content'),
+    'role': fields.String(required=True, description='Message role (user/assistant/system/tool)', example='user')
 })
 
 message_update = ns.model('MessageUpdate', {
     'content': fields.String(description='Message content'),
-    'role': fields.String(description='Message role (user/assistant)')
+    'role': fields.String(description='Message role (user/assistant/system/tool)')
 })
 
 @ns.route('')
@@ -59,8 +59,8 @@ class MessageList(Resource):
         message = Message(
             session_id=data['session_id'],
             user_id=data['user_id'],
-            content=data['content'],
-            role=data.get('role', 'user')
+            content=data.get('content'),
+            role=data['role']
         )
         db.session.add(message)
         db.session.commit()
@@ -125,4 +125,4 @@ class MessageResource(Resource):
         return '', 204
 
 # Register the namespace
-api.add_namespace(ns) 
+api.add_namespace(ns)

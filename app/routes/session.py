@@ -8,15 +8,18 @@ ns = Namespace('sessions', description='Session operations')
 
 # Define models for documentation
 session_model = ns.model('Session', {
-    'id': fields.Integer(readonly=True, description='Session identifier'),
-    'user_id': fields.Integer(required=True, description='User identifier'),
-    'created_at': fields.DateTime(readonly=True, description='Creation timestamp'),
-    'expires_at': fields.DateTime(required=True, description='Expiration timestamp')
+    'id': fields.String(readonly=True, description='Session UUID'),
+    'user_id': fields.String(required=True, description='User UUID'),
+    'start_at': fields.DateTime(readonly=True, description='Session start time'),
+    'finish_at': fields.DateTime(description='Session finish time', required=False),
+    'title': fields.String(description='Session title', required=False),
+    'description': fields.String(description='Session description', required=False)
 })
 
 session_input = ns.model('SessionInput', {
-    'user_id': fields.Integer(required=True, description='User identifier'),
-    'expires_at': fields.DateTime(required=True, description='Expiration timestamp')
+    'user_id': fields.String(required=True, description='User UUID'),
+    'title': fields.String(description='Session title', required=False),
+    'description': fields.String(description='Session description', required=False)
 })
 
 @ns.route('/')
@@ -35,7 +38,8 @@ class SessionList(Resource):
         data = request.json
         session = Session(
             user_id=data['user_id'],
-            expires_at=data['expires_at']
+            title=data.get('title'),
+            description=data.get('description')
         )
         db.session.add(session)
         db.session.commit()
@@ -62,4 +66,4 @@ class SessionResource(Resource):
         return '', 204
 
 # Register the namespace
-api.add_namespace(ns) 
+api.add_namespace(ns)

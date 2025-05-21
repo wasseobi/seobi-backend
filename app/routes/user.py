@@ -9,9 +9,8 @@ ns = Namespace('users', description='User operations')
 
 # Define input model for documentation
 user_input = ns.model('UserInput', {
-    'username': fields.String(required=True, description='Username'),
-    'email': fields.String(required=True, description='Email address'),
-    'password': fields.String(required=True, description='Password', example='********')
+    'username': fields.String(required=True, description='Username', example='testuser'),
+    'email': fields.String(required=True, description='Email address', example='test@example.com')
 })
 
 # Automatically create response model from User class
@@ -79,4 +78,4 @@ class UserResource(Resource):
         return '', 204
 
 # Register the namespace
-api.add_namespace(ns) 
+api.add_namespace(ns)

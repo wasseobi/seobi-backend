@@ -9,24 +9,26 @@ ns = Namespace('mcp_servers', description='MCP Server operations')
 
 # Define models for documentation
 mcp_server_model = ns.model('MCPServer', {
-    'id': fields.String(readonly=True, description='Server identifier (UUID)'),
-    'name': fields.String(required=True, description='Server name'),
-    'host': fields.String(required=True, description='Server host address'),
-    'port': fields.Integer(required=True, description='Server port number'),
-    'created_at': fields.DateTime(readonly=True, description='Creation timestamp'),
-    'updated_at': fields.DateTime(readonly=True, description='Last update timestamp')
+    'id': fields.String(readonly=True, description='Server ID'),
+    'name': fields.String(description='Server name', required=False),
+    'command': fields.String(description='Command', required=False),
+    'arguments': fields.List(fields.String, description='Command arguments', required=False),
+    'required_envs': fields.List(fields.String, description='Required environment variables', required=False)
 })
 
 mcp_server_input = ns.model('MCPServerInput', {
-    'name': fields.String(required=True, description='Server name'),
-    'host': fields.String(required=True, description='Server host address'),
-    'port': fields.Integer(required=True, description='Server port number')
+    'id': fields.String(required=True, description='Server ID'),
+    'name': fields.String(description='Server name', required=False),
+    'command': fields.String(description='Command', required=False),
+    'arguments': fields.List(fields.String, description='Command arguments', required=False),
+    'required_envs': fields.List(fields.String, description='Required environment variables', required=False)
 })
 
 mcp_server_update = ns.model('MCPServerUpdate', {
     'name': fields.String(description='Server name'),
-    'host': fields.String(description='Server host address'),
-    'port': fields.Integer(description='Server port number')
+    'command': fields.String(description='Command'),
+    'arguments': fields.List(fields.String, description='Command arguments'),
+    'required_envs': fields.List(fields.String, description='Required environment variables')
 })
 
 @ns.route('')
@@ -55,19 +57,20 @@ class MCPServerList(Resource):
         """Create a new MCP server"""
         data = request.json
         server = MCPServer(
-            name=data['name'],
-            host=data['host'],
-            port=data['port']
+            id=data['id'],
+            name=data.get('name'),
+            command=data.get('command'),
+            arguments=data.get('arguments'),
+            required_envs=data.get('required_envs')
         )
         db.session.add(server)
         db.session.commit()
         return {
             'id': str(server.id),
             'name': server.name,
-            'host': server.host,
-            'port': server.port,
-            'created_at': server.created_at,
-            'updated_at': server.updated_at
+            'command': server.command,
+            'arguments': server.arguments,
+            'required_envs': server.required_envs
         }, 201
 
 @ns.route('/<uuid:server_id>')
@@ -121,4 +124,4 @@ class MCPServerResource(Resource):
         return '', 204
 
 # Register the namespace
-api.add_namespace(ns) 
+api.add_namespace(ns)
