@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from app.models import db, User, Session, Message, MCPServer, ActiveMCPServer
 
+
 def create_app():
     load_dotenv()
     app = Flask(__name__)
@@ -13,14 +14,6 @@ def create_app():
     db.init_app(app)
     Migrate(app, db)
     CORS(app)
-
-    # --- API Key 인증 추가 ---
-    @app.before_request
-    def check_api_key():
-        api_key = request.headers.get("x-api-key")
-        if api_key != "seobi-api-A_MXGlYFhOHhZI54RsvlqOtl_1bceIABmInRddAGScU":
-            abort(401)
-    # --- 인증 끝 ---
 
     # Blueprint 등록
     from app.routes.user import user_bp
@@ -33,6 +26,7 @@ def create_app():
     app.register_blueprint(session_bp, url_prefix='/sessions')
     app.register_blueprint(message_bp, url_prefix='/messages')
     app.register_blueprint(mcp_server_bp, url_prefix='/mcp_servers')
-    app.register_blueprint(mcp_server_activation_bp, url_prefix='/mcp_server_activations')
+    app.register_blueprint(mcp_server_activation_bp,
+                           url_prefix='/mcp_server_activations')
 
-    return app 
+    return app
