@@ -1,45 +1,65 @@
-from flask import Blueprint, request, jsonify
-from app.models import Session, db
+from flask import request
+from flask_restx import Resource, Namespace, fields
+from app.models import db, Session
+from app import api
 
-session_bp = Blueprint('session', __name__)
+# Create namespace
+ns = Namespace('sessions', description='Session operations')
 
-@session_bp.route('', methods=['POST'])
-def create_session():
-    data = request.json
-    user_id = data.get('user_id')
-    title = data.get('title')
-    description = data.get('description')
-    session = Session(user_id=user_id, title=title, description=description)
-    db.session.add(session)
-    db.session.commit()
-    return jsonify({'id': str(session.id), 'user_id': str(session.user_id), 'title': session.title, 'description': session.description, 'start_at': session.start_at.isoformat(), 'finish_at': session.finish_at.isoformat() if session.finish_at else None}), 201
+# Define models for documentation
+session_model = ns.model('Session', {
+    'id': fields.Integer(readonly=True, description='Session identifier'),
+    'user_id': fields.Integer(required=True, description='User identifier'),
+    'created_at': fields.DateTime(readonly=True, description='Creation timestamp'),
+    'expires_at': fields.DateTime(required=True, description='Expiration timestamp')
+})
 
-@session_bp.route('', methods=['GET'])
-def get_sessions():
-    sessions = Session.query.all()
-    return jsonify([
-        {'id': str(s.id), 'user_id': str(s.user_id), 'title': s.title, 'description': s.description, 'start_at': s.start_at.isoformat(), 'finish_at': s.finish_at.isoformat() if s.finish_at else None}
-        for s in sessions
-    ])
+session_input = ns.model('SessionInput', {
+    'user_id': fields.Integer(required=True, description='User identifier'),
+    'expires_at': fields.DateTime(required=True, description='Expiration timestamp')
+})
 
-@session_bp.route('/<uuid:session_id>', methods=['GET'])
-def get_session(session_id):
-    session = Session.query.get_or_404(session_id)
-    return jsonify({'id': str(session.id), 'user_id': str(session.user_id), 'title': session.title, 'description': session.description, 'start_at': session.start_at.isoformat(), 'finish_at': session.finish_at.isoformat() if session.finish_at else None})
+@ns.route('/')
+class SessionList(Resource):
+    @ns.doc('list_sessions')
+    @ns.marshal_list_with(session_model)
+    def get(self):
+        """List all sessions"""
+        return Session.query.all()
 
-@session_bp.route('/<uuid:session_id>', methods=['PUT'])
-def update_session(session_id):
-    session = Session.query.get_or_404(session_id)
-    data = request.json
-    session.title = data.get('title', session.title)
-    session.description = data.get('description', session.description)
-    session.finish_at = data.get('finish_at', session.finish_at)
-    db.session.commit()
-    return jsonify({'id': str(session.id), 'user_id': str(session.user_id), 'title': session.title, 'description': session.description, 'start_at': session.start_at.isoformat(), 'finish_at': session.finish_at.isoformat() if session.finish_at else None})
+    @ns.doc('create_session')
+    @ns.expect(session_input)
+    @ns.marshal_with(session_model, code=201)
+    def post(self):
+        """Create a new session"""
+        data = request.json
+        session = Session(
+            user_id=data['user_id'],
+            expires_at=data['expires_at']
+        )
+        db.session.add(session)
+        db.session.commit()
+        return session, 201
 
-@session_bp.route('/<uuid:session_id>', methods=['DELETE'])
-def delete_session(session_id):
-    session = Session.query.get_or_404(session_id)
-    db.session.delete(session)
-    db.session.commit()
-    return '', 204 
+@ns.route('/<int:id>')
+@ns.param('id', 'The session identifier')
+@ns.response(404, 'Session not found')
+class SessionResource(Resource):
+    @ns.doc('get_session')
+    @ns.marshal_with(session_model)
+    def get(self, id):
+        """Get a session by ID"""
+        session = Session.query.get_or_404(id)
+        return session
+
+    @ns.doc('delete_session')
+    @ns.response(204, 'Session deleted')
+    def delete(self, id):
+        """Delete a session"""
+        session = Session.query.get_or_404(id)
+        db.session.delete(session)
+        db.session.commit()
+        return '', 204
+
+# Register the namespace
+api.add_namespace(ns) 

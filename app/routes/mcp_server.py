@@ -1,48 +1,124 @@
-from flask import Blueprint, request, jsonify
-from app.models import MCPServer, db
+from flask import request
+from flask_restx import Resource, Namespace, fields
+from app.models import db, MCPServer
+from app import api
+import uuid
 
-mcp_server_bp = Blueprint('mcp_server', __name__)
+# Create namespace
+ns = Namespace('mcp_servers', description='MCP Server operations')
 
-@mcp_server_bp.route('', methods=['POST'])
-def create_mcp_server():
-    data = request.json
-    id = data.get('id')
-    name = data.get('name')
-    command = data.get('command')
-    arguments = data.get('arguments')
-    required_envs = data.get('required_envs')
-    mcp_server = MCPServer(id=id, name=name, command=command, arguments=arguments, required_envs=required_envs)
-    db.session.add(mcp_server)
-    db.session.commit()
-    return jsonify({'id': mcp_server.id, 'name': mcp_server.name, 'command': mcp_server.command, 'arguments': mcp_server.arguments, 'required_envs': mcp_server.required_envs}), 201
+# Define models for documentation
+mcp_server_model = ns.model('MCPServer', {
+    'id': fields.String(readonly=True, description='Server identifier (UUID)'),
+    'name': fields.String(required=True, description='Server name'),
+    'host': fields.String(required=True, description='Server host address'),
+    'port': fields.Integer(required=True, description='Server port number'),
+    'created_at': fields.DateTime(readonly=True, description='Creation timestamp'),
+    'updated_at': fields.DateTime(readonly=True, description='Last update timestamp')
+})
 
-@mcp_server_bp.route('', methods=['GET'])
-def get_mcp_servers():
-    servers = MCPServer.query.all()
-    return jsonify([
-        {'id': s.id, 'name': s.name, 'command': s.command, 'arguments': s.arguments, 'required_envs': s.required_envs}
-        for s in servers
-    ])
+mcp_server_input = ns.model('MCPServerInput', {
+    'name': fields.String(required=True, description='Server name'),
+    'host': fields.String(required=True, description='Server host address'),
+    'port': fields.Integer(required=True, description='Server port number')
+})
 
-@mcp_server_bp.route('/<string:server_id>', methods=['GET'])
-def get_mcp_server(server_id):
-    server = MCPServer.query.get_or_404(server_id)
-    return jsonify({'id': server.id, 'name': server.name, 'command': server.command, 'arguments': server.arguments, 'required_envs': server.required_envs})
+mcp_server_update = ns.model('MCPServerUpdate', {
+    'name': fields.String(description='Server name'),
+    'host': fields.String(description='Server host address'),
+    'port': fields.Integer(description='Server port number')
+})
 
-@mcp_server_bp.route('/<string:server_id>', methods=['PUT'])
-def update_mcp_server(server_id):
-    server = MCPServer.query.get_or_404(server_id)
-    data = request.json
-    server.name = data.get('name', server.name)
-    server.command = data.get('command', server.command)
-    server.arguments = data.get('arguments', server.arguments)
-    server.required_envs = data.get('required_envs', server.required_envs)
-    db.session.commit()
-    return jsonify({'id': server.id, 'name': server.name, 'command': server.command, 'arguments': server.arguments, 'required_envs': server.required_envs})
+@ns.route('')
+class MCPServerList(Resource):
+    @ns.doc('list_mcp_servers')
+    @ns.marshal_list_with(mcp_server_model)
+    def get(self):
+        """List all MCP servers"""
+        servers = MCPServer.query.all()
+        return [
+            {
+                'id': str(server.id),
+                'name': server.name,
+                'host': server.host,
+                'port': server.port,
+                'created_at': server.created_at,
+                'updated_at': server.updated_at
+            }
+            for server in servers
+        ]
 
-@mcp_server_bp.route('/<string:server_id>', methods=['DELETE'])
-def delete_mcp_server(server_id):
-    server = MCPServer.query.get_or_404(server_id)
-    db.session.delete(server)
-    db.session.commit()
-    return '', 204 
+    @ns.doc('create_mcp_server')
+    @ns.expect(mcp_server_input)
+    @ns.marshal_with(mcp_server_model, code=201)
+    def post(self):
+        """Create a new MCP server"""
+        data = request.json
+        server = MCPServer(
+            name=data['name'],
+            host=data['host'],
+            port=data['port']
+        )
+        db.session.add(server)
+        db.session.commit()
+        return {
+            'id': str(server.id),
+            'name': server.name,
+            'host': server.host,
+            'port': server.port,
+            'created_at': server.created_at,
+            'updated_at': server.updated_at
+        }, 201
+
+@ns.route('/<uuid:server_id>')
+@ns.param('server_id', 'The MCP server identifier (UUID)')
+@ns.response(404, 'MCP server not found')
+class MCPServerResource(Resource):
+    @ns.doc('get_mcp_server')
+    @ns.marshal_with(mcp_server_model)
+    def get(self, server_id):
+        """Get an MCP server by ID"""
+        server = MCPServer.query.get_or_404(server_id)
+        return {
+            'id': str(server.id),
+            'name': server.name,
+            'host': server.host,
+            'port': server.port,
+            'created_at': server.created_at,
+            'updated_at': server.updated_at
+        }
+
+    @ns.doc('update_mcp_server')
+    @ns.expect(mcp_server_update)
+    @ns.marshal_with(mcp_server_model)
+    def put(self, server_id):
+        """Update an MCP server"""
+        server = MCPServer.query.get_or_404(server_id)
+        data = request.json
+        if 'name' in data:
+            server.name = data['name']
+        if 'host' in data:
+            server.host = data['host']
+        if 'port' in data:
+            server.port = data['port']
+        db.session.commit()
+        return {
+            'id': str(server.id),
+            'name': server.name,
+            'host': server.host,
+            'port': server.port,
+            'created_at': server.created_at,
+            'updated_at': server.updated_at
+        }
+
+    @ns.doc('delete_mcp_server')
+    @ns.response(204, 'MCP server deleted')
+    def delete(self, server_id):
+        """Delete an MCP server"""
+        server = MCPServer.query.get_or_404(server_id)
+        db.session.delete(server)
+        db.session.commit()
+        return '', 204
+
+# Register the namespace
+api.add_namespace(ns) 

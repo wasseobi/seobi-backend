@@ -1,45 +1,118 @@
-from flask import Blueprint, request, jsonify
-from app.models import ActiveMCPServer, db
+from flask import request
+from flask_restx import Resource, Namespace, fields
+from app.models import db, ActiveMCPServer
+from app import api
+import uuid
 
-mcp_server_activation_bp = Blueprint('mcp_server_activation', __name__)
+# Create namespace
+ns = Namespace('mcp_server_activations', description='MCP Server Activation operations')
 
-@mcp_server_activation_bp.route('', methods=['POST'])
-def create_activation():
-    data = request.json
-    user_id = data.get('user_id')
-    mcp_server_id = data.get('mcp_server_id')
-    name = data.get('name')
-    envs = data.get('envs')
-    activation = ActiveMCPServer(user_id=user_id, mcp_server_id=mcp_server_id, name=name, envs=envs)
-    db.session.add(activation)
-    db.session.commit()
-    return jsonify({'id': str(activation.id), 'user_id': str(activation.user_id), 'mcp_server_id': activation.mcp_server_id, 'name': activation.name, 'envs': activation.envs}), 201
+# Define models for documentation
+activation_model = ns.model('ActiveMCPServer', {
+    'id': fields.String(readonly=True, description='Activation identifier (UUID)'),
+    'server_id': fields.String(required=True, description='MCP Server identifier (UUID)'),
+    'status': fields.String(required=True, description='Server status (active/inactive)'),
+    'started_at': fields.DateTime(readonly=True, description='Activation start timestamp'),
+    'ended_at': fields.DateTime(description='Activation end timestamp', required=False),
+    'error_message': fields.String(description='Error message if activation failed', required=False)
+})
 
-@mcp_server_activation_bp.route('', methods=['GET'])
-def get_activations():
-    activations = ActiveMCPServer.query.all()
-    return jsonify([
-        {'id': str(a.id), 'user_id': str(a.user_id), 'mcp_server_id': a.mcp_server_id, 'name': a.name, 'envs': a.envs}
-        for a in activations
-    ])
+activation_input = ns.model('ActivationInput', {
+    'server_id': fields.String(required=True, description='MCP Server identifier (UUID)')
+})
 
-@mcp_server_activation_bp.route('/<uuid:activation_id>', methods=['GET'])
-def get_activation(activation_id):
-    activation = ActiveMCPServer.query.get_or_404(activation_id)
-    return jsonify({'id': str(activation.id), 'user_id': str(activation.user_id), 'mcp_server_id': activation.mcp_server_id, 'name': activation.name, 'envs': activation.envs})
+activation_update = ns.model('ActivationUpdate', {
+    'status': fields.String(description='Server status (active/inactive)'),
+    'error_message': fields.String(description='Error message if activation failed')
+})
 
-@mcp_server_activation_bp.route('/<uuid:activation_id>', methods=['PUT'])
-def update_activation(activation_id):
-    activation = ActiveMCPServer.query.get_or_404(activation_id)
-    data = request.json
-    activation.name = data.get('name', activation.name)
-    activation.envs = data.get('envs', activation.envs)
-    db.session.commit()
-    return jsonify({'id': str(activation.id), 'user_id': str(activation.user_id), 'mcp_server_id': activation.mcp_server_id, 'name': activation.name, 'envs': activation.envs})
+@ns.route('')
+class ActivationList(Resource):
+    @ns.doc('list_activations')
+    @ns.marshal_list_with(activation_model)
+    def get(self):
+        """List all MCP server activations"""
+        activations = ActiveMCPServer.query.all()
+        return [
+            {
+                'id': str(activation.id),
+                'server_id': str(activation.server_id),
+                'status': activation.status,
+                'started_at': activation.started_at,
+                'ended_at': activation.ended_at,
+                'error_message': activation.error_message
+            }
+            for activation in activations
+        ]
 
-@mcp_server_activation_bp.route('/<uuid:activation_id>', methods=['DELETE'])
-def delete_activation(activation_id):
-    activation = ActiveMCPServer.query.get_or_404(activation_id)
-    db.session.delete(activation)
-    db.session.commit()
-    return '', 204 
+    @ns.doc('create_activation')
+    @ns.expect(activation_input)
+    @ns.marshal_with(activation_model, code=201)
+    def post(self):
+        """Create a new MCP server activation"""
+        data = request.json
+        activation = ActiveMCPServer(
+            server_id=data['server_id'],
+            status='active'  # Default status for new activation
+        )
+        db.session.add(activation)
+        db.session.commit()
+        return {
+            'id': str(activation.id),
+            'server_id': str(activation.server_id),
+            'status': activation.status,
+            'started_at': activation.started_at,
+            'ended_at': activation.ended_at,
+            'error_message': activation.error_message
+        }, 201
+
+@ns.route('/<uuid:activation_id>')
+@ns.param('activation_id', 'The activation identifier (UUID)')
+@ns.response(404, 'Activation not found')
+class ActivationResource(Resource):
+    @ns.doc('get_activation')
+    @ns.marshal_with(activation_model)
+    def get(self, activation_id):
+        """Get an activation by ID"""
+        activation = ActiveMCPServer.query.get_or_404(activation_id)
+        return {
+            'id': str(activation.id),
+            'server_id': str(activation.server_id),
+            'status': activation.status,
+            'started_at': activation.started_at,
+            'ended_at': activation.ended_at,
+            'error_message': activation.error_message
+        }
+
+    @ns.doc('update_activation')
+    @ns.expect(activation_update)
+    @ns.marshal_with(activation_model)
+    def put(self, activation_id):
+        """Update an activation"""
+        activation = ActiveMCPServer.query.get_or_404(activation_id)
+        data = request.json
+        if 'status' in data:
+            activation.status = data['status']
+        if 'error_message' in data:
+            activation.error_message = data['error_message']
+        db.session.commit()
+        return {
+            'id': str(activation.id),
+            'server_id': str(activation.server_id),
+            'status': activation.status,
+            'started_at': activation.started_at,
+            'ended_at': activation.ended_at,
+            'error_message': activation.error_message
+        }
+
+    @ns.doc('delete_activation')
+    @ns.response(204, 'Activation deleted')
+    def delete(self, activation_id):
+        """Delete an activation"""
+        activation = ActiveMCPServer.query.get_or_404(activation_id)
+        db.session.delete(activation)
+        db.session.commit()
+        return '', 204
+
+# Register the namespace
+api.add_namespace(ns) 
