@@ -9,16 +9,18 @@ ns = Namespace('mcp_server_activations', description='MCP Server Activation oper
 
 # Define models for documentation
 activation_model = ns.model('ActiveMCPServer', {
-    'id': fields.String(readonly=True, description='Activation identifier (UUID)'),
-    'server_id': fields.String(required=True, description='MCP Server identifier (UUID)'),
-    'status': fields.String(required=True, description='Server status (active/inactive)'),
-    'started_at': fields.DateTime(readonly=True, description='Activation start timestamp'),
-    'ended_at': fields.DateTime(description='Activation end timestamp', required=False),
-    'error_message': fields.String(description='Error message if activation failed', required=False)
+    'id': fields.String(readonly=True, description='Activation UUID'),
+    'user_id': fields.String(required=True, description='User UUID'),
+    'mcp_server_id': fields.String(required=True, description='MCP Server ID'),
+    'name': fields.String(required=True, description='Activation name'),
+    'envs': fields.Raw(description='Activation environment variables', required=False)
 })
 
 activation_input = ns.model('ActivationInput', {
-    'server_id': fields.String(required=True, description='MCP Server identifier (UUID)')
+    'user_id': fields.String(required=True, description='User UUID'),
+    'mcp_server_id': fields.String(required=True, description='MCP Server ID'),
+    'name': fields.String(required=True, description='Activation name'),
+    'envs': fields.Raw(description='Activation environment variables', required=False)
 })
 
 activation_update = ns.model('ActivationUpdate', {
@@ -52,18 +54,19 @@ class ActivationList(Resource):
         """Create a new MCP server activation"""
         data = request.json
         activation = ActiveMCPServer(
-            server_id=data['server_id'],
-            status='active'  # Default status for new activation
+            user_id=data['user_id'],
+            mcp_server_id=data['mcp_server_id'],
+            name=data['name'],
+            envs=data.get('envs', {})
         )
         db.session.add(activation)
         db.session.commit()
         return {
             'id': str(activation.id),
-            'server_id': str(activation.server_id),
-            'status': activation.status,
-            'started_at': activation.started_at,
-            'ended_at': activation.ended_at,
-            'error_message': activation.error_message
+            'user_id': str(activation.user_id),
+            'mcp_server_id': str(activation.mcp_server_id),
+            'name': activation.name,
+            'envs': activation.envs
         }, 201
 
 @ns.route('/<uuid:activation_id>')
@@ -115,4 +118,4 @@ class ActivationResource(Resource):
         return '', 204
 
 # Register the namespace
-api.add_namespace(ns) 
+api.add_namespace(ns)
