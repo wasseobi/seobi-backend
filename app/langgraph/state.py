@@ -1,7 +1,8 @@
 """대화 상태를 관리하는 모듈입니다."""
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Union
 from datetime import datetime
 from dataclasses import dataclass, field
+from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
 
 @dataclass
 class ChatState:
@@ -15,7 +16,7 @@ class ChatState:
     executed_result: Dict = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     user_id: str = ""
-    messages: List = field(default_factory=list)
+    messages: List[BaseMessage] = field(default_factory=list)
     
     VALID_KEYS = [
         "user_input",
@@ -48,8 +49,18 @@ class ChatState:
                 merged.update(state)
         return merged
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: Union[str, int]) -> Any:
         """상태 값을 조회합니다."""
+        # messages 리스트에 대한 인덱스 접근 처리
+        if isinstance(key, int):
+            if not isinstance(self.messages, (list, tuple)):
+                raise TypeError("messages가 리스트가 아닙니다")
+            try:
+                return self.messages[key]
+            except IndexError:
+                raise IndexError(f"messages 인덱스 범위 초과: {key}")
+            
+        # 문자열 키에 대한 기존 처리
         if not isinstance(key, str):
             import traceback
             print(f"[ChatState] 잘못된 key 접근: {key!r} (type: {type(key)})")
@@ -57,23 +68,16 @@ class ChatState:
             print("[ChatState] 스택 트레이스:")
             traceback.print_stack()
             raise TypeError(f"키는 문자열이어야 합니다. (입력값: {key!r}, 타입: {type(key)})")
+        
         if key not in self.VALID_KEYS:
             raise KeyError(f"존재하지 않는 키입니다: {key}")
         return getattr(self, key)
 
-    def __setitem__(self, key: str, value: Any) -> None:
-        """상태 값을 설정합니다."""
-        if not isinstance(key, str):
-            raise TypeError(f"키는 문자열이어야 합니다. (입력값: {key!r}, 타입: {type(key)})")
-        if key not in self.VALID_KEYS:
-            raise KeyError(f"존재하지 않는 키입니다: {key}")
-        setattr(self, key, value)
-
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: Union[str, int], default: Any = None) -> Any:
         """안전하게 상태 값을 조회합니다."""
         try:
             return self[key]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, IndexError):
             return default
 
     @property

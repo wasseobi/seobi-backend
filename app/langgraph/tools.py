@@ -1,5 +1,29 @@
-from app.langgraph.tools import *
-"""사용 가능한 도구들을 정의하는 모듈입니다."""
+"""사용 가능한 도구들을 정의하는 모듈입니다
+
+사용 가능한 도구 목록:
+1. get_current_time:
+   - 설명: 현재 시간을 반환합니다
+   - 인자: 없음
+   - 응답 형식: "현재 시각은 HH시 MM분 SS초 입니다"
+
+2. google_search:
+   - 설명: 구글 검색을 수행합니다
+   - 필수 인자:
+     - query (str): 검색할 키워드나 문장
+   - 선택 인자:
+     - num_results (int): 가져올 결과 수 (기본값: 3)
+   - 응답 형식: [{"title": "제목", "link": "URL", "snippet": "내용"}]
+
+3. schedule_meeting:
+   - 설명: 회의 일정을 등록합니다
+   - 필수 인자:
+     - datetime_str (str): 회의 시작 시간 (ISO 형식: "YYYY-MM-DDTHH:MM:SS")
+   - 선택 인자:
+     - duration (str): 회의 지속 시간 (기본값: "1h")
+     - title (str): 회의 제목 (기본값: "회의")
+     - attendees (List[str]): 참석자 이메일 목록
+   - 응답 형식: {"success": true, "meeting_id": "ID", "details": {...}}
+"""
 import datetime
 import os
 from typing import List, Dict, Any
