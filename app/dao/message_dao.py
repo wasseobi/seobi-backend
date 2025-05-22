@@ -37,4 +37,15 @@ class MessageDAO(BaseDAO[Message]):
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
         """Delete a message"""
-        return self.delete(str(message_id)) 
+        return self.delete(str(message_id))
+
+    def get_user_messages(self, user_id: uuid.UUID) -> List[Message]:
+        """Get all messages for a user ordered by timestamp
+
+        Args:
+            user_id (uuid.UUID): User's ID
+
+        Returns:
+            List[Message]: List of messages for the user
+        """
+        return self.query().filter_by(user_id=user_id).order_by(Message.timestamp.desc()).all()
