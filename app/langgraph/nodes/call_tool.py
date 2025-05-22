@@ -3,8 +3,8 @@ from typing import Dict, Any, List
 from datetime import datetime
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from langchain_core.runnables import RunnableLambda
-from src.state import ChatState
-from src.tools import get_tools
+from app.langgraph.state import ChatState
+from app.langgraph.tools import get_tools
 
 def ensure_valid_messages(messages: List[BaseMessage]) -> List[BaseMessage]:
     """메시지 리스트가 유효한지 확인하고 필터링합니다."""
@@ -37,23 +37,23 @@ def call_tool(state: ChatState) -> Dict:
             result = {"result": result}
         print(f"📤 실행 결과: {result}")
 
-        return {
-            "executed_result": {
-                "success": True,
-                "action": tool_name,
-                "details": result,
-                "error": None
-            },
-            "messages": state.get("messages", [])
+        executed_result = {
+            "success": True,
+            "action": tool_name,
+            "details": result,
+            "error": None
         }
     except Exception as e:
         print(f"❌ ToolNode 실행 중 오류 발생: {str(e)}")
-        return {
-            "executed_result": {
-                "success": False,
-                "action": state.get("parsed_intent", {}).get("intent", "unknown"),
-                "details": {},
-                "error": {"message": str(e)}
-            },
-            "messages": state.get("messages", [])
+        executed_result = {
+            "success": False,
+            "action": state.get("parsed_intent", {}).get("intent", "unknown"),
+            "details": {},
+            "error": {"message": str(e)}
         }
+
+    result = {**state, "executed_result": executed_result}
+    if not isinstance(result, dict):
+        print("[ERROR] 반환값이 dict가 아님! type:", type(result), "value:", repr(result))
+        raise TypeError("노드 반환값은 반드시 dict여야 합니다.")
+    return result

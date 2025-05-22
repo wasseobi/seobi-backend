@@ -1,7 +1,7 @@
 """그래프의 다음 단계를 결정하는 모듈입니다."""
 from langgraph.graph import END
 
-from src.state import ChatState
+from state import ChatState
 
 
 def should_continue(state: ChatState) -> str:

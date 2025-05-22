@@ -9,7 +9,9 @@ import uuid
 ns = Namespace('messages', description='Message operations for chat with AI')
 
 # Register models for documentation
-message_model, message_input, message_update, completion_input, completion_response = register_models(ns)
+message_model, message_input, message_update, completion_input, completion_response = register_models(
+    ns)
+
 
 @ns.route('/session/<uuid:session_id>')
 @ns.param('session_id', 'The session identifier')
@@ -51,33 +53,31 @@ class SessionMessageList(Resource):
         except ValueError as e:
             ns.abort(400, str(e))
 
-@ns.route('/session/<uuid:session_id>/completion')
+
+@ns.route('/session/<uuid:session_id>/langgraph-completion')
 @ns.param('session_id', 'The session identifier')
 @ns.response(404, 'Session not found')
 @ns.response(400, 'Invalid input or session is finished')
 @ns.response(500, 'Failed to get AI completion')
-class MessageCompletion(Resource):
+class MessageLangGraphCompletion(Resource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.service = MessageService()
 
-    @ns.doc('create_completion',
-            description='Send a message to the AI and get a response. This will:\n'
-                      '1. Save your message\n'
-                      '2. Get AI response\n'
-                      '3. Save AI response\n'
-                      '4. Update session title/description if this is the first message\n'
-                      '5. Return both messages')
+    @ns.doc('create_langgraph_completion',
+            description='Send a message to the AI via LangGraph and get a response. This will:\n'
+            '1. Save your message\n'
+            '2. Get AI response via LangGraph\n'
+            '3. Save AI response\n'
+            '4. Return both messages')
     @ns.expect(completion_input)
     @ns.marshal_with(completion_response)
     def post(self, session_id):
-        """Create a new message and get AI completion"""
         try:
             data = request.json
             if not data or 'content' not in data or 'user_id' not in data:
                 ns.abort(400, 'Message content and user_id are required')
-
-            result = self.service.create_completion(
+            result = self.service.create_langgraph_completion(
                 session_id=session_id,
                 user_id=data['user_id'],
                 content=data['content']
@@ -85,6 +85,7 @@ class MessageCompletion(Resource):
             return result
         except ValueError as e:
             ns.abort(400, str(e))
+
 
 # Register the namespace
 api.add_namespace(ns)

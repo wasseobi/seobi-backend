@@ -2,6 +2,8 @@ from app.dao.message_dao import MessageDAO
 from app.services.session_service import SessionService
 from app.models import Session
 from app.utils.openai_client import get_openai_client, get_completion
+from app.langgraph.graph import builder as langgraph_builder
+from langchain.schema import HumanMessage
 from typing import List, Dict, Any
 import uuid
 
@@ -123,4 +125,43 @@ class MessageService:
         return {
             'user_message': self._serialize_message(user_message),
             'assistant_message': self._serialize_message(assistant_message)
-        } 
+        }
+
+    def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> Dict[str, Dict]:
+        """LangGraph 기반으로 메시지 생성 및 AI 응답/저장"""
+        session = Session.query.get(session_id)
+        if not session:
+            raise ValueError('Session not found')
+        if session.finish_at:
+            raise ValueError('Cannot add message to finished session')
+
+        # 1. 사용자 메시지 저장
+        user_message = self.dao.create_message(session_id, user_id, content, 'user')
+
+        # 2. 랭그래프 상태 생성 및 실행
+        initial_state = {
+            "user_input": content,
+            "parsed_intent": {},
+            "reply": "",
+            "action_required": False,
+            "executed_result": {},
+            "timestamp": user_message.timestamp.isoformat() if user_message.timestamp else None,
+            "user_id": str(user_id),
+            "tool_info": None,
+            "messages": [HumanMessage(content=content)]
+        }
+        graph = langgraph_builder.compile()
+        print("[DEBUG][service] graph type:", type(graph))
+        print("[DEBUG][service] graph.invoke type:", type(getattr(graph, 'invoke', None)))
+        print("[DEBUG][service] initial_state type:", type(initial_state))
+        print("[DEBUG][service] initial_state:", initial_state)
+        result = graph.invoke(initial_state)
+        print("[DEBUG][service] graph.invoke 반환값 type:", type(result))
+        print("[DEBUG][service] graph.invoke 반환값:", result)
+        ai_reply = result.get("reply")
+        # 3. AI 메시지 저장
+        assistant_message = self.dao.create_message(session_id, user_id, ai_reply, 'assistant')
+        return {
+            'user_message': self._serialize_message(user_message),
+            'assistant_message': self._serialize_message(assistant_message)
+        }
