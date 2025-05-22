@@ -1,78 +1,81 @@
 from flask import request
-from flask_restx import Resource, Namespace, fields
-from app.models.db import db
-from app.models.user import User
-from app import api
+from flask_restx import Resource, Namespace
+from app.schemas.user_schema import register_models
+from app.services.user_service import UserService
 
-# Create namespace
 ns = Namespace('users', description='User operations')
-
-# Define input model for documentation
-user_input = ns.model('UserInput', {
-    'username': fields.String(required=True, description='Username', example='testuser'),
-    'email': fields.String(required=True, description='Email address', example='test@example.com'),
-})
-
-# Automatically create response model from User class
-user_model = ns.model('User', {
-    'id': fields.String(description='User UUID', example='a1b2c3d4-5678-4e12-9f34-abcdef123456'),
-    'username': fields.String(required=True, description='Username', example='testuser'),
-    'email': fields.String(required=True, description='Email address', example='test@example.com')
-})
+user_create, user_update, user_response = register_models(ns)
 
 @ns.route('/')
 class UserList(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_service = UserService()
+
     @ns.doc('list_users')
-    @ns.marshal_list_with(user_model)
+    @ns.marshal_list_with(user_response)
     def get(self):
         """List all users"""
-        return User.query.all()
+        return self.user_service.get_all_users()
 
     @ns.doc('create_user')
-    @ns.expect(user_input)
-    @ns.marshal_with(user_model, code=201)
+    @ns.expect(user_create)
+    @ns.marshal_with(user_response, code=201)
     def post(self):
         """Create a new user"""
         data = request.json
-        user = User(
-            username=data['username'],
-            email=data['email']
-        )
-        db.session.add(user)
-        db.session.commit()
-        return user, 201
+        try:
+            return self.user_service.create_user(
+                username=data['username'],
+                email=data['email']
+            ), 201
+        except ValueError as e:
+            ns.abort(400, str(e))
 
-@ns.route('/<uuid:id>')
-@ns.param('id', 'The user identifier')
+@ns.route('/<uuid:user_id>')
+@ns.param('user_id', 'The user identifier')
 @ns.response(404, 'User not found')
 class UserResource(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_service = UserService()
+
     @ns.doc('get_user')
-    @ns.marshal_with(user_model)
-    def get(self, id):
+    @ns.marshal_with(user_response)
+    def get(self, user_id):
         """Get a user by ID"""
-        user = User.query.get_or_404(id)
+        user = self.user_service.get_user_by_id(user_id)
+        if not user:
+            ns.abort(404, f"User {user_id} not found")
         return user
 
     @ns.doc('update_user')
-    @ns.expect(user_input)
-    @ns.marshal_with(user_model)
-    def put(self, id):
+    @ns.expect(user_update)
+    @ns.marshal_with(user_response)
+    def put(self, user_id):
         """Update a user"""
-        user = User.query.get_or_404(id)
+        user = self.user_service.get_user_by_id(user_id)
+        if not user:
+            ns.abort(404, f"User {user_id} not found")
+        
         data = request.json
-        user.username = data.get('username', user.username)
-        user.email = data.get('email', user.email)
-        db.session.commit()
-        return user
+        try:
+            return self.user_service.update_user(
+                user_id=user_id,
+                username=data.get('username'),
+                email=data.get('email')
+            )
+        except ValueError as e:
+            ns.abort(400, str(e))
 
     @ns.doc('delete_user')
     @ns.response(204, 'User deleted')
-    def delete(self, id):
+    def delete(self, user_id):
         """Delete a user"""
-        user = User.query.get_or_404(id)
-        db.session.delete(user)
-        db.session.commit()
-        return '', 204
-
-# Register the namespace
-api.add_namespace(ns)
+        user = self.user_service.get_user_by_id(user_id)
+        if not user:
+            ns.abort(404, f"User {user_id} not found")
+        
+        if self.user_service.delete_user(user_id):
+            return '', 204
+        ns.abort(500, "Failed to delete user")

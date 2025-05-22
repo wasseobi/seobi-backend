@@ -1,128 +1,90 @@
 from flask import request
-from flask_restx import Resource, Namespace, fields
-from app.models import db, Message
+from flask_restx import Resource, Namespace
+from app.services.message_service import MessageService
+from app.schemas.message_schema import register_models
 from app import api
 import uuid
 
 # Create namespace
-ns = Namespace('messages', description='Message operations')
+ns = Namespace('messages', description='Message operations for chat with AI')
 
-# Define models for documentation
-message_model = ns.model('Message', {
-    'id': fields.String(readonly=True, description='Message UUID'),
-    'session_id': fields.String(required=True, description='Session UUID'),
-    'user_id': fields.String(required=True, description='User UUID'),
-    'content': fields.String(description='Message content'),
-    'role': fields.String(required=True, description='Message role (user/assistant/system/tool)', example='user'),
-    'timestamp': fields.DateTime(readonly=True, description='Creation timestamp'),
-    'vector': fields.List(fields.Float, description='Message vector embedding', required=False)
-})
+# Register models for documentation
+message_model, message_input, message_update, completion_input, completion_response = register_models(ns)
 
-message_input = ns.model('MessageInput', {
-    'session_id': fields.String(required=True, description='Session UUID'),
-    'user_id': fields.String(required=True, description='User UUID'),
-    'content': fields.String(description='Message content'),
-    'role': fields.String(required=True, description='Message role (user/assistant/system/tool)', example='user')
-})
+@ns.route('/session/<uuid:session_id>')
+@ns.param('session_id', 'The session identifier')
+@ns.response(404, 'Session not found')
+@ns.response(400, 'Invalid input or session is finished')
+class SessionMessageList(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.service = MessageService()
 
-message_update = ns.model('MessageUpdate', {
-    'content': fields.String(description='Message content'),
-    'role': fields.String(description='Message role (user/assistant/system/tool)')
-})
-
-@ns.route('')
-class MessageList(Resource):
-    @ns.doc('list_messages')
+    @ns.doc('list_session_messages',
+            description='Get all messages in a session, ordered by timestamp')
     @ns.marshal_list_with(message_model)
-    def get(self):
-        """List all messages"""
-        messages = Message.query.all()
-        return [
-            {
-                'id': str(m.id),
-                'session_id': str(m.session_id),
-                'user_id': str(m.user_id),
-                'content': m.content,
-                'role': m.role,
-                'timestamp': m.timestamp,
-                'vector': list(m.vector) if m.vector else None
-            }
-            for m in messages
-        ]
+    def get(self, session_id):
+        """List all messages in a session"""
+        try:
+            return self.service.get_session_messages(session_id)
+        except ValueError as e:
+            ns.abort(400, str(e))
 
-    @ns.doc('create_message')
+    @ns.doc('create_message',
+            description='Create a new message in a session. Use this for system messages or manual message creation.')
     @ns.expect(message_input)
     @ns.marshal_with(message_model, code=201)
-    def post(self):
-        """Create a new message"""
-        data = request.json
-        message = Message(
-            session_id=data['session_id'],
-            user_id=data['user_id'],
-            content=data.get('content'),
-            role=data['role']
-        )
-        db.session.add(message)
-        db.session.commit()
-        return {
-            'id': str(message.id),
-            'session_id': str(message.session_id),
-            'user_id': str(message.user_id),
-            'content': message.content,
-            'role': message.role,
-            'timestamp': message.timestamp,
-            'vector': list(message.vector) if message.vector else None
-        }, 201
+    def post(self, session_id):
+        """Create a new message in a session"""
+        try:
+            data = request.json
+            if not data or 'content' not in data or 'user_id' not in data:
+                ns.abort(400, 'Message content and user_id are required')
 
-@ns.route('/<uuid:message_id>')
-@ns.param('message_id', 'The message identifier (UUID)')
-@ns.response(404, 'Message not found')
-class MessageResource(Resource):
-    @ns.doc('get_message')
-    @ns.marshal_with(message_model)
-    def get(self, message_id):
-        """Get a message by ID"""
-        message = Message.query.get_or_404(message_id)
-        return {
-            'id': str(message.id),
-            'session_id': str(message.session_id),
-            'user_id': str(message.user_id),
-            'content': message.content,
-            'role': message.role,
-            'timestamp': message.timestamp,
-            'vector': list(message.vector) if message.vector else None
-        }
+            message = self.service.create_message(
+                session_id=session_id,
+                user_id=data['user_id'],
+                content=data['content'],
+                role=data.get('role', 'user')
+            )
+            return message, 201
+        except ValueError as e:
+            ns.abort(400, str(e))
 
-    @ns.doc('update_message')
-    @ns.expect(message_update)
-    @ns.marshal_with(message_model)
-    def put(self, message_id):
-        """Update a message"""
-        message = Message.query.get_or_404(message_id)
-        data = request.json
-        if 'content' in data:
-            message.content = data['content']
-        if 'role' in data:
-            message.role = data['role']
-        db.session.commit()
-        return {
-            'id': str(message.id),
-            'session_id': str(message.session_id),
-            'user_id': str(message.user_id),
-            'content': message.content,
-            'role': message.role,
-            'timestamp': message.timestamp,
-            'vector': list(message.vector) if message.vector else None
-        }
+@ns.route('/session/<uuid:session_id>/completion')
+@ns.param('session_id', 'The session identifier')
+@ns.response(404, 'Session not found')
+@ns.response(400, 'Invalid input or session is finished')
+@ns.response(500, 'Failed to get AI completion')
+class MessageCompletion(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.service = MessageService()
 
-    @ns.doc('delete_message')
-    @ns.response(204, 'Message deleted')
-    def delete(self, message_id):
-        """Delete a message"""
-        message = Message.query.get_or_404(message_id)
-        db.session.delete(message)
-        db.session.commit()
-        return '', 204
+    @ns.doc('create_completion',
+            description='Send a message to the AI and get a response. This will:\n'
+                      '1. Save your message\n'
+                      '2. Get AI response\n'
+                      '3. Save AI response\n'
+                      '4. Update session title/description if this is the first message\n'
+                      '5. Return both messages')
+    @ns.expect(completion_input)
+    @ns.marshal_with(completion_response)
+    def post(self, session_id):
+        """Create a new message and get AI completion"""
+        try:
+            data = request.json
+            if not data or 'content' not in data or 'user_id' not in data:
+                ns.abort(400, 'Message content and user_id are required')
+
+            result = self.service.create_completion(
+                session_id=session_id,
+                user_id=data['user_id'],
+                content=data['content']
+            )
+            return result
+        except ValueError as e:
+            ns.abort(400, str(e))
 
 # Register the namespace
 api.add_namespace(ns)

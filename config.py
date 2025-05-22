@@ -12,4 +12,10 @@ class Config:
         f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         f"?sslmode=require&sslrootcert={SSL_CERT}"
     )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False 
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+    AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+    AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME") 

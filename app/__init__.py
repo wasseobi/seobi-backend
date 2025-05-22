@@ -17,6 +17,12 @@ api = Api(
 def create_app():
     load_dotenv()
     app = Flask(__name__)
+
+    # set json encoding to utf-8
+    app.json.ensure_ascii = False
+    app.json.mimetype = 'application/json; charset=utf-8'
+    
+
     app.config.from_object('config.Config')
 
     # Initialize extensions
