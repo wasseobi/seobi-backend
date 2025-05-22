@@ -113,4 +113,30 @@ class SessionService:
         except Exception as e:
             print(f"Failed to update session title/description: {str(e)}")
             # Don't raise the exception to prevent blocking the main flow
-            # Just log the error and continue 
+            # Just log the error and continue
+
+    def get_user_sessions(self, user_id: uuid.UUID) -> List[Dict]:
+        """Get all sessions for a user
+
+        Args:
+            user_id (uuid.UUID): User's ID
+
+        Returns:
+            List[Dict]: List of serialized sessions for the user
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        try:
+            sessions = self.dao.get_user_sessions(user_id)
+            return [{
+                'id': str(session.id),
+                'user_id': str(session.user_id),
+                'title': session.title,
+                'description': session.description,
+                'start_at': session.start_at.isoformat() if session.start_at else None,
+                'finish_at': session.finish_at.isoformat() if session.finish_at else None
+            } for session in sessions]
+        except Exception as e:
+            print(f"[ERROR] Failed to get user sessions: {str(e)}")
+            raise ValueError(f"Failed to get sessions for user {user_id}")

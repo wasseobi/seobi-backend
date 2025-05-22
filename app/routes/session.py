@@ -93,5 +93,20 @@ class SessionFinish(Resource):
                 ns.abort(400, str(e))
             ns.abort(404, str(e))
 
+@ns.route('/user/<uuid:user_id>')
+@ns.param('user_id', 'The user identifier')
+@ns.response(404, 'User not found')
+class UserSessions(Resource):
+    @ns.doc('get_user_sessions')
+    @ns.marshal_list_with(session_model)
+    def get(self, user_id):
+        """Get all sessions for a specific user"""
+        try:
+            return session_service.get_user_sessions(user_id)
+        except ValueError as e:
+            ns.abort(404, str(e))
+        except Exception as e:
+            ns.abort(500, str(e))
+
 # Register the namespace
 api.add_namespace(ns)
