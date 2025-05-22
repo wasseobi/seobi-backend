@@ -23,13 +23,16 @@
      - title (str): 회의 제목 (기본값: "회의")
      - attendees (List[str]): 참석자 이메일 목록
    - 응답 형식: {"success": true, "meeting_id": "ID", "details": {...}}
+
 """
+
 import datetime
 import os
 from typing import List, Dict, Any
 
 from langchain_core.tools import Tool, tool
 from langchain_google_community import GoogleSearchAPIWrapper
+
 
 @tool("get_current_time")
 def get_current_time() -> str:
@@ -41,6 +44,7 @@ def get_current_time() -> str:
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%H시 %M분 %S초")
     return f"현재 시각은 {formatted_time} 입니다."
+
 
 @tool("google_search")
 def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
@@ -68,9 +72,10 @@ def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
         )
         results = search.results(query, num_results=num_results)
         return results
-        
+
     except Exception as e:
         return [{"error": f"검색 중 오류 발생: {str(e)}"}]
+
 
 @tool("schedule_meeting")
 def schedule_meeting(
@@ -93,7 +98,7 @@ def schedule_meeting(
     try:
         # 실제로는 여기서 MCP나 캘린더 API를 호출
         meeting_id = "meeting_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        
+
         return {
             "success": True,
             "meeting_id": meeting_id,
@@ -110,6 +115,7 @@ def schedule_meeting(
             "error": str(e)
         }
 
+
 # 도구 객체 리스트 (Tool.from_function 제거, 데코레이터 기반 자동 수집)
 tools = [
     get_current_time,
@@ -117,6 +123,56 @@ tools = [
     schedule_meeting
 ]
 
+
 def get_tools():
     """ToolNode 등에서 사용할 수 있도록 tools 리스트를 반환하는 함수"""
     return tools
+
+
+"""
+새로운 도구 추가 예시:
+1. 도구 함수 정의:
+```python
+@tool("send_email")  # 도구 이름 지정
+def send_email(
+    to: List[str],           # 필수 인자
+    subject: str = "제목",    # 선택 인자 (기본값 지정)
+    body: str = ""           # 선택 인자
+) -> Dict[str, Any]:         # 반환 타입 지정
+    \"""이메일을 전송합니다.
+    
+    Args:
+        to (List[str]): 수신자 이메일 목록
+        subject (str, optional): 이메일 제목
+        body (str, optional): 이메일 내용
+        
+    Returns:
+        Dict[str, Any]: 전송 결과
+            - success (bool): 성공 여부
+            - message_id (str): 전송된 메시지 ID
+    \"""
+    # 구현...
+    return {
+        "success": True,
+        "message_id": "generated_id"
+    }
+```
+
+2. parse_intent.py의 시스템 프롬프트에 도구 정보 추가:
+```
+4. 이메일 전송
+   - Tool: send_email
+   - 필수: 이메일 관련 요청에 사용
+   - 형식: {"tool_calls":[{
+       "type":"function",
+       "function":{
+           "name":"send_email",
+           "arguments":{
+               "to":["user@example.com"],
+               "subject":"제목",
+               "body":"내용"
+           }
+       }
+   }]}
+```
+"""
