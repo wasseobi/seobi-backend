@@ -1,9 +1,10 @@
+import uuid
 from app.dao.message_dao import MessageDAO
 from app.services.session_service import SessionService
 from app.models import Session
 from app.utils.openai_client import get_openai_client, get_completion
 from typing import List, Dict, Any
-import uuid
+from app import db
 
 class MessageService:
     def __init__(self):
@@ -19,7 +20,7 @@ class MessageService:
             'content': message.content,
             'role': message.role,
             'timestamp': message.timestamp.isoformat() if message.timestamp else None,
-            'vector': message.vector.tolist() if message.vector is not None else None
+            'vector': message.vector.tolist() if hasattr(message.vector, 'tolist') else (list(message.vector) if message.vector is not None else None)
         }
 
     def get_all_messages(self) -> List[Dict]:
@@ -60,15 +61,15 @@ class MessageService:
         ]
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str = 'user') -> Dict:
-        """Create a new message"""
+                      content: str, role: str = 'user', vector=None) -> Dict:
+        """Create a new message (vector는 None이어도 무방)"""
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Cannot add message to finished session')
 
-        message = self.dao.create_message(session_id, user_id, content, role)
+        message = self.dao.create_message(session_id, user_id, content, role, vector)
         return self._serialize_message(message)
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Dict:
@@ -123,4 +124,33 @@ class MessageService:
         return {
             'user_message': self._serialize_message(user_message),
             'assistant_message': self._serialize_message(assistant_message)
-        } 
+        }
+
+    def vector_search(self, session_id, query_vector, top_k=5):
+        # pgvector는 {1,2,3,...} 형식의 문자열로 변환 필요
+        vector_str = "{" + ",".join(str(x) for x in query_vector) + "}"
+        sql = """
+            SELECT *, vector <=> :query_vector AS distance
+            FROM message
+            WHERE session_id = :session_id
+            ORDER BY vector <=> :query_vector
+            LIMIT :top_k
+        """
+        result = db.session.execute(
+            db.text(sql),
+            {
+                'query_vector': vector_str,
+                'session_id': str(session_id),
+                'top_k': top_k
+            }
+        )
+        # 벡터 필드가 numpy array 등일 경우 float 리스트로 변환
+        rows = []
+        for row in result:
+            row_dict = dict(row)
+            if 'vector' in row_dict and hasattr(row_dict['vector'], 'tolist'):
+                row_dict['vector'] = row_dict['vector'].tolist()
+            elif 'vector' in row_dict and row_dict['vector'] is not None:
+                row_dict['vector'] = list(row_dict['vector'])
+            rows.append(row_dict)
+        return rows 

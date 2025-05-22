@@ -1,9 +1,32 @@
+import os
+import uuid
 from flask import request
 from flask_restx import Resource, Namespace
+from flask_restx import fields as api_fields
 from app.services.message_service import MessageService
 from app.schemas.message_schema import register_models
 from app import api
-import uuid
+from openai import AzureOpenAI
+
+
+# Azure OpenAI 임베딩 함수 정의
+AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
+AZURE_EMBEDDING_MODEL = "text-embedding-ada-002"  # 실제 배포명으로 수정
+
+client = AzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    api_version=AZURE_OPENAI_API_VERSION,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT
+)
+
+def get_embedding(text: str) -> list[float]:
+    response = client.embeddings.create(
+        input=text,
+        model=AZURE_EMBEDDING_MODEL
+    )
+    return response.data[0].embedding
 
 # Create namespace
 ns = Namespace('messages', description='Message operations for chat with AI')
@@ -40,12 +63,14 @@ class SessionMessageList(Resource):
             data = request.json
             if not data or 'content' not in data or 'user_id' not in data:
                 ns.abort(400, 'Message content and user_id are required')
-
+            # content 임베딩 생성
+            vector = get_embedding(data['content'])
             message = self.service.create_message(
                 session_id=session_id,
                 user_id=data['user_id'],
                 content=data['content'],
-                role=data.get('role', 'user')
+                role=data.get('role', 'user'),
+                vector=vector
             )
             return message, 201
         except ValueError as e:
@@ -76,7 +101,6 @@ class MessageCompletion(Resource):
             data = request.json
             if not data or 'content' not in data or 'user_id' not in data:
                 ns.abort(400, 'Message content and user_id are required')
-
             result = self.service.create_completion(
                 session_id=session_id,
                 user_id=data['user_id'],
@@ -85,6 +109,23 @@ class MessageCompletion(Resource):
             return result
         except ValueError as e:
             ns.abort(400, str(e))
+
+# 벡터 유사도 검색 엔드포인트 추가
+@ns.route('/session/<uuid:session_id>/vector_search')
+class MessageVectorSearch(Resource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.service = MessageService()
+
+    @ns.expect(ns.model('VectorSearchInput', {
+        'content': api_fields.String(required=True, description='검색할 쿼리')
+    }))
+    @ns.marshal_list_with(message_model)
+    def post(self, session_id):
+        data = request.json
+        query_vector = get_embedding(data['content'])
+        results = self.service.vector_search(session_id, query_vector, top_k=5)
+        return results
 
 # Register the namespace
 api.add_namespace(ns)
