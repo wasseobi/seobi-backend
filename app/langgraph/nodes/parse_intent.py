@@ -12,6 +12,10 @@ def ensure_valid_messages(messages: List[BaseMessage]) -> List[BaseMessage]:
     return [msg for msg in messages if isinstance(msg, (SystemMessage, HumanMessage, AIMessage)) and msg.content]
 
 def parse_intent(state: Dict) -> Dict:
+    # state가 list나 dict로 들어올 수 있으므로 ChatState로 변환
+    if isinstance(state, (list, dict)):
+        state = ChatState.from_dict(state)
+
     user_input = state.get("user_input", "")
     if not user_input.strip():
         return {
@@ -43,24 +47,28 @@ def parse_intent(state: Dict) -> Dict:
 
     import json, re
     parsed_intent = {"intent": "general_chat", "params": {}}
-    # function calling JSON 파싱
+    
+    # 응답에서 tool_calls 추출 시도
     try:
-        # JSON 추출 (응답에 일반 텍스트와 JSON이 섞여 있을 수 있으므로)
-        json_match = re.search(r'\{\s*"tool_calls".*\}', response_content, re.DOTALL)
-        if json_match:
-            tool_json = json.loads(json_match.group(0))
-            tool_calls = tool_json.get("tool_calls")
-            if tool_calls and isinstance(tool_calls, list):
-                tool = tool_calls[0]
-                func = tool.get("function", {})
-                tool_name = func.get("name")
-                arguments = func.get("arguments")
-                params = json.loads(arguments) if arguments else {}
-                parsed_intent = {"intent": tool_name, "params": params}
-    except Exception:
-        pass
+        if response_content:
+            response_json = json.loads(response_content)
+            if "tool_calls" in response_json and response_json["tool_calls"]:
+                tool_call = response_json["tool_calls"][0]
+                if "function" in tool_call:
+                    function = tool_call["function"]
+                    parsed_intent["intent"] = function["name"]
+                    if "arguments" in function:
+                        try:
+                            args = json.loads(function["arguments"])
+                            parsed_intent["params"] = args
+                        except json.JSONDecodeError:
+                            print(f"[parse_intent] arguments 파싱 실패: {function['arguments']}")
+    except json.JSONDecodeError:
+        print(f"[parse_intent] response_content 파싱 실패: {response_content}")
+    except Exception as e:
+        print(f"[parse_intent] 예외 발생: {str(e)}")
 
-    return {
-        "parsed_intent": parsed_intent,
-        "messages": ensure_valid_messages(messages)
-    }
+    result = state.to_dict()
+    result["parsed_intent"] = parsed_intent
+    result["messages"] = messages
+    return result

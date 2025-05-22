@@ -13,6 +13,7 @@ dependencies = [
     "flask-sqlalchemy>=3.1.1",
     "gunicorn>=23.0.0",
     "langchain-google-community>=2.0.7",
+    "langchain-openai>=0.3.17",
     "langgraph>=0.4.5",
     "openai>=1.79.0",
     "pgvector>=0.4.1",

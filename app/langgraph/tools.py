@@ -7,8 +7,8 @@ from typing import List, Dict, Any
 from langchain_core.tools import Tool, tool
 from langchain_google_community import GoogleSearchAPIWrapper
 
-@tool("current_time")
-def what_time_is_it() -> str:
+@tool("get_current_time")
+def get_current_time() -> str:
     """현재 시간을 반환합니다.
 
     Returns:
@@ -88,7 +88,7 @@ def schedule_meeting(
 
 # 도구 객체 리스트 (Tool.from_function 제거, 데코레이터 기반 자동 수집)
 tools = [
-    what_time_is_it,
+    get_current_time,
     google_search,
     schedule_meeting
 ]

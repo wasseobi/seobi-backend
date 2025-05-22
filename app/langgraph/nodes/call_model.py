@@ -2,8 +2,10 @@ import os
 from typing import Dict, List
 from langchain.schema import AIMessage, HumanMessage
 from app.utils.openai_client import get_completion, get_openai_client
-from app.langgraph.tools import tools
+from langchain_openai import ChatOpenAI
+from app.langgraph.tools import get_tools
 from app.langgraph.state import ChatState
+from app.langgraph.agent import model_with_tools
 
 def filter_empty_messages(messages: List) -> List:
     """빈 내용의 메시지를 필터링합니다."""
@@ -29,37 +31,15 @@ def format_response(response: AIMessage) -> Dict:
     }
 
 def call_model(state: ChatState):
+    # state가 list나 dict로 들어올 수 있으므로 ChatState로 변환
+    if isinstance(state, (list, dict)):
+        state = ChatState.from_dict(state)
     messages = state["messages"]
-    filtered_messages = filter_empty_messages(messages)
-    if not filtered_messages:
-        return {
-            "messages": messages,
-            "reply": "메시지가 비어있습니다.",
-            "action_required": False,
-            "executed_result": {}
-        }
-    try:
-        # 함수 내부에서만 클라이언트 생성
-        client = get_openai_client()
-        response_content = get_completion(
-            client,
-            messages=[{"role": "user", "content": msg.content} for msg in filtered_messages],
-            max_completion_tokens=1024
-        )
-        print('🤖 모델 응답:')
-        print(response_content)
-        print()
-        return {
-            "messages": messages + [AIMessage(content=response_content)],
-            "reply": response_content,
-            "action_required": False,  # tool call 분기 필요시 추가 구현
-            "executed_result": {}
-        }
-    except Exception as e:
-        print(f"모델 호출 중 오류 발생: {str(e)}")
-        return {
-            "messages": messages,
-            "reply": f"모델 호출 중 오류가 발생했습니다: {str(e)}",
-            "action_required": False,
-            "executed_result": {"error": str(e)}
-        }
+    # LangGraph agentic 구조: LLM이 tool_calls를 생성할 수 있도록 바인딩된 모델 사용
+    response = model_with_tools.invoke(messages)
+    return {
+        "messages": messages + [response],
+        "reply": getattr(response, "content", ""),
+        "action_required": bool(getattr(response, "tool_calls", None)),
+        "executed_result": {"tool_calls": getattr(response, "tool_calls", [])} if getattr(response, "tool_calls", None) else {}
+    }

@@ -37,6 +37,17 @@ class ChatState:
         if self.messages is None:
             self.messages = []
 
+    @staticmethod
+    def merge_states(states: List[Dict]) -> Dict:
+        """여러 상태를 하나로 병합합니다."""
+        if not states:
+            return {}
+        merged = {}
+        for state in states:
+            if isinstance(state, dict):
+                merged.update(state)
+        return merged
+
     def __getitem__(self, key: str) -> Any:
         """상태 값을 조회합니다."""
         if not isinstance(key, str):
@@ -69,3 +80,14 @@ class ChatState:
     def keys(self) -> List[str]:
         """유효한 키 목록을 반환합니다."""
         return self.VALID_KEYS.copy()
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'ChatState':
+        """딕셔너리로부터 ChatState 인스턴스를 생성합니다."""
+        if isinstance(data, list):
+            data = cls.merge_states(data)
+        return cls(**{k: v for k, v in data.items() if k in cls.VALID_KEYS})
+
+    def to_dict(self) -> Dict:
+        """ChatState 인스턴스를 딕셔너리로 변환합니다."""
+        return {k: getattr(self, k) for k in self.VALID_KEYS}

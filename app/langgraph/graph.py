@@ -13,25 +13,24 @@ from app.langgraph.nodes import (
 builder = StateGraph(dict)
 
 builder.add_node("parse_intent", parse_intent)     # 의도 분석
-builder.add_node("generate_reply", generate_reply)  # 응답 생성
 builder.add_node("task_decision", task_decision)    # 작업 필요 여부 판단
 builder.add_node("execute_action", call_tool)       # 외부 도구 실행
+builder.add_node("generate_reply", generate_reply)  # 응답 생성
 
 # 시작 -> 의도 분석
 builder.add_edge(START, "parse_intent")
-# 의도 분석 -> 응답 생성
-builder.add_edge("parse_intent", "generate_reply")
-# 응답 생성 -> 작업 판단
-builder.add_edge("generate_reply", "task_decision")
-# 작업 판단 -> 조건부 분기 (작업 실행 또는 종료)
+# 의도 분석 -> 작업 판단
+builder.add_edge("parse_intent", "task_decision")
+# 작업 판단 -> 조건부 분기 (작업 실행 또는 응답 생성)
 builder.add_conditional_edges(
     "task_decision",
-    lambda x: "execute_action" if x["action_required"] else END,
-    ["execute_action", END]
+    lambda x: "execute_action" if x["action_required"] else "generate_reply",
+    ["execute_action", "generate_reply"]
 )
-# 작업 실행 -> 결과 응답 생성
+# 작업 실행 -> 응답 생성
 builder.add_edge("execute_action", "generate_reply")
-# 결과 응답 생성 -> END
+# generate_reply → task_decision (agentic 루프)
+builder.add_edge("generate_reply", "task_decision")
 builder.add_edge("generate_reply", END)
 
 checkpointer = InMemorySaver()
