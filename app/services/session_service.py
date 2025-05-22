@@ -1,8 +1,11 @@
 from app.dao.session_dao import SessionDAO
-from app.models import User
+from app.models import User, Session
+from app.utils.openai_client import get_openai_client, get_completion
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 import uuid
+import json
+from app import db
 
 # Define KST timezone (UTC+9)
 KST = timezone(timedelta(hours=9))
@@ -77,4 +80,37 @@ class SessionService:
         if not updated_session:
             raise ValueError('Failed to update session finish time')
             
-        return self._serialize_session(updated_session) 
+        return self._serialize_session(updated_session)
+
+    def update_title_description_from_conversation(self, session_id: uuid.UUID, 
+                                                user_message: str, assistant_message: str) -> None:
+        """Update session title and description based on conversation"""
+        try:
+            context_messages = [
+                {"role": "system", "content": "다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요. "
+                                            "제목은 20자 이내로, 설명은 100자 이내로 작성해주세요. "
+                                            "응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."},
+                {"role": "user", "content": "다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요:\n\n"
+                                          f"user: {user_message}\n"
+                                          f"assistant: {assistant_message}"}
+            ]
+
+            client = get_openai_client()
+            response = get_completion(client, context_messages)
+            
+            try:
+                result = json.loads(response)
+                session = Session.query.get(session_id)
+                if session and 'title' in result and 'description' in result:
+                    session.title = result['title']
+                    session.description = result['description']
+                    db.session.commit()
+            except json.JSONDecodeError:
+                session = Session.query.get(session_id)
+                if session:
+                    session.description = response[:100]
+                    db.session.commit()
+        except Exception as e:
+            print(f"Failed to update session title/description: {str(e)}")
+            # Don't raise the exception to prevent blocking the main flow
+            # Just log the error and continue 
