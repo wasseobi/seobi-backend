@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 개발자 커뮤니티
+    url: https://github.com/your-username/seobi-backend/discussions
+    about: 개발 관련 질문이나 토론은 여기서 해주세요
+  - name: 📚 문서
+    url: https://github.com/your-username/seobi-backend/wiki
+    about: 프로젝트 문서를 확인해주세요 
