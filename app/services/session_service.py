@@ -1,0 +1,80 @@
+from app.dao.session_dao import SessionDAO
+from app.models import User
+from datetime import datetime, timezone, timedelta
+from typing import List, Optional, Dict, Any
+import uuid
+
+# Define KST timezone (UTC+9)
+KST = timezone(timedelta(hours=9))
+
+class SessionService:
+    def __init__(self):
+        self.dao = SessionDAO()
+
+    def _serialize_session(self, session: Any) -> Dict[str, Any]:
+        """Serialize session data for API response"""
+        return {
+            'id': str(session.id),
+            'user_id': str(session.user_id),
+            'start_at': session.start_at.isoformat() if session.start_at else None,
+            'finish_at': session.finish_at.isoformat() if session.finish_at else None,
+            'title': session.title,
+            'description': session.description
+        }
+
+    def get_all_sessions(self) -> List[Dict]:
+        """Get all sessions"""
+        sessions = self.dao.get_all_sessions()
+        return [self._serialize_session(session) for session in sessions]
+    
+    def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
+        """Get a session by ID"""
+        session = self.dao.get_session_by_id(session_id)
+        if not session:
+            raise ValueError('Session not found')
+        return self._serialize_session(session)
+    
+    def create_session(self, user_id: uuid.UUID) -> Dict:
+        """Create a new session with validation"""
+        user = User.query.get(user_id)
+        if not user:
+            raise ValueError('User not found')
+            
+        session = self.dao.create_session(user_id)
+        return self._serialize_session(session)
+    
+    def update_session(self, session_id: uuid.UUID, title: Optional[str] = None, 
+                      description: Optional[str] = None, finish_at: Optional[datetime] = None) -> Dict:
+        """Update a session with validation"""
+        update_data = {}
+        if title is not None:
+            update_data['title'] = title
+        if description is not None:
+            update_data['description'] = description
+        if finish_at is not None:
+            update_data['finish_at'] = finish_at
+            
+        session = self.dao.update_session(session_id, **update_data)
+        if not session:
+            raise ValueError('Session not found')
+        return self._serialize_session(session)
+    
+    def delete_session(self, session_id: uuid.UUID) -> None:
+        """Delete a session"""
+        if not self.dao.delete_session(session_id):
+            raise ValueError('Session not found')
+    
+    def finish_session(self, session_id: uuid.UUID) -> Dict:
+        """Finish a session with validation"""
+        session = self.dao.get_session_by_id(session_id)
+        if not session:
+            raise ValueError('Session not found')
+        if session.finish_at:
+            raise ValueError('Session is already finished')
+
+        current_time = datetime.now(KST)
+        updated_session = self.dao.update_finish_time(session_id, current_time)
+        if not updated_session:
+            raise ValueError('Failed to update session finish time')
+            
+        return self._serialize_session(updated_session) 
