@@ -83,7 +83,7 @@ class UserResource(Resource):
     @ns.response(204, 'User deleted')
     def delete(self, user_id):
         """Delete a user"""
-        user = User.query.get_or_404(id)
+        user = User.query.get_or_404(user_id)
         db.session.delete(user)
         db.session.commit()
         return '', 204
