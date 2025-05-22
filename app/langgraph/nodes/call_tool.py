@@ -22,9 +22,6 @@ def call_tool(state: ChatState) -> Dict:
         messages = state["messages"]
         last_msg = messages[-1] if messages else None
         
-        print("[DEBUG][call_tool] last_msg type:", type(last_msg))
-        print("[DEBUG][call_tool] last_msg content:", last_msg.content if last_msg else None)
-        
         # tool_calls 파싱
         if isinstance(last_msg, HumanMessage):
             return state.to_dict()
@@ -35,13 +32,11 @@ def call_tool(state: ChatState) -> Dict:
                 import json
                 content = json.loads(content)
             except json.JSONDecodeError as e:
-                print("[DEBUG][call_tool] JSON parse error:", str(e))
                 return state.to_dict()
                 
         tool_calls = content.get("tool_calls", []) if isinstance(content, dict) else []
         
         if not tool_calls:
-            print("[DEBUG][call_tool] No tool_calls found in message")
             return state.to_dict()
         
         # 도구 실행 준비
@@ -62,7 +57,6 @@ def call_tool(state: ChatState) -> Dict:
             additional_kwargs={"name": tool_name, "arguments": tool_args}
         )
         
-        print("[DEBUG][call_tool] Executing tool:", tool_name, "with args:", tool_args)
         result = None
         for tool in tools:
             if tool.name == tool_name:
@@ -84,7 +78,6 @@ def call_tool(state: ChatState) -> Dict:
         return result_dict
         
     except Exception as e:
-        print("[DEBUG][call_tool] Error:", str(e))
         result = state.to_dict()
         result["executed_result"] = {
             "success": False,

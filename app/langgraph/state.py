@@ -4,10 +4,11 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
 
+
 @dataclass
 class ChatState:
     """대화 상태를 관리하는 클래스입니다."""
-    
+
     # 필수 필드
     user_input: str = ""
     parsed_intent: Dict = field(default_factory=dict)
@@ -17,7 +18,7 @@ class ChatState:
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     user_id: str = ""
     messages: List[BaseMessage] = field(default_factory=list)
-    
+
     VALID_KEYS = [
         "user_input",
         "parsed_intent",
@@ -59,16 +60,13 @@ class ChatState:
                 return self.messages[key]
             except IndexError:
                 raise IndexError(f"messages 인덱스 범위 초과: {key}")
-            
+
         # 문자열 키에 대한 기존 처리
         if not isinstance(key, str):
             import traceback
-            print(f"[ChatState] 잘못된 key 접근: {key!r} (type: {type(key)})")
-            print(f"[ChatState] 현재 keys: {self.VALID_KEYS}")
-            print("[ChatState] 스택 트레이스:")
             traceback.print_stack()
             raise TypeError(f"키는 문자열이어야 합니다. (입력값: {key!r}, 타입: {type(key)})")
-        
+
         if key not in self.VALID_KEYS:
             raise KeyError(f"존재하지 않는 키입니다: {key}")
         return getattr(self, key)

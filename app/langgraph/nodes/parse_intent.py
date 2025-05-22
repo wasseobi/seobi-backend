@@ -33,14 +33,12 @@ def parse_tool_response(response_content: str) -> Optional[dict]:
             
         name = function["name"]
         arguments = function.get("arguments", "{}")
-        print(f"[DEBUG][parse_intent] 도구 선택됨: {name}")
         
         return {
             "intent": name,
             "params": json.loads(arguments) if arguments else {}
         }
     except (json.JSONDecodeError, KeyError) as e:
-        print(f"[DEBUG][parse_intent] 응답 파싱 실패: {str(e)}")
         return None
 
 def parse_intent(state: Dict) -> Dict:
@@ -64,8 +62,6 @@ def parse_intent(state: Dict) -> Dict:
         client = get_openai_client()
         response_content = get_completion(client, messages)
 
-        print(f"[DEBUG][parse_intent] 모델 응답: {response_content}")
-
         if not response_content:
             raise ValueError("Empty response from model")
 
@@ -82,7 +78,6 @@ def parse_intent(state: Dict) -> Dict:
                     function = tool_call["function"]
                     name = function["name"]
                     arguments = function.get("arguments", "{}")
-                    print(f"[DEBUG][parse_intent] 도구 선택됨: {name}, 인자: {arguments}")
                     
                     parsed_intent = {
                         "intent": name,
@@ -93,21 +88,18 @@ def parse_intent(state: Dict) -> Dict:
                         "parsed_intent": parsed_intent,
                         "messages": updated_messages
                     }
-                    print(f"[DEBUG][parse_intent] 반환할 결과: {result}")
                     return result
 
-        except json.JSONDecodeError as e:
-            print(f"[parse_intent] JSON 파싱 실패: {str(e)}")
+        except json.JSONDecodeError:
+            pass
 
         # 일반 대화로 처리
-        print("[DEBUG][parse_intent] 일반 대화로 처리")
         return {
             "parsed_intent": {"intent": "general_chat", "params": {}},
             "messages": updated_messages
         }
 
-    except Exception as e:
-        print(f"[parse_intent] Error: {str(e)}")
+    except Exception:
         return {
             "parsed_intent": {"intent": "general_chat", "params": {}},
             "messages": state.get("messages", [])

@@ -48,6 +48,3 @@ builder.add_conditional_edges(
 checkpointer = InMemorySaver()
 store = InMemoryStore()
 graph = builder.compile(checkpointer, store=store)
-
-print("[DEBUG][graph] graph type:", type(graph))
-print("[DEBUG][graph] graph.invoke type:", type(getattr(graph, 'invoke', None)))

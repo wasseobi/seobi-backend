@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 import uuid
 
+
 class MessageService:
     def __init__(self):
         self.dao = MessageDAO()
@@ -63,8 +64,8 @@ class MessageService:
             for msg in messages
         ]
 
-    def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str = 'user') -> Dict:
+    def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                       content: str, role: str = 'user') -> Dict:
         """Create a new message"""
         session = Session.query.get(session_id)
         if not session:
@@ -86,8 +87,8 @@ class MessageService:
         """Delete a message"""
         return self.dao.delete_message(message_id)
 
-    def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                         content: str) -> Dict[str, Dict]:
+    def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                          content: str) -> Dict[str, Dict]:
         """Create a new message and get AI completion"""
         session = Session.query.get(session_id)
         if not session:
@@ -96,7 +97,8 @@ class MessageService:
             raise ValueError('Cannot add message to finished session')
 
         # Create user message
-        user_message = self.dao.create_message(session_id, user_id, content, 'user')
+        user_message = self.dao.create_message(
+            session_id, user_id, content, 'user')
 
         # Get conversation history
         history = self.get_conversation_history(session_id)
@@ -116,7 +118,8 @@ class MessageService:
             raise ValueError(f"Failed to get AI completion: {str(e)}")
 
         # Create assistant message
-        assistant_message = self.dao.create_message(session_id, user_id, response, 'assistant')
+        assistant_message = self.dao.create_message(
+            session_id, user_id, response, 'assistant')
 
         # Update session title and description if this is the first message
         if len(history) == 1:
@@ -132,15 +135,14 @@ class MessageService:
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> Dict[str, Dict]:
         """LangGraph 기반으로 메시지 생성 및 AI 응답/저장"""
         try:
-            print(f"[DEBUG] Starting create_langgraph_completion with session_id: {session_id}, user_id: {user_id}")
-            
+
             # DB 트랜잭션 시작
             db.session.begin(nested=True)
-            
+
             # 1. 사용자 메시지 저장
-            user_message = self.create_message(session_id, user_id, content, 'user')
-            print(f"[DEBUG] User message created: {user_message}")
-            
+            user_message = self.create_message(
+                session_id, user_id, content, 'user')
+
             # 2. 랭그래프 상태 생성 및 실행
             initial_state = {
                 "user_input": content,
@@ -154,13 +156,11 @@ class MessageService:
                 "tool_info": None,
                 "messages": [HumanMessage(content=content)]
             }
-            
-            print("[DEBUG] Invoking LangGraph")
+
             graph = langgraph_builder.compile()
             result = graph.invoke(initial_state)
             ai_reply = result.get("reply", "")
-            print(f"[DEBUG] LangGraph response: {ai_reply[:100]}...")
-            
+
             # 3. AI 메시지 저장
             assistant_message = self.create_message(
                 session_id=session_id,
@@ -168,21 +168,18 @@ class MessageService:
                 content=ai_reply,
                 role='assistant'
             )
-            print(f"[DEBUG] Assistant message created: {assistant_message}")
 
             # 트랜잭션 커밋
             db.session.commit()
-            print("[DEBUG] Database transaction committed")
 
             return {
                 'user_message': user_message,
                 'assistant_message': assistant_message
             }
-            
+
         except Exception as e:
             # 오류 발생 시 롤백
             db.session.rollback()
-            print(f"[ERROR] Error in create_langgraph_completion: {str(e)}")
             raise
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
@@ -201,5 +198,4 @@ class MessageService:
             messages = self.dao.get_user_messages(user_id)
             return [self._serialize_message(msg) for msg in messages]
         except Exception as e:
-            print(f"[ERROR] Failed to get user messages: {str(e)}")
             raise ValueError(f"Failed to get messages for user {user_id}")
