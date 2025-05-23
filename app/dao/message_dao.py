@@ -26,13 +26,14 @@ class MessageDAO(BaseDAO[Message]):
         return self.query().filter_by(session_id=session_id).order_by(Message.timestamp.asc()).all()
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str = 'user') -> Message:
-        """Create a new message"""
+                      content: str, role: str = 'user', vector=None) -> Message:
+        """Create a new message (vector 임베딩 포함)"""
         return self.create(
             session_id=session_id,
             user_id=user_id,
             content=content,
-            role=role
+            role=role,
+            vector=vector
         )
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
