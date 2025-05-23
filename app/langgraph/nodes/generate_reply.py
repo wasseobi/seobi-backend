@@ -42,6 +42,7 @@ def generate_reply(state: Dict) -> Dict:
         completed_state = {
             **state.to_dict(),
             "messages": messages,
+            "reply": response,
             "action_required": False
         }
 
