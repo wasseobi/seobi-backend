@@ -5,6 +5,7 @@ from app.models import Session
 from app.utils.openai_client import get_openai_client, get_completion
 from typing import List, Dict, Any
 from app import db
+import ast
 
 class MessageService:
     def __init__(self):
@@ -128,7 +129,7 @@ class MessageService:
 
     def vector_search(self, session_id, query_vector, top_k=5):
         # pgvector는 {1,2,3,...} 형식의 문자열로 변환 필요
-        vector_str = "{" + ",".join(str(x) for x in query_vector) + "}"
+        vector_str = "[" + ",".join(str(x) for x in query_vector) + "]"
         sql = """
             SELECT *, vector <=> :query_vector AS distance
             FROM message
@@ -144,13 +145,20 @@ class MessageService:
                 'top_k': top_k
             }
         )
-        # 벡터 필드가 numpy array 등일 경우 float 리스트로 변환
+        # 벡터 필드가 numpy array, 문자열 등일 경우 float 리스트로 변환
         rows = []
         for row in result:
-            row_dict = dict(row)
-            if 'vector' in row_dict and hasattr(row_dict['vector'], 'tolist'):
-                row_dict['vector'] = row_dict['vector'].tolist()
-            elif 'vector' in row_dict and row_dict['vector'] is not None:
-                row_dict['vector'] = list(row_dict['vector'])
+            row_dict = dict(row._mapping)
+            if 'vector' in row_dict:
+                v = row_dict['vector']
+                if hasattr(v, 'tolist'):
+                    row_dict['vector'] = v.tolist()
+                elif isinstance(v, str):
+                    try:
+                        row_dict['vector'] = list(map(float, ast.literal_eval(v)))
+                    except Exception:
+                        row_dict['vector'] = None
+                elif v is not None:
+                    row_dict['vector'] = list(v)
             rows.append(row_dict)
-        return rows 
+        return rows

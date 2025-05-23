@@ -5,35 +5,41 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 ## 7. 향후 개발 계획 및 LangGraph 연동
 
 ### LangGraph 기반 AI/도구 호출 시스템 개발 로드맵
+
 #### 1) LangGraph 연동 구조 설계 및 기본 구현
+
 - [ ] `app/langgraph/` 디렉터리 내에 builder, tools, workflow, utils 등 모듈 분리
 - [ ] ToolNode 및 반복 tool call 구조 구현 (Azure OpenAI 연동 포함)
 - [ ] LLM이 문제 해결 시까지 tool call 반복 및 조건부 분기 로직 적용
 
 #### 2) 서비스/라우트 통합 및 엔드포인트 확장
+
 - [ ] 기존 Flask 서비스(`app/services/`)와 LangGraph 연동 서비스(`langgraph_service.py`) 분리 및 통합
 - [ ] `/messages` 등 주요 엔드포인트에서 LangGraph 기반 AI/도구 호출 지원
 
 #### 3) 도구 함수 확장 및 관리
+
 - [ ] 실제 서비스에 필요한 도구 함수(예: 예약, TTS, STT, 외부 API 등) 추가 및 관리
 - [ ] 도구 등록/관리 인터페이스 및 문서화
 
 #### 4) 상태 관리 및 대화 세션 확장
+
 - [ ] LangGraph 실행 상태, tool call 결과, 대화 이력 등 세션 기반 관리
 - [ ] DB 연동 및 세션별 대화 흐름 저장
 
 #### 5) 테스트 및 예외 처리 강화
+
 - [ ] LangGraph 기반 워크플로우 단위/통합 테스트 작성
 - [ ] 도구 실패/예외 상황에 대한 graceful fallback 처리
 
 #### 6) 고도화 및 확장
+
 - [ ] LangGraph 기반 멀티툴 조합, 복합 질의 처리, 실시간/비동기 처리 등 고도화
 - [ ] LangGraph 기반 워크플로우 시각화 및 관리 도구 개발
 
 ---
 
 이후 LangGraph 관련 코드는 `app/langgraph/` 폴더에 집중 관리하며, 기존 서비스와의 통합 및 확장성을 고려해 개발을 진행할 예정입니다.
-
 
 ## 1. 프로젝트 구조
 
@@ -90,10 +96,14 @@ seobi-backend/
 - 메시지 관리 (Message CRUD)
 - MCP 서버 관리 (MCPServer CRUD)
 - MCP 서버 활성화 관리 (ActiveMCPServer CRUD)
+- 메시지 임베딩 및 벡터 유사도 검색 (Azure OpenAI + pgvector)
+  - 메시지 생성 시 Azure OpenAI 임베딩 API로 content를 1536차원 벡터로 변환하여 저장
+  - pgvector 기반 벡터 유사도 검색 API 제공
 
 ## 3. 기술 스택
 
-### Backend  
+### Backend
+
 ![Microsoft Azure](https://img.shields.io/badge/azure-%230072C6.svg?style=for-the-badge&logo=msazure&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)
@@ -103,16 +113,17 @@ seobi-backend/
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C.svg?style=for-the-badge&logo=LangChain&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991.svg?style=for-the-badge&logo=OpenAI&logoColor=white)
 
-### Dev & Ops  
+### Dev & Ops
+
 ![UV](https://img.shields.io/badge/uv-DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white)
 ![Github-Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=for-the-badge&logo=GitHub-Actions&logoColor=white)
 ![Swagger](https://img.shields.io/badge/Swagger-85EA2D.svg?style=for-the-badge&logo=Swagger&logoColor=black)
 ![OpenSSL](https://img.shields.io/badge/OpenSSL-721412.svg?style=for-the-badge&logo=OpenSSL&logoColor=white)
 ![Postgresql](https://img.shields.io/badge/PostgreSQL-4169E1.svg?style=for-the-badge&logo=PostgreSQL&logoColor=white)
 
-### Database  
-![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+### Database
 
+![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ## 4. 시작하기
 
@@ -135,6 +146,8 @@ uv venv
 
 # 가상환경 활성화
 source .venv/bin/activate
+
+(Windows) .venv\Scripts\Activate
 ```
 
 ### 의존성 설치
@@ -148,6 +161,27 @@ uv sync
 ```bash
 flask db upgrade
 ```
+
+### 데이터베이스 확장 설치
+
+PostgreSQL에서 아래 확장(extension)을 반드시 설치해야 합니다.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "vector";
+```
+
+> psql 또는 pgAdmin의 Query Tool에서 실행하세요.
+
+### 메시지 테이블의 벡터 컬럼
+
+- `vector VECTOR(1536)` : Azure OpenAI text-embedding-ada-002 임베딩 결과(1536차원 float)
+- 예시: `[0.0123, -0.0456, ...]` (float 리스트)
+
+### Azure OpenAI 임베딩 모델 환경 변수
+
+- `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION` 등 필수
+- 임베딩 모델명은 실제 Azure Portal의 배포명(예: `seobi-text-embedding-ada-002`)을 사용해야 함
 
 ### 서버 실행
 
@@ -164,6 +198,20 @@ python main.py
 - `/messages`: 메시지 관리
 - `/mcp_servers`: MCP 서버 관리
 - `/mcp_server_activations`: MCP 서버 활성화 관리
+- `/messages/session/{session_id}/vector_search`:  
+  세션 내 메시지 중 쿼리와 가장 유사한 메시지(벡터 기준) 검색
+  - POST body: `{ "content": "검색할 쿼리" }`
+  - 응답 예시:
+    ```json
+    [
+      {
+        "id": "3990332f-7071-4aa0-945b-353f9050873e",
+        "content": "데이터 벡터화 dongtest입니다..",
+        "vector": [0.0123, -0.0456, ...],  // 1536차원 float 리스트
+        ...
+      }
+    ]
+    ```
 
 ### API 문서화 (Swagger UI)
 
@@ -178,6 +226,15 @@ API 문서는 Swagger UI를 통해 제공됩니다:
 
 API 문서는 Flask-RESTX를 사용하여 자동으로 생성되며, 각 엔드포인트의 코드에 포함된 데코레이터와 docstring을 기반으로 문서가 생성됩니다.
 
+## FAQ 및 트러블슈팅
+
+- 벡터가 null 또는 빈 배열로만 나올 때
+  - 임베딩 모델명, DB 컬럼 타입, 벡터 저장 로직, 확장 설치 여부를 점검하세요.
+- `uuid_generate_v4() does not exist` 오류
+  - `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` 실행 필요
+- `vector` 컬럼 타입 오류
+  - `pgvector` 확장 설치 및 마이그레이션 확인
+
 ## 6. 개발 가이드
 
 ### 코드 스타일
@@ -191,4 +248,3 @@ API 문서는 Flask-RESTX를 사용하여 자동으로 생성되며, 각 엔드�
 - `develop`: 개발 브랜치
 - `feature/*`: 새로운 기능 개발
 - `hotfix/*`: 긴급 버그 수정
-

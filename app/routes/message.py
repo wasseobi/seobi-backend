@@ -13,7 +13,7 @@ from openai import AzureOpenAI
 AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
-AZURE_EMBEDDING_MODEL = "text-embedding-ada-002"  # 실제 배포명으로 수정
+AZURE_EMBEDDING_MODEL = "seobi-text-embedding-ada-002"
 
 client = AzureOpenAI(
     api_key=AZURE_OPENAI_API_KEY,

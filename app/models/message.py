@@ -1,4 +1,4 @@
-from app import db
+from app.models.db import db
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 # pgvector Vector 타입 import (1536차원은 Azure OpenAI text-embedding-ada-002 기준)
