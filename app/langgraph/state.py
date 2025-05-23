@@ -1,8 +1,8 @@
 """대화 상태를 관리하는 모듈입니다."""
-from typing import Dict, Optional, List, Any, Union
+from typing import Dict, List, Any, Union
 from datetime import datetime
 from dataclasses import dataclass, field
-from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain.schema import BaseMessage
 
 
 @dataclass

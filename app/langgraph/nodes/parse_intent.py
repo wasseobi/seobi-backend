@@ -4,7 +4,6 @@ import json
 from typing import Dict, List, Any, Optional
 from langchain.schema import HumanMessage, SystemMessage, AIMessage, BaseMessage
 from app.utils.openai_client import get_completion, get_openai_client
-from app.langgraph.tools import get_tools
 from app.langgraph.state import ChatState
 from app.langgraph.prompts.parse_intent_prompt import SYSTEM_PROMPT
 

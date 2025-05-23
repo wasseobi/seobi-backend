@@ -1,11 +1,9 @@
 """외부 도구를 실행하는 모듈입니다."""
-from typing import Dict, Any, List
-from datetime import datetime
-from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage, FunctionMessage
+from typing import Dict, List
+from langchain.schema import HumanMessage, SystemMessage, BaseMessage, FunctionMessage
+from langchain_core.messages import AIMessage
 from app.langgraph.state import ChatState
 from app.langgraph.tools import get_tools
-from langchain_core.messages import AIMessage
-from langgraph.prebuilt import ToolNode
 
 def ensure_valid_messages(messages: List[BaseMessage]) -> List[BaseMessage]:
     """메시지 리스트가 유효한지 확인하고 필터링합니다."""
