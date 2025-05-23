@@ -17,6 +17,10 @@ class MessageDAO(BaseDAO[Message]):
         """Get a message by ID"""
         return self.get(str(message_id))
 
+    def get_user_messages(self, user_id: uuid.UUID) -> List[Message]:
+        """Get all messages for a user ordered by timestamp"""
+        return self.query().filter_by(user_id=user_id).order_by(Message.timestamp.desc()).all()
+
     def get_session_messages(self, session_id: uuid.UUID) -> List[Message]:
         """Get all messages in a session ordered by timestamp"""
         return self.query().filter_by(session_id=session_id).order_by(Message.timestamp.asc()).all()
@@ -38,14 +42,3 @@ class MessageDAO(BaseDAO[Message]):
     def delete_message(self, message_id: uuid.UUID) -> bool:
         """Delete a message"""
         return self.delete(str(message_id))
-
-    def get_user_messages(self, user_id: uuid.UUID) -> List[Message]:
-        """Get all messages for a user ordered by timestamp
-
-        Args:
-            user_id (uuid.UUID): User's ID
-
-        Returns:
-            List[Message]: List of messages for the user
-        """
-        return self.query().filter_by(user_id=user_id).order_by(Message.timestamp.desc()).all()
