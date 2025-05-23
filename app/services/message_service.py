@@ -1,9 +1,14 @@
 from app.dao.message_dao import MessageDAO
 from app.services.session_service import SessionService
 from app.models import Session
+from app.models.db import db
 from app.utils.openai_client import get_openai_client, get_completion
+from app.langgraph.graph import builder as langgraph_builder
+from langchain.schema import HumanMessage
 from typing import List, Dict, Any
+from datetime import datetime
 import uuid
+
 
 class MessageService:
     def __init__(self):
@@ -59,8 +64,8 @@ class MessageService:
             for msg in messages
         ]
 
-    def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str = 'user') -> Dict:
+    def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                       content: str, role: str = 'user') -> Dict:
         """Create a new message"""
         session = Session.query.get(session_id)
         if not session:
@@ -82,8 +87,8 @@ class MessageService:
         """Delete a message"""
         return self.dao.delete_message(message_id)
 
-    def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                         content: str) -> Dict[str, Dict]:
+    def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                          content: str) -> Dict[str, Dict]:
         """Create a new message and get AI completion"""
         session = Session.query.get(session_id)
         if not session:
@@ -92,7 +97,8 @@ class MessageService:
             raise ValueError('Cannot add message to finished session')
 
         # Create user message
-        user_message = self.dao.create_message(session_id, user_id, content, 'user')
+        user_message = self.dao.create_message(
+            session_id, user_id, content, 'user')
 
         # Get conversation history
         history = self.get_conversation_history(session_id)
@@ -112,7 +118,8 @@ class MessageService:
             raise ValueError(f"Failed to get AI completion: {str(e)}")
 
         # Create assistant message
-        assistant_message = self.dao.create_message(session_id, user_id, response, 'assistant')
+        assistant_message = self.dao.create_message(
+            session_id, user_id, response, 'assistant')
 
         # Update session title and description if this is the first message
         if len(history) == 1:
@@ -123,4 +130,72 @@ class MessageService:
         return {
             'user_message': self._serialize_message(user_message),
             'assistant_message': self._serialize_message(assistant_message)
-        } 
+        }
+
+    def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> Dict[str, Dict]:
+        """LangGraph 기반으로 메시지 생성 및 AI 응답/저장"""
+        try:
+
+            # DB 트랜잭션 시작
+            db.session.begin(nested=True)
+
+            # 1. 사용자 메시지 저장
+            user_message = self.create_message(
+                session_id, user_id, content, 'user')
+
+            # 2. 랭그래프 상태 생성 및 실행
+            initial_state = {
+                "user_input": content,
+                "parsed_intent": {},
+                "reply": "",
+                "action_required": False,
+                "executed_result": {},
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_id": str(user_id),
+                "session_id": str(session_id),
+                "tool_info": None,
+                "messages": [HumanMessage(content=content)]
+            }
+
+            graph = langgraph_builder.compile()
+            result = graph.invoke(initial_state)
+            ai_reply = result.get("reply", "")
+
+            # 3. AI 메시지 저장
+            assistant_message = self.create_message(
+                session_id=session_id,
+                user_id=user_id,
+                content=ai_reply,
+                role='assistant'
+            )
+
+            # 트랜잭션 커밋
+            db.session.commit()
+
+            return {
+                'user_message': user_message,
+                'assistant_message': assistant_message
+            }
+
+        except Exception as e:
+            # 오류 발생 시 롤백
+            db.session.rollback()
+            raise
+
+    def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
+        """Get all messages for a user
+
+        Args:
+            user_id (uuid.UUID): User's ID
+
+        Returns:
+            List[Dict]: List of serialized messages for the user
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        try:
+            messages = self.dao.get_user_messages(user_id)
+            return [self._serialize_message(msg) for msg in messages]
+        except Exception as e:
+            raise ValueError(f"Failed to get messages for user {user_id}")
