@@ -8,11 +8,24 @@ from app.models.db import db
 from flask_jwt_extended import JWTManager
 
 migrate = Migrate()
+
+# Swagger UI에서 사용할 인증 설정
+authorizations = {
+    'Bearer': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization',
+        'description': "Type in the *'Value'* input box below: **'Bearer &lt;JWT&gt;'**, where JWT is the token"
+    }
+}
+
 api = Api(
     title='Seobi API',
     version='0.1.0',
     description='Seobi Backend API Documentation',
-    doc='/docs'  # Swagger UI will be available at /docs
+    doc='/docs',  # Swagger UI will be available at /docs
+    authorizations=authorizations,
+    security='Bearer'  # 모든 엔드포인트에 기본적으로 Bearer 인증 적용
 )
 
 def create_app():

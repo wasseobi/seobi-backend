@@ -6,13 +6,13 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 
 ### LangGraph 기반 AI/도구 호출 시스템 개발 로드맵
 #### 1) LangGraph 연동 구조 설계 및 기본 구현
-- [ ] `app/langgraph/` 디렉터리 내에 builder, tools, workflow, utils 등 모듈 분리
-- [ ] ToolNode 및 반복 tool call 구조 구현 (Azure OpenAI 연동 포함)
-- [ ] LLM이 문제 해결 시까지 tool call 반복 및 조건부 분기 로직 적용
+- [x] `app/langgraph/` 디렉터리 내에 builder, tools, workflow, utils 등 모듈 분리
+- [x] ToolNode 및 반복 tool call 구조 구현 (Azure OpenAI 연동 포함)
+- [x] LLM이 문제 해결 시까지 tool call 반복 및 조건부 분기 로직 적용
 
 #### 2) 서비스/라우트 통합 및 엔드포인트 확장
-- [ ] 기존 Flask 서비스(`app/services/`)와 LangGraph 연동 서비스(`langgraph_service.py`) 분리 및 통합
-- [ ] `/messages` 등 주요 엔드포인트에서 LangGraph 기반 AI/도구 호출 지원
+- [x] 기존 Flask 서비스(`app/services/`)와 LangGraph 연동 서비스(`langgraph_service.py`) 분리 및 통합
+- [x] `/messages` 등 주요 엔드포인트에서 LangGraph 기반 AI/도구 호출 지원
 
 #### 3) 도구 함수 확장 및 관리
 - [ ] 실제 서비스에 필요한 도구 함수(예: 예약, TTS, STT, 외부 API 등) 추가 및 관리
@@ -154,6 +154,10 @@ flask db upgrade
 ```bash
 python main.py
 ```
+
+### flask 개발 모드 관련
+```DEV_MODE=True```
+개발모드 시, JWT 토큰 필요 없음. 배포 시, False로 수정하여 JWT 토큰 검증 이후에 백엔드 API 호출 가능합니다.
 
 ## 5. API 엔드포인트
 

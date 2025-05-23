@@ -3,6 +3,7 @@ from flask import request
 from flask_restx import Resource, Namespace
 from app.services.message_service import MessageService
 from app.schemas.message_schema import register_models
+from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 
@@ -24,6 +25,7 @@ class SessionMessageList(Resource):
     @ns.doc('list_session_messages',
             description='Get all messages in a session, ordered by timestamp')
     @ns.marshal_list_with(message_model)
+    @require_auth
     def get(self, session_id):
         """List all messages in a session"""
         try:
@@ -35,6 +37,7 @@ class SessionMessageList(Resource):
             description='Create a new message in a session. Use this for system messages or manual message creation.')
     @ns.expect(message_input)
     @ns.marshal_with(message_model, code=201)
+    @require_auth
     def post(self, session_id):
         """Create a new message in a session"""
         try:
@@ -67,6 +70,7 @@ class MessageLangGraphCompletion(Resource):
             '4. Return both messages')
     @ns.expect(completion_input)
     @ns.marshal_with(completion_response)
+    @require_auth
     def post(self, session_id):
         try:
             data = request.json
@@ -89,6 +93,7 @@ class MessageLangGraphCompletion(Resource):
 class UserMessages(Resource):
     @ns.doc('get_user_messages')
     @ns.marshal_list_with(message_model)
+    @require_auth
     def get(self, user_id):
         """Get all messages for a specific user"""
         try:
