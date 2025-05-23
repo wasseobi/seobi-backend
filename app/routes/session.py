@@ -2,6 +2,7 @@ from flask import request
 from flask_restx import Resource, Namespace
 from app.services.session_service import SessionService
 from app.schemas.session_schema import register_models
+from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 
@@ -18,6 +19,7 @@ session_service = SessionService()
 class SessionList(Resource):
     @ns.doc('list_sessions')
     @ns.marshal_list_with(session_model)
+    @require_auth
     def get(self):
         """List all sessions"""
         return session_service.get_all_sessions()
@@ -27,6 +29,7 @@ class SessionList(Resource):
     @ns.marshal_with(session_model, code=201)
     @ns.response(400, 'Invalid input')
     @ns.response(404, 'User not found')
+    @require_auth
     def post(self):
         """Create a new session"""
         data = request.json
@@ -49,6 +52,7 @@ class SessionList(Resource):
 class SessionResource(Resource):
     @ns.doc('get_session')
     @ns.marshal_with(session_model)
+    @require_auth
     def get(self, session_id):
         """Get a session by ID"""
         try:
@@ -59,6 +63,7 @@ class SessionResource(Resource):
     @ns.doc('update_session')
     @ns.expect(session_update)
     @ns.marshal_with(session_model)
+    @require_auth
     def put(self, session_id):
         """Update a session"""
         try:
@@ -69,6 +74,7 @@ class SessionResource(Resource):
 
     @ns.doc('delete_session')
     @ns.response(204, 'Session deleted')
+    @require_auth
     def delete(self, session_id):
         """Delete a session"""
         try:

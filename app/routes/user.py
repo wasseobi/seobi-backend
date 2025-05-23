@@ -6,6 +6,7 @@ from app.models.db import db
 from app.models.user import User
 from app.services.user_service import UserService
 from app.schemas.user_schema import register_models
+from app.utils.auth_middleware import require_auth
 
 from flask import request, jsonify
 from flask_restx import Resource, Namespace, fields
@@ -13,7 +14,12 @@ from flask_jwt_extended import create_access_token
 
 # Create namespace
 ns = Namespace('users', description='User operations')
+
+# Register models for documentation
 user_create, user_update, user_response = register_models(ns)
+
+# 네임스페이스 수준에서 인증 설정
+ns.security = [{"Bearer": []}]  # 이 네임스페이스의 모든 엔드포인트에 Bearer 인증 적용
 
 
 @ns.route('/')
@@ -22,13 +28,14 @@ class UserList(Resource):
         super().__init__(*args, **kwargs)
         self.user_service = UserService()
 
-    @ns.doc('list_users')
+    @ns.doc('list_users', security='Bearer')  # Swagger UI에 인증 필요 표시
     @ns.marshal_list_with(user_response)
+    @require_auth
     def get(self):
         """List all users"""
         return self.user_service.get_all_users()
 
-    @ns.doc('create_user')
+    @ns.doc('create_user', security=[])  # 인증 불필요 표시
     @ns.expect(user_create)
     @ns.marshal_with(user_response, code=201)
     def post(self):
@@ -51,41 +58,31 @@ class UserResource(Resource):
         super().__init__(*args, **kwargs)
         self.user_service = UserService()
 
-    @ns.doc('get_user')
+    @ns.doc('get_user', security='Bearer')
     @ns.marshal_with(user_response)
+    @require_auth
     def get(self, user_id):
-        """Get a user by ID"""
-        user = self.user_service.get_user_by_id(user_id)
-        if not user:
-            ns.abort(404, f"User {user_id} not found")
-        return user
+        """Fetch a user"""
+        return self.user_service.get_user_by_id(user_id)
 
-    @ns.doc('update_user')
+    @ns.doc('update_user', security='Bearer')
     @ns.expect(user_update)
     @ns.marshal_with(user_response)
+    @require_auth
     def put(self, user_id):
         """Update a user"""
-        user = self.user_service.get_user_by_id(user_id)
-        if not user:
-            ns.abort(404, f"User {user_id} not found")
-
         data = request.json
         try:
-            return self.user_service.update_user(
-                user_id=user_id,
-                username=data.get('username'),
-                email=data.get('email')
-            )
+            return self.user_service.update_user(user_id, data)
         except ValueError as e:
             ns.abort(400, str(e))
 
-    @ns.doc('delete_user')
+    @ns.doc('delete_user', security='Bearer')
     @ns.response(204, 'User deleted')
+    @require_auth
     def delete(self, user_id):
         """Delete a user"""
-        user = User.query.get_or_404(user_id)
-        db.session.delete(user)
-        db.session.commit()
+        self.user_service.delete_user(user_id)
         return '', 204
 
 
@@ -95,8 +92,9 @@ class UserLogin(Resource):
         super().__init__(*args, **kwargs)
         self.user_service = UserService()
 
-    @ns.doc('login')
+    @ns.doc('login', security=[])  # 로그인은 인증 불필요
     def post(self):
+        """Login with Google ID token"""
         data = request.json
         id_token = data.get('id_token')
         if not id_token:

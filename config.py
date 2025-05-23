@@ -2,6 +2,10 @@ import os
 from urllib.parse import quote_plus
 
 class Config:
+    # Development mode configuration
+    DEV_MODE = os.getenv("DEV_MODE", "True").lower() == "true"
+
+    # Database configuration
     DB_USER = os.getenv("PGUSER")
     DB_PASS = quote_plus(os.getenv("PGPASSWORD"))
     DB_HOST = os.getenv("PGHOST")
