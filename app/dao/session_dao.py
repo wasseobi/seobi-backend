@@ -35,4 +35,15 @@ class SessionDAO(BaseDAO[Session]):
     
     def update_finish_time(self, session_id: uuid.UUID, finish_time: datetime) -> Optional[Session]:
         """Update session finish time"""
-        return self.update_session(session_id, finish_at=finish_time) 
+        return self.update_session(session_id, finish_at=finish_time)
+    
+    def get_user_sessions(self, user_id: uuid.UUID) -> List[Session]:
+        """Get all sessions for a user ordered by creation time
+
+        Args:
+            user_id (uuid.UUID): User's ID
+
+        Returns:
+            List[Session]: List of sessions for the user
+        """
+        return self.query().filter_by(user_id=user_id).order_by(Session.start_at.desc()).all()
