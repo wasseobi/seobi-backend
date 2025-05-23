@@ -11,10 +11,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: seobi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      FLASK_APP: app
+      FLASK_ENV: testing
+      SQLALCHEMY_DATABASE_URI: postgresql://postgres:postgres@localhost:5432/seobi_test
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +42,58 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Create and start virtual environment
         run: |
-          python -m venv venv
-          source venv/bin/activate
+          uv venv
+          source .venv/bin/activate
       
       - name: Install dependencies
-        run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+        run: |
+          source .venv/bin/activate
+          uv add -r requirements.txt
+          uv add pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v --cov=app
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Create and start virtual environment
+        run: |
+          uv venv
+          source .venv/bin/activate
+      
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          uv add -r requirements.txt
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
@@ -43,7 +104,7 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
+            !.venv/
 
   deploy:
     runs-on: ubuntu-latest
