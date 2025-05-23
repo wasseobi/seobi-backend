@@ -2,7 +2,7 @@ from app.dao.message_dao import MessageDAO
 from app.services.session_service import SessionService
 from app.models import Session
 from app.models.db import db
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_openai_client, get_completion, get_embedding
 from app.langgraph.graph import builder as langgraph_builder
 from langchain.schema import HumanMessage
 from typing import List, Dict, Any
@@ -66,14 +66,18 @@ class MessageService:
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str = 'user') -> Dict:
-        """Create a new message"""
+        """Create a new message (임베딩 벡터 포함)"""
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Cannot add message to finished session')
 
-        message = self.dao.create_message(session_id, user_id, content, role)
+        # 임베딩 벡터 생성
+        client = get_openai_client()
+        vector = get_embedding(client, content)
+
+        message = self.dao.create_message(session_id, user_id, content, role, vector)
         return self._serialize_message(message)
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Dict:
@@ -89,7 +93,7 @@ class MessageService:
 
     def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
                           content: str) -> Dict[str, Dict]:
-        """Create a new message and get AI completion"""
+        """Create a new message and get AI completion""" 
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
