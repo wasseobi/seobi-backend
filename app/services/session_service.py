@@ -138,5 +138,5 @@ class SessionService:
                 'finish_at': session.finish_at.isoformat() if session.finish_at else None
             } for session in sessions]
         except Exception as e:
-            print(f"[ERROR] Failed to get user sessions: {str(e)}")
+            logger.error(f"[ERROR] Failed to get user sessions: {str(e)}")
             raise ValueError(f"Failed to get sessions for user {user_id}")
