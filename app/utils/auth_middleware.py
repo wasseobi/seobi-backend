@@ -20,14 +20,18 @@ def require_auth(f):
             return f(*args, **kwargs)
 
         # 토큰 확인
-        auth_header = request.headers.get('Authorization')
+        auth_header = request.headers.get('Authorization', '')
         if not auth_header:
             return jsonify({'message': '인증 토큰이 필요합니다.'}), 401
 
+        # Bearer 토큰 형식 검증
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            return jsonify({'message': '유효하지 않은 인증 형식입니다. Bearer 토큰이 필요합니다.'}), 401
+
         try:
-            # Bearer 토큰에서 실제 토큰 부분만 추출
-            token = auth_header.split(' ')[1]
             # 토큰 검증
+            token = parts[1]
             payload = jwt.decode(
                 token, 
                 Config.JWT_SECRET_KEY,
