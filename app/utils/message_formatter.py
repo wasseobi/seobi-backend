@@ -60,6 +60,15 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
         
     return formatted_msg
 
+def format_message_list(messages: List[BaseMessage], session_id=None, user_id=None) -> List[Dict[str, Any]]:
+    """메시지 리스트를 포맷팅된 형식으로 변환."""
+    formatted_messages = []
+    for message in messages:
+        formatted_msg = format_message_content(message, session_id, user_id)
+        if formatted_msg:
+            formatted_messages.append(formatted_msg)
+    return formatted_messages
+
 def _get_message_role(message: BaseMessage) -> str:
     """메시지 타입에 따른 역할 반환."""
     if isinstance(message, HumanMessage):
