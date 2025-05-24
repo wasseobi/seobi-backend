@@ -13,7 +13,6 @@ from typing import List, Dict, Any, Generator, Union
 from datetime import datetime
 import uuid
 import json
-import logging
 
 
 class MessageService:
@@ -93,21 +92,16 @@ class MessageService:
         )
 
         return self._serialize_message(message)
+
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, 
                                   content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[str, None, None]:
         """LangGraph를 통한 응답 생성."""
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
-        
-        # 세션 정보
         session_info = {
             "session_id": str(session_id),
             "user_id": str(user_id)
         }
-        logger.debug("Starting LangGraph completion")
         
         try:
-            # content가 전달된 경우 HumanMessage로 변환
             if content is not None and messages is None:
                 messages = [HumanMessage(content=content)]
 
@@ -120,28 +114,23 @@ class MessageService:
             for chunk in self.graph.stream(initial_state):
                 try:
                     if isinstance(chunk, dict) and chunk.get("agent"):
-                        # agent 청크 처리
                         messages_to_process = chunk["agent"].get("formatted_messages", [])
                         
                         for msg in messages_to_process:
                             if not isinstance(msg, dict):
-                                logger.warning(f"Skipping invalid message format: {msg}")
                                 continue
                                 
-                            # 메시지 유효성 검사
                             msg_content = msg.get("content", "").strip()
                             msg_metadata = msg.get("metadata", {}) or {}
                             
                             if not (msg_content or msg_metadata):
                                 continue
-                                  # role 및 메타데이터 처리
+                                
                             role = msg.get("role", "assistant")
-                            # tool response인 경우에만 tool role 사용
                             if msg_metadata.get("type") == "tool_response" or \
                                (msg_metadata.get("tool_name") and not "tool_calls" in msg_metadata) or \
                                msg_metadata.get("original_role") == "tool":
                                 role = "tool"
-                            # tool_calls가 있는 경우는 assistant role 사용
                             elif "tool_calls" in msg_metadata:
                                 role = "assistant"
                                 
@@ -152,7 +141,6 @@ class MessageService:
                                 **session_info
                             }
                             
-                            # 메시지 중복 체크
                             msg_key = self._get_message_key(formatted_msg)
                             if msg_key in seen_messages:
                                 continue
@@ -187,9 +175,10 @@ class MessageService:
                         content = chunk.get("content", "").strip()
                         metadata = chunk.get("metadata", {}) or {}
                         role = chunk.get("role", "assistant")
+                        
                         if metadata.get("type") == "tool_response" or \
-                        (metadata.get("tool_name") and not "tool_calls" in metadata) or \
-                        metadata.get("original_role") == "tool":
+                           (metadata.get("tool_name") and not "tool_calls" in metadata) or \
+                           metadata.get("original_role") == "tool":
                             role = "tool"
                         elif "tool_calls" in metadata:
                             role = "assistant"
@@ -214,11 +203,9 @@ class MessageService:
                             yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
                         
                 except Exception as e:
-                    logger.error(f"Error processing chunk: {e}", exc_info=True)
                     continue
                 
         except Exception as e:
-            logger.error(f"Error in create_langgraph_completion: {e}", exc_info=True)
             error_msg = {
                 "content": f"죄송합니다. 응답을 생성하는 동안 오류가 발생했습니다. ({str(e)})",
                 "role": "assistant",
@@ -234,25 +221,20 @@ class MessageService:
                 metadata=error_msg["metadata"]
             )
             yield f"data: {json.dumps(error_msg, ensure_ascii=False)}\n\n"
-    
-        logger.debug("LangGraph completion finished")
-        
+
     def _get_message_key(self, msg: Dict[str, Any]) -> str:
         """메시지의 고유 키를 생성하는 함수"""
-        # tool 메시지의 경우 tool_call_id를 포함
         metadata = msg.get("metadata", {})
         if metadata and msg.get("role") == "tool":
             tool_call_id = metadata.get("tool_call_id")
             if tool_call_id:
                 return f"tool_{tool_call_id}"
                 
-        # content와 role을 조합하여 키 생성
         content = msg.get("content", "").strip()
         role = msg.get("role", "")
         if content and role:
             return f"{role}_{hash(content)}"
             
-        # 메타데이터가 있는 경우 이를 포함
         if metadata:
             return f"{role}_{hash(str(metadata))}"
             
