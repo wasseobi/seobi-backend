@@ -101,9 +101,9 @@ def call_model(state: Dict) -> Dict:
             state["formatted_messages"] = formatted_messages
             
             # 디버그 출력
-            print("\nFormatted Messages:")
-            print(json.dumps(formatted_messages, indent=2, ensure_ascii=False))
-            print(f"\nNext step: {state['next_step']}\n")
+            # print("\nFormatted Messages:")
+            # print(json.dumps(formatted_messages, indent=2, ensure_ascii=False))
+            # print(f"\nNext step: {state['next_step']}\n")
             
         except Exception as e:
             error_msg = AIMessage(content=f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}")

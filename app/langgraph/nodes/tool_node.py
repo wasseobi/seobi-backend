@@ -6,19 +6,13 @@ from langchain_core.tools import BaseTool
 
 def call_tool(state: Dict, tools: List[BaseTool]) -> Dict:
     """도구를 호출하고 결과를 처리하는 노드."""
-    print("\n=== Call Tool Debug ===")
-    print("Tools available:", [t.name for t in tools])
     
     try:
         # 마지막 AI 메시지에서 도구 호출 정보 추출
         if not state.get("messages"):
-            print("No messages in state")
             raise ValueError("No messages in state")
             
         last_message = state["messages"][-1]
-        print("\nLast Message:")
-        print(f"Type: {type(last_message)}")
-        print(f"Content: {last_message.content}")
         
         if hasattr(last_message, "additional_kwargs"):
             print(f"Additional kwargs: {last_message.additional_kwargs}")
@@ -27,7 +21,6 @@ def call_tool(state: Dict, tools: List[BaseTool]) -> Dict:
         tool_calls = []
         if hasattr(last_message, "additional_kwargs"):
             tool_calls = last_message.additional_kwargs.get("tool_calls", [])
-            print(f"\nExtracted tool_calls: {tool_calls}")
             
         if not tool_calls:
             print("No tool_calls found, returning to model")
@@ -35,7 +28,6 @@ def call_tool(state: Dict, tools: List[BaseTool]) -> Dict:
             return state
             
         # 각 tool call 처리
-        print("\nProcessing tool calls...")
         for tool_call in tool_calls:
             try:
                 if not isinstance(tool_call, dict) or "function" not in tool_call:
@@ -95,7 +87,6 @@ def call_tool(state: Dict, tools: List[BaseTool]) -> Dict:
                 state["messages"].append(error_message)
         
         # 다음 단계를 model로 설정하여 결과 처리
-        print("\nSetting next step to model")
         state["next_step"] = "model"
         return state
         

@@ -12,7 +12,6 @@ def search_web(query: str) -> str:
     try:
         search = TavilySearchResults(api_key=os.environ["TAVILY_API_KEY"])
         results = search.invoke(query)
-        print(f"Search results: {results}")
         return str(results)
     except Exception as e:
         print(f"Search error: {type(e)} - {str(e)}")
