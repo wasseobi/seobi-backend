@@ -7,6 +7,8 @@ from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 import json
+import asyncio
+from functools import partial
 
 # Create namespace
 ns = Namespace('messages', description='Message operations for chat with AI')
@@ -64,47 +66,40 @@ class SessionMessageList(Resource):
 @ns.response(500, 'Failed to get AI completion')
 class MessageLangGraphCompletion(Resource):
     @ns.doc('create_langgraph_completion',
-            description='Send a message to the AI via LangGraph and get a response with streaming support. This will:\n'
-            '1. Save your message\n'
-            '2. Stream AI response via LangGraph\n'
-            '3. Save AI response\n'
-            '4. Return all messages in the session')
+            description='Send a message to the AI via LangGraph and get a response with streaming support.')
     @ns.expect(completion_input)
     @require_auth
     def post(self, session_id):
+        """Create a completion using LangGraph"""
         try:
             data = request.json
             if not data or 'content' not in data or 'user_id' not in data:
-                ns.abort(400, 'Message content and user_id are required')            # 스트리밍 모드 확인
-            stream_mode = data.get('stream', True)  # 기본값을 True로 설정
-            
-            if stream_mode:
-                return Response(
-                    stream_with_context(
-                        message_service.create_langgraph_completion_stream(
-                            session_id=session_id,
-                            user_id=data['user_id'],
-                            content=data['content']
-                        )
-                    ),
-                    mimetype='text/event-stream',
-                    headers={
-                        'Cache-Control': 'no-cache',
-                        'Connection': 'keep-alive'
-                    }
-                )
-            else:
-                result = message_service.create_langgraph_completion(
+                ns.abort(400, 'Message content and user_id are required')
+
+            def generate():
+                """스트리밍 응답 생성기 - 동기 방식"""
+                for chunk in message_service.create_langgraph_completion(
                     session_id=session_id,
                     user_id=data['user_id'],
                     content=data['content']
-                )
-                return Response(
-                    json.dumps(result),
-                    mimetype='application/json'
-                )
+                ):
+                    yield chunk
+            
+            # 스트리밍 응답 반환
+            return Response(
+                stream_with_context(generate()),
+                mimetype='text/event-stream',
+                headers={
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                }
+            )
+                
         except ValueError as e:
             ns.abort(400, str(e))
+        except Exception as e:
+            print("Error in langgraph-completion:", str(e))
+            ns.abort(500, str(e))
 
 
 @ns.route('/user/<uuid:user_id>')

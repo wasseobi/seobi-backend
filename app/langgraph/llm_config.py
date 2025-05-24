@@ -18,7 +18,8 @@ llm = init_chat_model(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     temperature=0.5,
-    timeout=60
+    timeout=60,
+    streaming=True
 )
 
 # 도구 가져오기

@@ -24,7 +24,6 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
     if isinstance(content, str):
         try:
             content_bytes = content.encode('utf-8')
-            logger.debug(f"Content as bytes during formatting: {content_bytes}")
             content = content_bytes.decode('utf-8')
             logger.debug(f"Decoded content during formatting: {content}")
         except UnicodeError as e:
@@ -35,23 +34,23 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
     formatted_msg = {
         "content": content,
         "role": _get_message_role(message),
-        "metadata": {},
+        "metadata": message.additional_kwargs if hasattr(message, "additional_kwargs") else {},
         "session_id": str(session_id) if session_id else None,
         "user_id": str(user_id) if user_id else None
     }
     
     # 메타데이터 처리
     if isinstance(message, AIMessage):
-        if hasattr(message, "additional_kwargs") and "tool_calls" in message.additional_kwargs:
-            formatted_msg["metadata"]["tool_calls"] = message.additional_kwargs["tool_calls"]
-            if not formatted_msg["content"]:  # content가 비어있는 경우 None으로 설정
-                formatted_msg["content"] = None
+        if "tool_calls" in formatted_msg["metadata"]:
+            formatted_msg["metadata"]["type"] = "tool_calls"
     
     elif isinstance(message, ToolMessage):
-        formatted_msg["metadata"].update({
+        tool_metadata = {
+            "type": "tool_response",
             "tool_call_id": getattr(message, "tool_call_id", None),
-            "tool_name": getattr(message, "name", "tool")
-        })
+            "tool_name": getattr(message, "name", None)
+        }
+        formatted_msg["metadata"].update(tool_metadata)
 
     # 빈 메타데이터는 None으로 설정
     if not formatted_msg["metadata"]:
@@ -61,7 +60,7 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
     return formatted_msg
 
 def format_message_list(messages: List[BaseMessage], session_id=None, user_id=None) -> List[Dict[str, Any]]:
-    """메시지 리스트를 변환.
+    """메시지 리스트를 변환 및 저장.
     
     Args:
         messages: LangChain BaseMessage 객체 리스트
