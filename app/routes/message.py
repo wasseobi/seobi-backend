@@ -1,11 +1,12 @@
 """Message 관련 라우트를 정의하는 모듈입니다."""
-from flask import request
+from flask import request, Response, stream_with_context
 from flask_restx import Resource, Namespace
 from app.services.message_service import MessageService
 from app.schemas.message_schema import register_models
 from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
+import json
 
 # Create namespace
 ns = Namespace('messages', description='Message operations for chat with AI')
@@ -63,26 +64,45 @@ class SessionMessageList(Resource):
 @ns.response(500, 'Failed to get AI completion')
 class MessageLangGraphCompletion(Resource):
     @ns.doc('create_langgraph_completion',
-            description='Send a message to the AI via LangGraph and get a response. This will:\n'
+            description='Send a message to the AI via LangGraph and get a response with streaming support. This will:\n'
             '1. Save your message\n'
-            '2. Get AI response via LangGraph\n'
+            '2. Stream AI response via LangGraph\n'
             '3. Save AI response\n'
-            '4. Return both messages')
+            '4. Return all messages in the session')
     @ns.expect(completion_input)
-    @ns.marshal_with(completion_response)
     @require_auth
     def post(self, session_id):
         try:
             data = request.json
             if not data or 'content' not in data or 'user_id' not in data:
-                ns.abort(400, 'Message content and user_id are required')
-
-            result = message_service.create_langgraph_completion(
-                session_id=session_id,
-                user_id=data['user_id'],
-                content=data['content']
-            )
-            return result
+                ns.abort(400, 'Message content and user_id are required')            # 스트리밍 모드 확인
+            stream_mode = data.get('stream', True)  # 기본값을 True로 설정
+            
+            if stream_mode:
+                return Response(
+                    stream_with_context(
+                        message_service.create_langgraph_completion_stream(
+                            session_id=session_id,
+                            user_id=data['user_id'],
+                            content=data['content']
+                        )
+                    ),
+                    mimetype='text/event-stream',
+                    headers={
+                        'Cache-Control': 'no-cache',
+                        'Connection': 'keep-alive'
+                    }
+                )
+            else:
+                result = message_service.create_langgraph_completion(
+                    session_id=session_id,
+                    user_id=data['user_id'],
+                    content=data['content']
+                )
+                return Response(
+                    json.dumps(result),
+                    mimetype='application/json'
+                )
         except ValueError as e:
             ns.abort(400, str(e))
 

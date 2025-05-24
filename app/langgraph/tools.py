@@ -1,11 +1,12 @@
-from langchain_core.tools import Tool
+from langchain_core.tools import BaseTool, tool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from typing import Dict, Union, Any
 import os
 import json
 
+@tool
 def search_web(query: str) -> str:
-    """Tavily 검색 도구를 사용하여 웹에서 정보를 검색합니다."""
+    """웹에서 정보를 검색하는 도구입니다. 날씨, 뉴스, 정보 등을 검색할 수 있습니다."""
     print(f"\n=== Search Web Debug ===")
     print(f"Query: {query}")
     try:
@@ -17,8 +18,9 @@ def search_web(query: str) -> str:
         print(f"Search error: {type(e)} - {str(e)}")
         return f"검색 중 오류 발생: {str(e)}"
 
+@tool
 def calculator(expression: str) -> Union[float, str]:
-    """안전한 환경에서 수학 수식을 계산합니다."""
+    """수식을 계산하는 도구입니다. 예: '2 + 2', '5 * 3' 등의 수식을 계산할 수 있습니다."""
     print(f"\n=== Calculator Debug ===")
     print(f"Expression: {expression}")
     try:
@@ -30,15 +32,5 @@ def calculator(expression: str) -> Union[float, str]:
         print(f"Error: {error_msg}")
         return error_msg
 
-# Tool 객체 생성
-search_web_tool = Tool(
-    name="search_web",
-    func=search_web,
-    description="웹에서 정보를 검색하는 도구입니다"
-)
-
-calculator_tool = Tool(
-    name="calculator",
-    func=calculator,
-    description="수학 수식을 계산하는 도구입니다"
-)
+# 도구 목록
+tools = [search_web, calculator]

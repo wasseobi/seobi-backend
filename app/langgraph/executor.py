@@ -17,28 +17,27 @@ def create_agent_executor() -> Callable:
         if chat_history is None:
             chat_history = []
             
-        # 초기 상태 설정
+        # 초기 상태 설정 (사용자 입력을 한 번만 추가)
         state = {
-            "messages": chat_history + [HumanMessage(content=input_text)],
-            "current_input": input_text,
+            "messages": [],  # 빈 리스트로 시작
+            "current_input": input_text,  # 현재 입력만 저장
             "scratchpad": [],
-            "step_count": 0,  # 단계 카운터 초기화
-            "next_step": "agent"  # 초기 상태를 agent로 설정
+            "step_count": 0,
+            "next_step": "agent"
         }
         
         try:
-            # invoke 메서드로 그래프 실행
+            # 그래프 실행
             result = compiled_graph.invoke(state)
-            print("\nGraph execution result:", result)  # 디버깅용
             
             if isinstance(result, dict) and "messages" in result:
                 return result
-            return state  # 기본 상태 반환
+            return state
+            
         except Exception as e:
-            print(f"Graph execution error: {type(e)} - {str(e)}")
             import traceback
             traceback.print_exc()
-            state["messages"].append(AIMessage(content="죄송합니다. 처리 중 오류가 발생했습니다."))
+            state["messages"] = [AIMessage(content="죄송합니다. 처리 중 오류가 발생했습니다.")]
             return state
     
     return invoke

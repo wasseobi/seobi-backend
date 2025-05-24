@@ -1,7 +1,9 @@
 from app.dao.base import BaseDAO
 from app.models import Message
-from typing import List, Optional
+from app.models.db import db
+from typing import List, Optional, Dict, Any
 import uuid
+
 
 class MessageDAO(BaseDAO[Message]):
     """Data Access Object for Message model"""
@@ -26,15 +28,19 @@ class MessageDAO(BaseDAO[Message]):
         return self.query().filter_by(session_id=session_id).order_by(Message.timestamp.asc()).all()
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str = 'user', vector=None) -> Message:
-        """Create a new message (vector 임베딩 포함)"""
-        return self.create(
+                      content: str, role: str = 'user', vector=None, metadata=None) -> Message:
+        """Create a new message"""
+        message = Message(
             session_id=session_id,
             user_id=user_id,
             content=content,
             role=role,
-            vector=vector
+            vector=vector,
+            message_metadata=metadata
         )
+        db.session.add(message)
+        db.session.commit()
+        return message
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
         """Update a message"""
