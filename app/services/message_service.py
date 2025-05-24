@@ -95,96 +95,180 @@ class MessageService:
         return self._serialize_message(message)
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, 
                                   content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[str, None, None]:
-        """LangGraph를 통한 응답 생성.
-        
-        Args:
-            session_id: 세션 ID
-            user_id: 사용자 ID
-            content: 사용자 메시지 내용 (단일 메시지인 경우)
-            messages: 입력 메시지 리스트 (여러 메시지인 경우)
-        
-        Yields:
-            SSE 형식의 메시지 스트림
-        """
+        """LangGraph를 통한 응답 생성."""
         logger = logging.getLogger(__name__)
-        logger.debug(f"Create LangGraph completion called with: session_id={session_id}, user_id={user_id}")
+        logger.setLevel(logging.DEBUG)
+        
+        # 세션 정보
+        session_info = {
+            "session_id": str(session_id),
+            "user_id": str(user_id)
+        }
+        logger.debug(f"=== LangGraph Completion Start ===")
+        logger.debug(f"Session info: {session_info}")
 
         try:
             # content가 전달된 경우 HumanMessage로 변환
             if content is not None and messages is None:
                 messages = [HumanMessage(content=content)]
-                logger.debug(f"Created messages from content: {messages}")
+                logger.debug(f"Created HumanMessage: {messages}")
 
             if not messages:
                 raise ValueError("Either content or messages must be provided")
-
-            # 사용자 메시지 저장
-            user_message = format_message_content(messages[-1], str(session_id), str(user_id))
-            logger.debug(f"Formatted user message: {user_message}")
-            
-            if user_message["content"] or user_message.get("metadata"):  # 내용이나 메타데이터가 있는 경우 저장
-                self.dao.create_message(
-                    session_id=session_id,
-                    user_id=user_id,
-                    content=user_message["content"],
-                    role=user_message["role"],
-                    metadata=user_message["metadata"]
-                )
-                yield f"data: {json.dumps(user_message)}\n\n"
             
             # LangGraph 실행
-            logger.debug("Starting LangGraph execution")
+            logger.debug(f"=== Starting LangGraph ===")
             initial_state = {"messages": messages}
             
+            # 중복 메시지 추적을 위한 집합
+            seen_messages = set()
+            
             for chunk in self.graph.stream(initial_state):
-                logger.debug(f"Received chunk: {chunk}")
-                formatted_msg = None
+                logger.debug(f"\n=== Processing Chunk ===")
+                logger.debug(f"Chunk type: {type(chunk)}")
+                logger.debug(f"Chunk content: {chunk}")
                 
-                if isinstance(chunk, (AIMessage, ToolMessage)):
-                    formatted_msg = format_message_content(chunk, str(session_id), str(user_id))
-                    logger.debug(f"Formatted message from BaseMessage: {formatted_msg}")
-                    
-                elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):  # content나 metadata 중 하나라도 있으면 처리
-                    role = chunk.get("role", "assistant")
-                    # Tool 메시지의 경우 role을 보존
-                    if "tool_calls" in chunk.get("metadata", {}) or "tool_name" in chunk.get("metadata", {}):
-                        role = "tool"
+                try:
+                    if isinstance(chunk, dict) and chunk.get("agent"):
+                        # agent 청크 처리
+                        messages_to_process = chunk["agent"].get("formatted_messages", [])
+                        logger.debug(f"Processing agent chunk with {len(messages_to_process)} messages")
                         
-                    formatted_msg = {
-                        "content": chunk.get("content", ""),  # content가 없으면 빈 문자열
-                        "role": role,
-                        "metadata": chunk.get("metadata"),
-                        "session_id": str(session_id),
-                        "user_id": str(user_id)
-                    }
-                    logger.debug(f"Formatted message from dict: {formatted_msg}")
-
-                if formatted_msg and (formatted_msg["content"] or formatted_msg.get("metadata")):  # 내용이나 메타데이터가 있는 경우 처리
-                    self.dao.create_message(
-                        session_id=session_id,
-                        user_id=user_id,
-                        content=formatted_msg["content"],
-                        role=formatted_msg["role"],
-                        metadata=formatted_msg["metadata"]
-                    )
-                    yield f"data: {json.dumps(formatted_msg)}\n\n"
+                        for msg in messages_to_process:
+                            if not isinstance(msg, dict):
+                                logger.warning(f"Skipping invalid message format: {msg}")
+                                continue
+                                
+                            # 메시지 유효성 검사
+                            msg_content = msg.get("content", "").strip()
+                            msg_metadata = msg.get("metadata", {}) or {}
+                            
+                            if not (msg_content or msg_metadata):
+                                logger.debug("Skipping empty message")
+                                continue
+                                
+                            # role 및 메타데이터 처리
+                            role = msg.get("role", "assistant")
+                            if msg_metadata.get("type") == "tool_response" or \
+                               msg_metadata.get("tool_name") or \
+                               "tool_calls" in msg_metadata or \
+                               msg_metadata.get("original_role") == "tool":
+                                role = "tool"
+                                
+                            formatted_msg = {
+                                "content": msg_content,
+                                "role": role,
+                                "metadata": msg_metadata,
+                                **session_info
+                            }
+                            
+                            # 메시지 중복 체크
+                            msg_key = self._get_message_key(formatted_msg)
+                            if msg_key in seen_messages:
+                                logger.debug(f"Skipping duplicate message: {msg_key}")
+                                continue
+                                
+                            seen_messages.add(msg_key)
+                            
+                            saved_message = self.dao.create_message(
+                                session_id=session_id,
+                                user_id=user_id,
+                                content=formatted_msg["content"],
+                                role=formatted_msg["role"],
+                                metadata=formatted_msg["metadata"]
+                            )
+                            logger.debug(f"Saved message with ID: {saved_message.id}")
+                            yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
                     
+                    elif isinstance(chunk, (AIMessage, ToolMessage)):
+                        formatted_msg = format_message_content(chunk, **session_info)
+                        msg_key = self._get_message_key(formatted_msg)
+                        
+                        if msg_key not in seen_messages:
+                            seen_messages.add(msg_key)
+                            saved_message = self.dao.create_message(
+                                session_id=session_id,
+                                user_id=user_id,
+                                content=formatted_msg["content"],
+                                role=formatted_msg["role"],
+                                metadata=formatted_msg["metadata"]
+                            )
+                            logger.debug(f"Saved message with ID: {saved_message.id}")
+                            yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
+                            
+                    elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
+                        content = chunk.get("content", "").strip()
+                        metadata = chunk.get("metadata", {}) or {}
+                        role = chunk.get("role", "assistant")
+                        
+                        if metadata.get("type") == "tool_response" or \
+                           metadata.get("tool_name") or \
+                           "tool_calls" in metadata or \
+                           metadata.get("original_role") == "tool":
+                            role = "tool"
+                            
+                        formatted_msg = {
+                            "content": content,
+                            "role": role,
+                            "metadata": metadata,
+                            **session_info
+                        }
+                        
+                        msg_key = self._get_message_key(formatted_msg)
+                        if msg_key not in seen_messages:
+                            seen_messages.add(msg_key)
+                            saved_message = self.dao.create_message(
+                                session_id=session_id,
+                                user_id=user_id,
+                                content=formatted_msg["content"],
+                                role=formatted_msg["role"],
+                                metadata=formatted_msg["metadata"]
+                            )
+                            logger.debug(f"Saved message with ID: {saved_message.id}")
+                            yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
+                        
+                except Exception as e:
+                    logger.error(f"Error processing chunk: {e}", exc_info=True)
+                    continue
+                
         except Exception as e:
             logger.error(f"Error in create_langgraph_completion: {e}", exc_info=True)
             error_msg = {
                 "content": f"죄송합니다. 응답을 생성하는 동안 오류가 발생했습니다. ({str(e)})",
                 "role": "assistant",
                 "metadata": {"error": str(e)},
-                "session_id": str(session_id),
-                "user_id": str(user_id)
+                **session_info
             }
             
-            self.dao.create_message(
+            saved_message = self.dao.create_message(
                 session_id=session_id,
                 user_id=user_id,
                 content=error_msg["content"],
                 role=error_msg["role"],
                 metadata=error_msg["metadata"]
             )
+            logger.debug(f"Error message saved with ID: {saved_message.id}")
+            yield f"data: {json.dumps(error_msg, ensure_ascii=False)}\n\n"
             
-            yield f"data: {json.dumps(error_msg)}\n\n"
+        logger.debug("=== LangGraph Completion End ===")
+        
+    def _get_message_key(self, msg: Dict[str, Any]) -> str:
+        """메시지의 고유 키를 생성하는 함수"""
+        # tool 메시지의 경우 tool_call_id를 포함
+        metadata = msg.get("metadata", {})
+        if metadata and msg.get("role") == "tool":
+            tool_call_id = metadata.get("tool_call_id")
+            if tool_call_id:
+                return f"tool_{tool_call_id}"
+                
+        # content와 role을 조합하여 키 생성
+        content = msg.get("content", "").strip()
+        role = msg.get("role", "")
+        if content and role:
+            return f"{role}_{hash(content)}"
+            
+        # 메타데이터가 있는 경우 이를 포함
+        if metadata:
+            return f"{role}_{hash(str(metadata))}"
+            
+        return f"{role}_{hash(content)}_{hash(str(metadata))}"
