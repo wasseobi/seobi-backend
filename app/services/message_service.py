@@ -104,35 +104,24 @@ class MessageService:
             "session_id": str(session_id),
             "user_id": str(user_id)
         }
-        logger.debug(f"=== LangGraph Completion Start ===")
-        logger.debug(f"Session info: {session_info}")
-
+        logger.debug("Starting LangGraph completion")
+        
         try:
             # content가 전달된 경우 HumanMessage로 변환
             if content is not None and messages is None:
                 messages = [HumanMessage(content=content)]
-                logger.debug(f"Created HumanMessage: {messages}")
 
             if not messages:
                 raise ValueError("Either content or messages must be provided")
             
-            # LangGraph 실행
-            logger.debug(f"=== Starting LangGraph ===")
             initial_state = {"messages": messages}
-            
-            # 중복 메시지 추적을 위한 집합
             seen_messages = set()
             
             for chunk in self.graph.stream(initial_state):
-                logger.debug(f"\n=== Processing Chunk ===")
-                logger.debug(f"Chunk type: {type(chunk)}")
-                logger.debug(f"Chunk content: {chunk}")
-                
                 try:
                     if isinstance(chunk, dict) and chunk.get("agent"):
                         # agent 청크 처리
                         messages_to_process = chunk["agent"].get("formatted_messages", [])
-                        logger.debug(f"Processing agent chunk with {len(messages_to_process)} messages")
                         
                         for msg in messages_to_process:
                             if not isinstance(msg, dict):
@@ -144,28 +133,28 @@ class MessageService:
                             msg_metadata = msg.get("metadata", {}) or {}
                             
                             if not (msg_content or msg_metadata):
-                                logger.debug("Skipping empty message")
                                 continue
-                                
-                            # role 및 메타데이터 처리
+                                  # role 및 메타데이터 처리
                             role = msg.get("role", "assistant")
+                            # tool response인 경우에만 tool role 사용
                             if msg_metadata.get("type") == "tool_response" or \
-                               msg_metadata.get("tool_name") or \
-                               "tool_calls" in msg_metadata or \
+                               (msg_metadata.get("tool_name") and not "tool_calls" in msg_metadata) or \
                                msg_metadata.get("original_role") == "tool":
                                 role = "tool"
+                            # tool_calls가 있는 경우는 assistant role 사용
+                            elif "tool_calls" in msg_metadata:
+                                role = "assistant"
                                 
                             formatted_msg = {
                                 "content": msg_content,
                                 "role": role,
-                                "metadata": msg_metadata,
+                                "metadata": msg_metadata if msg_metadata and any(msg_metadata.values()) else None,
                                 **session_info
                             }
                             
                             # 메시지 중복 체크
                             msg_key = self._get_message_key(formatted_msg)
                             if msg_key in seen_messages:
-                                logger.debug(f"Skipping duplicate message: {msg_key}")
                                 continue
                                 
                             seen_messages.add(msg_key)
@@ -177,7 +166,6 @@ class MessageService:
                                 role=formatted_msg["role"],
                                 metadata=formatted_msg["metadata"]
                             )
-                            logger.debug(f"Saved message with ID: {saved_message.id}")
                             yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
                     
                     elif isinstance(chunk, (AIMessage, ToolMessage)):
@@ -193,24 +181,23 @@ class MessageService:
                                 role=formatted_msg["role"],
                                 metadata=formatted_msg["metadata"]
                             )
-                            logger.debug(f"Saved message with ID: {saved_message.id}")
                             yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
                             
                     elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
                         content = chunk.get("content", "").strip()
                         metadata = chunk.get("metadata", {}) or {}
                         role = chunk.get("role", "assistant")
-                        
                         if metadata.get("type") == "tool_response" or \
-                           metadata.get("tool_name") or \
-                           "tool_calls" in metadata or \
-                           metadata.get("original_role") == "tool":
+                        (metadata.get("tool_name") and not "tool_calls" in metadata) or \
+                        metadata.get("original_role") == "tool":
                             role = "tool"
+                        elif "tool_calls" in metadata:
+                            role = "assistant"
                             
                         formatted_msg = {
                             "content": content,
                             "role": role,
-                            "metadata": metadata,
+                            "metadata": metadata if metadata and any(metadata.values()) else None,
                             **session_info
                         }
                         
@@ -224,7 +211,6 @@ class MessageService:
                                 role=formatted_msg["role"],
                                 metadata=formatted_msg["metadata"]
                             )
-                            logger.debug(f"Saved message with ID: {saved_message.id}")
                             yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
                         
                 except Exception as e:
@@ -247,10 +233,9 @@ class MessageService:
                 role=error_msg["role"],
                 metadata=error_msg["metadata"]
             )
-            logger.debug(f"Error message saved with ID: {saved_message.id}")
             yield f"data: {json.dumps(error_msg, ensure_ascii=False)}\n\n"
-            
-        logger.debug("=== LangGraph Completion End ===")
+    
+        logger.debug("LangGraph completion finished")
         
     def _get_message_key(self, msg: Dict[str, Any]) -> str:
         """메시지의 고유 키를 생성하는 함수"""
