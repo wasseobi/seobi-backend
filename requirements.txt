@@ -365,6 +365,9 @@ langchain-community==0.3.24 \
 langchain-core==0.3.61 \
     --hash=sha256:62cddbda7fb6085b6096bb4f3ad69642ebb0585bde7b210edc61dd0af33f2ea4 \
     --hash=sha256:67ba08d4cf58616050047ef3a07887a72607fea9b6b4522dff9e7579a1adbe75
+langchain-experimental==0.3.4 \
+    --hash=sha256:2e587306aea36b60fa5e5fc05dc7281bee9f60a806f0bf9d30916e0ee096af80 \
+    --hash=sha256:937c4259ee4a639c618d19acf0e2c5c2898ef127050346edc5655259aa281a21
 langchain-google-community==2.0.7 \
     --hash=sha256:4502d63a1d1ce39f4a34cf7974c87700a40e00c15dbe15b7970b2708c5d9ca1f \
     --hash=sha256:ca73dade3bcc141bca38a3753c32d68325f45a3bccf1588d17ef84fe049f63aa
