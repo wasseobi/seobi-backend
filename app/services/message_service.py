@@ -90,51 +90,105 @@ class MessageService:
         return self._serialize_message(message)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                                  content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[str, None, None]:
-        """LangGraph를 통한 응답 생성."""
-        processor = MessageProcessor(str(session_id), str(user_id))
-        
-        try:
-            if content is not None and messages is None:
-                messages = [HumanMessage(content=content)]
+                                    content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
+            """LangGraph를 통한 응답 생성."""
+            processor = MessageProcessor(str(session_id), str(user_id))
+            accumulated_content = ""
+            
+            try:
+                # 시작 메시지 전송 (이미 저장된 메시지 사용)
+                conversation_history = self.get_conversation_history(session_id)
+                user_message = conversation_history[-1] if conversation_history else {'content': content}
+                
+                yield {
+                    'type': 'start',
+                    'user_message': user_message
+                }
 
-            if not messages:
-                raise ValueError("Either content or messages must be provided")
-            
-            initial_state = {"messages": messages}
-            
-            for chunk in self.graph.stream(initial_state):
-                try:
-                    if isinstance(chunk, dict) and chunk.get("agent"):
-                        messages_to_process = chunk["agent"].get("formatted_messages", [])
-                        yield from processor.process_agent_messages(messages_to_process)
+                # 초기 상태 설정
+                messages = [HumanMessage(content=content if content is not None else user_message['content'])]
+                initial_state = {"messages": messages}
+                
+                # 스트리밍 응답 생성
+                for chunk in self.graph.stream(initial_state):
+                    try:
+                        if isinstance(chunk, dict) and chunk.get("agent"):
+                            messages_to_process = chunk["agent"].get("formatted_messages", [])
+                            for msg in processor.process_agent_messages(messages_to_process):
+                                if isinstance(msg, dict) and "content" in msg:
+                                    new_content = msg["content"]
+                                    if new_content != accumulated_content:
+                                        yield {
+                                            'type': 'chunk',
+                                            'content': new_content,
+                                            'metadata': msg.get("metadata")
+                                        }
+                                        accumulated_content = new_content
+
+                        elif isinstance(chunk, (AIMessage, ToolMessage)):
+                            for msg in processor.process_ai_or_tool_message(chunk):
+                                if isinstance(msg, dict) and "content" in msg:
+                                    new_content = msg["content"]
+                                    if new_content != accumulated_content:
+                                        yield {
+                                            'type': 'chunk',
+                                            'content': new_content,
+                                            'metadata': msg.get("metadata")
+                                        }
+                                        accumulated_content = new_content
+
+                        elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
+                            for msg in processor.process_dict_message(chunk):
+                                if isinstance(msg, dict) and "content" in msg:
+                                    new_content = msg["content"]
+                                    if new_content != accumulated_content:
+                                        yield {
+                                            'type': 'chunk',
+                                            'content': new_content,
+                                            'metadata': msg.get("metadata")
+                                        }
+                                        accumulated_content = new_content
+
+                    except Exception as processing_error:
+                        print(f"청크 처리 중 오류 발생: {str(processing_error)}")
+                        continue
+
+                # 최종 AI 메시지 저장
+                if accumulated_content:
+                    assistant_message = self.create_message(
+                        session_id=session_id,
+                        user_id=user_id,
+                        content=accumulated_content,
+                        role='assistant'
+                    )
+
+                    # 완료 메시지 전송
+                    yield {
+                        'type': 'end',
+                        'assistant_message': assistant_message
+                    }
                     
-                    elif isinstance(chunk, (AIMessage, ToolMessage)):
-                        yield from processor.process_ai_or_tool_message(chunk)
-                            
-                    elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
-                        yield from processor.process_dict_message(chunk)
-                        
-                except Exception as e:
-                    continue
-                
-        except Exception as e:
-            yield from processor.process_error(e)
+            except Exception as e:
+                yield {
+                    'type': 'error',
+                    'error': str(e)
+                }
+                raise
 
-    def _get_message_key(self, msg: Dict[str, Any]) -> str:
-        """메시지의 고유 키를 생성하는 함수"""
-        metadata = msg.get("metadata", {})
-        if metadata and msg.get("role") == "tool":
-            tool_call_id = metadata.get("tool_call_id")
-            if tool_call_id:
-                return f"tool_{tool_call_id}"
-                
-        content = msg.get("content", "").strip()
-        role = msg.get("role", "")
-        if content and role:
-            return f"{role}_{hash(content)}"
-            
-        if metadata:
-            return f"{role}_{hash(str(metadata))}"
-            
-        return f"{role}_{hash(content)}_{hash(str(metadata))}"
+    def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
+        """Get all messages for a user
+
+        Args:
+            user_id (uuid.UUID): User's ID
+
+        Returns:
+            List[Dict]: List of serialized messages for the user
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        try:
+            messages = self.dao.get_user_messages(user_id)
+            return [self._serialize_message(msg) for msg in messages]
+        except Exception as e:
+            raise ValueError(f"Failed to get messages for user {user_id}")

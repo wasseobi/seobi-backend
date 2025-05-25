@@ -7,8 +7,6 @@ from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 import json
-import asyncio
-from functools import partial
 
 # Create namespace
 ns = Namespace('messages', description='Message operations for chat with AI')
@@ -83,7 +81,7 @@ class MessageLangGraphCompletion(Resource):
                     user_id=data['user_id'],
                     content=data['content']
                 ):
-                    yield chunk
+                    yield f"data: {json.dumps(chunk)}\n\n"
             
             # 스트리밍 응답 반환
             return Response(
@@ -91,7 +89,7 @@ class MessageLangGraphCompletion(Resource):
                 mimetype='text/event-stream',
                 headers={
                     'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive'
+                    'X-Accel-Buffering': 'no'
                 }
             )
                 
