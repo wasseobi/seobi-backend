@@ -13,11 +13,12 @@ class Message(db.Model):
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey(
         'user.id'), nullable=False)
     content = db.Column(db.Text, nullable=True)
-    role = db.Column(ENUM('user', 'assistant', 'system', 'tool', name='role_enum'),
+    role = db.Column(ENUM('user', 'assistant', 'tool', 'system', name='role_enum'),
                      nullable=False)
     timestamp = db.Column(db.DateTime(
         timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     vector = db.Column(Vector(1536), nullable=True)
+    message_metadata = db.Column(db.JSON, nullable=True)  # metadata 대신 message_metadata 사용
 
     # Relationships
     session = db.relationship('Session', back_populates='messages')
