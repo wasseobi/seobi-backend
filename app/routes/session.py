@@ -155,21 +155,13 @@ class MessageSend(Resource):
             user_id = request.headers.get('user-id')
             if not user_id:
                 ns.abort(400, "User ID is required")
-            
+
             data = request.get_json()
             if not data or 'content' not in data:
                 ns.abort(400, "Message content is required")
-                
-            # 사용자 메시지 저장
-            user_message = message_service.create_message(
-                session_id=session_id,
-                user_id=uuid.UUID(user_id),
-                content=data['content'],
-                role='user',
-                metadata=None
-            )
-            
+
             # AI 응답 스트리밍
+
             def generate():
                 try:
                     for chunk in message_service.create_langgraph_completion(
@@ -182,7 +174,7 @@ class MessageSend(Resource):
                     yield f"data: {json.dumps({'type': 'error', 'error': str(e)}, ensure_ascii=False)}\n\n"
                 finally:
                     yield "data: [DONE]\n\n"
-            
+
             return Response(
                 stream_with_context(generate()),
                 mimetype='text/event-stream',
@@ -192,7 +184,7 @@ class MessageSend(Resource):
                     'X-Accel-Buffering': 'no'
                 }
             )
-            
+
         except ValueError as e:
             ns.abort(400, str(e))
         except Exception as e:
