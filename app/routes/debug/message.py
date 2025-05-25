@@ -78,7 +78,7 @@ class MessageLangGraphCompletion(Resource):
 
             def generate():
                 """스트리밍 응답 생성기 - 동기 방식"""
-                for chunk in message_service.create_langgraph_completion(
+                for chunk in message_service.langgraph_stream(
                     session_id=session_id,
                     user_id=data['user_id'],
                     content=data['content']

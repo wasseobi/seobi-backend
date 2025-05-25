@@ -154,7 +154,7 @@ class MessageSend(Resource):
                 return {'error': 'user_id and content are required'}, 400
 
             def generate():
-                for chunk in message_service.create_langgraph_completion(
+                for chunk in message_service.langgraph_stream(
                     session_id=session_id,
                     user_id=user_id,
                     content=content

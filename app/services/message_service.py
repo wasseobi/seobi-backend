@@ -1,12 +1,13 @@
 from app.dao.message_dao import MessageDAO
 from app.services.session_service import SessionService
 from app.models import Session
-from app.models.db import db
-from app.utils.openai_client import get_openai_client, get_completion, get_embedding
-from app.langgraph.graph import builder as langgraph_builder
-from langchain.schema import HumanMessage
-from typing import List, Dict, Any
-from datetime import datetime
+
+from app.utils.openai_client import get_openai_client, get_embedding
+from app.utils.message.processor import MessageProcessor
+
+from langchain.schema import HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, ToolMessage
+from typing import List, Dict, Any, Generator, Union
 import uuid
 
 
@@ -24,7 +25,8 @@ class MessageService:
             'content': message.content,
             'role': message.role,
             'timestamp': message.timestamp.isoformat() if message.timestamp else None,
-            'vector': message.vector.tolist() if message.vector is not None else None
+            'vector': message.vector.tolist() if message.vector is not None else None,
+            'metadata': message.message_metadata
         }
 
     def get_all_messages(self) -> List[Dict]:
@@ -65,7 +67,7 @@ class MessageService:
         ]
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                       content: str, role: str = 'user') -> Dict:
+                       content: str, role: str, metadata) -> Dict:
         """Create a new message (임베딩 벡터 포함)"""
         session = Session.query.get(session_id)
         if not session:
@@ -77,7 +79,8 @@ class MessageService:
         client = get_openai_client()
         vector = get_embedding(client, content)
 
-        message = self.dao.create_message(session_id, user_id, content, role, vector)
+        message = self.dao.create_message(
+            session_id, user_id, content, role, vector, metadata)
         return self._serialize_message(message)
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Dict:
@@ -91,99 +94,93 @@ class MessageService:
         """Delete a message"""
         return self.dao.delete_message(message_id)
 
-    def create_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                          content: str) -> Dict[str, Dict]:
-        """Create a new message and get AI completion""" 
-        session = Session.query.get(session_id)
-        if not session:
-            raise ValueError('Session not found')
-        if session.finish_at:
-            raise ValueError('Cannot add message to finished session')
+    def langgraph_stream(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                         content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
+        """LangGraph를 통한 응답 생성."""
+        processor = MessageProcessor(str(session_id), str(user_id))
+        accumulated_content = ""
 
-        # Create user message
-        user_message = self.dao.create_message(
-            session_id, user_id, content, 'user')
-
-        # Get conversation history
-        history = self.get_conversation_history(session_id)
-
-        # Prepare messages for OpenAI
-        messages = [
-            {"role": "system", "content": "당신은 도움이 되는 AI 어시스턴트입니다. 응답은 간결하고 명확하게 해주세요."},
-            *history,
-            {"role": "user", "content": content}
-        ]
-
-        # Get AI completion
         try:
-            client = get_openai_client()
-            response = get_completion(client, messages)
-        except Exception as e:
-            raise ValueError(f"Failed to get AI completion: {str(e)}")
+            # 시작 메시지 전송 (이미 저장된 메시지 사용)
+            conversation_history = self.get_conversation_history(session_id)
+            user_message = conversation_history[-1] if conversation_history else {
+                'content': content}
 
-        # Create assistant message
-        assistant_message = self.dao.create_message(
-            session_id, user_id, response, 'assistant')
-
-        # Update session title and description if this is the first message
-        if len(history) == 1:
-            self.session_service.update_title_description_from_conversation(
-                session_id, content, response
-            )
-
-        return {
-            'user_message': self._serialize_message(user_message),
-            'assistant_message': self._serialize_message(assistant_message)
-        }
-
-    def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> Dict[str, Dict]:
-        """LangGraph 기반으로 메시지 생성 및 AI 응답/저장"""
-        try:
-
-            # DB 트랜잭션 시작
-            db.session.begin(nested=True)
-
-            # 1. 사용자 메시지 저장
-            user_message = self.create_message(
-                session_id, user_id, content, 'user')
-
-            # 2. 랭그래프 상태 생성 및 실행
-            initial_state = {
-                "user_input": content,
-                "parsed_intent": {},
-                "reply": "",
-                "action_required": False,
-                "executed_result": {},
-                "timestamp": datetime.utcnow().isoformat(),
-                "user_id": str(user_id),
-                "session_id": str(session_id),
-                "tool_info": None,
-                "messages": [HumanMessage(content=content)]
+            yield {
+                'type': 'start',
+                'user_message': user_message
             }
 
-            graph = langgraph_builder.compile()
-            result = graph.invoke(initial_state)
-            ai_reply = result.get("reply", "")
+            # 초기 상태 설정
+            messages = [HumanMessage(
+                content=content if content is not None else user_message['content'])]
+            initial_state = {"messages": messages}
 
-            # 3. AI 메시지 저장
-            assistant_message = self.create_message(
-                session_id=session_id,
-                user_id=user_id,
-                content=ai_reply,
-                role='assistant'
-            )
+            # 스트리밍 응답 생성
+            for chunk in self.graph.stream(initial_state):
+                try:
+                    if isinstance(chunk, dict) and chunk.get("agent"):
+                        messages_to_process = chunk["agent"].get(
+                            "formatted_messages", [])
+                        for msg in processor.process_agent_messages(messages_to_process):
+                            if isinstance(msg, dict) and "content" in msg:
+                                new_content = msg["content"]
+                                if new_content != accumulated_content:
+                                    yield {
+                                        'type': 'chunk',
+                                        'content': new_content,
+                                        'metadata': msg.get("metadata")
+                                    }
+                                    accumulated_content = new_content
 
-            # 트랜잭션 커밋
-            db.session.commit()
+                    elif isinstance(chunk, (AIMessage, ToolMessage)):
+                        for msg in processor.process_ai_or_tool_message(chunk):
+                            if isinstance(msg, dict) and "content" in msg:
+                                new_content = msg["content"]
+                                if new_content != accumulated_content:
+                                    yield {
+                                        'type': 'chunk',
+                                        'content': new_content,
+                                        'metadata': msg.get("metadata")
+                                    }
+                                    accumulated_content = new_content
 
-            return {
-                'user_message': user_message,
-                'assistant_message': assistant_message
-            }
+                    elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
+                        for msg in processor.process_dict_message(chunk):
+                            if isinstance(msg, dict) and "content" in msg:
+                                new_content = msg["content"]
+                                if new_content != accumulated_content:
+                                    yield {
+                                        'type': 'chunk',
+                                        'content': new_content,
+                                        'metadata': msg.get("metadata")
+                                    }
+                                    accumulated_content = new_content
+
+                except Exception as processing_error:
+                    print(f"청크 처리 중 오류 발생: {str(processing_error)}")
+                    continue
+
+            # 최종 AI 메시지 저장
+            if accumulated_content:
+                assistant_message = self.create_message(
+                    session_id=session_id,
+                    user_id=user_id,
+                    content=accumulated_content,
+                    role='assistant'
+                )
+
+                # 완료 메시지 전송
+                yield {
+                    'type': 'end',
+                    'assistant_message': assistant_message
+                }
 
         except Exception as e:
-            # 오류 발생 시 롤백
-            db.session.rollback()
+            yield {
+                'type': 'error',
+                'error': str(e)
+            }
             raise
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
