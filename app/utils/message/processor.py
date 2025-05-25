@@ -2,11 +2,13 @@
 from typing import Dict, List, Any, Generator, Union, Set
 from langchain_core.messages import BaseMessage, AIMessage, ToolMessage, HumanMessage
 import json
-from app.utils.message.formatter import format_message_content
 
+from app.dao.message_dao import MessageDAO
+from app.utils.message.formatter import format_message_content
 
 class MessageProcessor:
     def __init__(self, session_id: str, user_id: str):
+        self.dao = MessageDAO()
         self.session_info = {
             "session_id": session_id,
             "user_id": user_id
@@ -75,6 +77,13 @@ class MessageProcessor:
             
         self.seen_messages.add(msg_key)
         
+        saved_message = self.dao.create_message(
+            session_id=self.session_info["session_id"],
+            user_id=self.session_info["user_id"],
+            content=formatted_msg["content"],
+            role=formatted_msg["role"],
+            metadata=formatted_msg["metadata"]
+        )
         yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
 
     def _get_message_key(self, msg: Dict[str, Any]) -> str:

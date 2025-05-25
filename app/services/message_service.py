@@ -4,6 +4,10 @@ from app.models import Session
 
 from app.utils.openai_client import get_openai_client, get_embedding
 from app.utils.message.processor import MessageProcessor
+from app.utils.message.formatter import format_message_content
+from app.langgraph.executor import create_agent_executor
+from app.langgraph.graph import build_graph
+
 
 from langchain.schema import HumanMessage, AIMessage
 from langchain_core.messages import BaseMessage, ToolMessage
@@ -15,6 +19,8 @@ class MessageService:
     def __init__(self):
         self.dao = MessageDAO()
         self.session_service = SessionService()
+        self.agent_executor = create_agent_executor()
+        self.graph = build_graph().compile()
 
     def _serialize_message(self, message: Any) -> Dict[str, Any]:
         """Serialize message data for API response"""
@@ -75,9 +81,10 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot add message to finished session')
 
-        # 임베딩 벡터 생성
-        client = get_openai_client()
-        vector = get_embedding(client, content)
+        # TODO: 임베딩 벡터 문제 있는 것 같아서 잠깐 주석했어요
+        # client = get_openai_client()
+        # vector = get_embedding(client, content)
+        vector = None
 
         message = self.dao.create_message(
             session_id, user_id, content, role, vector, metadata)
@@ -94,11 +101,12 @@ class MessageService:
         """Delete a message"""
         return self.dao.delete_message(message_id)
 
-    def langgraph_stream(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                         content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
+    def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
+                                    content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
         """LangGraph를 통한 응답 생성."""
         processor = MessageProcessor(str(session_id), str(user_id))
         accumulated_content = ""
+        current_tool_calls = []
 
         try:
             # 시작 메시지 전송 (이미 저장된 메시지 사용)
@@ -116,58 +124,86 @@ class MessageService:
                 content=content if content is not None else user_message['content'])]
             initial_state = {"messages": messages}
 
-            # 스트리밍 응답 생성
-            for chunk in self.graph.stream(initial_state):
+            # LangGraph 메시지 스트리밍 처리
+            for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
                 try:
-                    if isinstance(chunk, dict) and chunk.get("agent"):
-                        messages_to_process = chunk["agent"].get(
-                            "formatted_messages", [])
-                        for msg in processor.process_agent_messages(messages_to_process):
-                            if isinstance(msg, dict) and "content" in msg:
-                                new_content = msg["content"]
-                                if new_content != accumulated_content:
-                                    yield {
-                                        'type': 'chunk',
-                                        'content': new_content,
-                                        'metadata': msg.get("metadata")
-                                    }
-                                    accumulated_content = new_content
+                    # 도구 호출 메시지 처리
+                    if isinstance(msg_chunk, ToolMessage):
+                        # 도구 응답 처리 및 전송
+                        for processed in processor.process_ai_or_tool_message(msg_chunk):
+                            yield {
+                                'type': 'chunk',
+                                'content': processed.get("content", ""),
+                                'metadata': {
+                                    **processed.get("metadata", {}),
+                                    "tool_response": True
+                                }
+                            }
+                            accumulated_content = processed.get("content", "")
 
-                    elif isinstance(chunk, (AIMessage, ToolMessage)):
-                        for msg in processor.process_ai_or_tool_message(chunk):
-                            if isinstance(msg, dict) and "content" in msg:
-                                new_content = msg["content"]
-                                if new_content != accumulated_content:
-                                    yield {
-                                        'type': 'chunk',
-                                        'content': new_content,
-                                        'metadata': msg.get("metadata")
-                                    }
-                                    accumulated_content = new_content
+                    # AI 메시지 처리
+                    elif isinstance(msg_chunk, AIMessage):
+                        # 도구 호출이 있는 경우
+                        if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
+                            current_tool_calls = msg_chunk.additional_kwargs["tool_calls"]
+                            yield {
+                                'type': 'tool_calls',
+                                'tool_calls': current_tool_calls
+                            }
+                        # 일반 응답 내용이 있는 경우
+                        elif msg_chunk.content and msg_chunk.content != accumulated_content:
+                            yield {
+                                'type': 'chunk',
+                                'content': msg_chunk.content,
+                                'metadata': metadata
+                            }
+                            accumulated_content = msg_chunk.content
 
-                    elif isinstance(chunk, dict) and ("content" in chunk or "metadata" in chunk):
-                        for msg in processor.process_dict_message(chunk):
-                            if isinstance(msg, dict) and "content" in msg:
-                                new_content = msg["content"]
-                                if new_content != accumulated_content:
+                    # 기타 메시지 처리
+                    elif isinstance(msg_chunk, dict):
+                        # 에이전트 메시지 처리
+                        if "agent" in msg_chunk:
+                            messages_to_process = msg_chunk["agent"].get(
+                                "formatted_messages", [])
+                            for processed in processor.process_agent_messages(messages_to_process):
+                                if processed.get("content") and processed["content"] != accumulated_content:
                                     yield {
                                         'type': 'chunk',
-                                        'content': new_content,
-                                        'metadata': msg.get("metadata")
+                                        'content': processed["content"],
+                                        'metadata': processed.get("metadata", {})
                                     }
-                                    accumulated_content = new_content
+                                    accumulated_content = processed["content"]
+                        # 일반 메시지 처리
+                        elif "content" in msg_chunk or "metadata" in msg_chunk:
+                            for processed in processor.process_dict_message(msg_chunk):
+                                if processed.get("content") and processed["content"] != accumulated_content:
+                                    yield {
+                                        'type': 'chunk',
+                                        'content': processed["content"],
+                                        'metadata': processed.get("metadata", metadata)
+                                    }
+                                    accumulated_content = processed["content"]
 
                 except Exception as processing_error:
-                    print(f"청크 처리 중 오류 발생: {str(processing_error)}")
+                    print(f"메시지 처리 중 오류 발생: {str(processing_error)}")
                     continue
 
             # 최종 AI 메시지 저장
             if accumulated_content:
+                # AIMessage 객체 생성 및 포맷 변환
+                ai_msg = AIMessage(
+                    content=accumulated_content,
+                    additional_kwargs={
+                        "tool_calls": current_tool_calls} if current_tool_calls else {}
+                )
+                formatted = format_message_content(
+                    ai_msg, session_id=session_id, user_id=user_id)
                 assistant_message = self.create_message(
                     session_id=session_id,
                     user_id=user_id,
-                    content=accumulated_content,
-                    role='assistant'
+                    content=formatted["content"],
+                    role=formatted["role"],
+                    metadata=formatted["metadata"]
                 )
 
                 # 완료 메시지 전송
@@ -177,6 +213,7 @@ class MessageService:
                 }
 
         except Exception as e:
+            print(f"LangGraph 완료 생성 중 오류 발생: {str(e)}")
             yield {
                 'type': 'error',
                 'error': str(e)
