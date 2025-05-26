@@ -68,6 +68,7 @@ class MessageLangGraphCompletion(Resource):
     @ns.doc('create_langgraph_completion',
             description='Send a message to the AI via LangGraph and get a response with streaming support.')
     @ns.expect(completion_input)
+    @ns.marshal_with(completion_response, code=200)
     @require_auth
     def post(self, session_id):
         """Create a completion using LangGraph"""
@@ -76,24 +77,34 @@ class MessageLangGraphCompletion(Resource):
             if not data or 'content' not in data or 'user_id' not in data:
                 ns.abort(400, 'Message content and user_id are required')
 
-            def generate():
-                """스트리밍 응답 생성기 - 동기 방식"""
-                for chunk in message_service.langgraph_stream(
+            # SSE 요청인지 확인
+            if request.accept_mimetypes['text/event-stream']:
+                def generate():
+                    for chunk in message_service.create_langgraph_completion(
+                        session_id=session_id,
+                        user_id=data['user_id'],
+                        content=data['content']
+                    ):
+                        print("[SSE CHUNK]", json.dumps(chunk, ensure_ascii=False, indent=2))
+                        yield json.dumps(chunk, ensure_ascii=False) + "\n"
+                return Response(
+                    stream_with_context(generate()),
+                    mimetype='text/event-stream',
+                    headers={
+                        'Cache-Control': 'no-cache',
+                        'Connection': 'keep-alive'
+                    }
+                )
+            else:
+                # Swagger/curl 등 일반 JSON 요청: 모든 chunk를 리스트로 반환
+                chunks = list(message_service.create_langgraph_completion(
                     session_id=session_id,
                     user_id=data['user_id'],
                     content=data['content']
-                ):
-                    yield chunk
-            
-            # 스트리밍 응답 반환
-            return Response(
-                stream_with_context(generate()),
-                mimetype='text/event-stream',
-                headers={
-                    'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive'
-                }
-            )
+                ))
+                # 모든 chunk의 content를 합쳐서 answer로 반환
+                answer = ''.join(chunk.get('content', '') for chunk in chunks if chunk.get('type') == 'chunk')
+                return {"answer": answer, "chunks": chunks}, 200
                 
         except ValueError as e:
             ns.abort(400, str(e))
@@ -117,6 +128,27 @@ class UserMessages(Resource):
             ns.abort(404, str(e))
         except Exception as e:
             ns.abort(500, str(e))
+
+
+@ns.route('/vectors/update')
+class MessageVectorUpdate(Resource):
+    @ns.doc('update_message_vectors',
+            description='Update vectors for existing messages')
+    @ns.param('user_id', 'Optional: Update vectors only for specific user')
+    @require_auth
+    def post(self):
+        """기존 메시지들의 벡터를 업데이트합니다."""
+        try:
+            user_id = request.args.get('user_id')
+            if user_id:
+                user_id = uuid.UUID(user_id)
+            
+            message_service = MessageService()
+            result = message_service.update_message_vectors(user_id)
+            return result, 200
+            
+        except Exception as e:
+            return {'error': str(e)}, 500
 
 
 # Register the namespace
