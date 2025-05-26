@@ -1,5 +1,4 @@
 from app.dao.user_dao import UserDAO
-from app.models.user import User
 from typing import List, Optional, Dict, Any
 import uuid
 
