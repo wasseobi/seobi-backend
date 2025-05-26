@@ -16,6 +16,10 @@ dependencies = [
     "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.2",
     "gunicorn>=23.0.0",
+    "langchain>=0.3.25",
+    "langchain-community>=0.3.24",
+    "langchain-core>=0.3.61",
+    "langchain-experimental>=0.3.4",
     "langchain-google-community>=2.0.7",
     "langchain-openai>=0.3.17",
     "langgraph>=0.4.5",
@@ -23,4 +27,5 @@ dependencies = [
     "pgvector>=0.4.1",
     "psycopg2-binary>=2.9.10",
     "python-dotenv>=1.1.0",
+    "tavily-python>=0.7.2",
 ]

@@ -1,118 +1,248 @@
-from flask import request
-from flask_restx import Resource, Namespace
+"""세션 관련 라우트를 정의하는 모듈입니다."""
+from flask import request, Response, stream_with_context
+from flask_restx import Resource, Namespace, fields
 from app.services.session_service import SessionService
-from app.schemas.session_schema import register_models
+from app.services.message_service import MessageService
 from app.utils.auth_middleware import require_auth
-from app import api
+from config import Config
 import uuid
+import json
+from datetime import datetime
 
 # Create namespace
-ns = Namespace('sessions', description='Session operations')
+ns = Namespace('s', description='채팅 세션 및 메시지 작업')
 
-# Register models for documentation
-session_model, session_input, session_update = register_models(ns)
+# Define models for documentation
+session_response = ns.model('SessionResponse', {
+    'session_id': fields.String(description='생성된 세션의 UUID',
+                                example='123e4567-e89b-12d3-a456-426614174000')
+})
 
-# Initialize service
+session_close_response = ns.model('SessionCloseResponse', {
+    'id': fields.String(description='세션 UUID',
+                        example='123e4567-e89b-12d3-a456-426614174000'),
+    'user_id': fields.String(description='사용자 UUID',
+                             example='123e4567-e89b-12d3-a456-426614174000'),
+    'start_at': fields.DateTime(description='세션 시작 시간',
+                                example='2025-05-23T09:13:11.475Z'),
+    'finish_at': fields.DateTime(description='세션 종료 시간',
+                                 example='2025-05-23T09:15:11.475Z'),
+    'title': fields.String(description='세션 제목',
+                           example='AI와의 대화'),
+    'description': fields.String(description='세션 설명',
+                                 example='사용자와 AI의 일반적인 대화')
+})
+
+message_send_input = ns.model('MessageSendInput', {
+    'content': fields.String(required=True,
+                             description='사용자 메시지 내용',
+                             example='안녕하세요, 도움이 필요합니다.')
+})
+
+session_message_response = ns.model('SessionMessage', {
+    'id': fields.String(description='메시지 UUID',
+                        example='123e4567-e89b-12d3-a456-426614174000'),
+    'session_id': fields.String(description='세션 UUID',
+                                example='123e4567-e89b-12d3-a456-426614174000'),
+    'user_id': fields.String(description='사용자 UUID',
+                             example='123e4567-e89b-12d3-a456-426614174000'),
+    'content': fields.String(description='메시지 내용',
+                             example='안녕하세요, 도움이 필요합니다.'),
+    'role': fields.String(description='메시지 작성자 역할',
+                          enum=['user', 'assistant', 'system', 'tool'],
+                          example='user'),
+    'timestamp': fields.DateTime(description='메시지 작성 시간',
+                                 example='2025-05-23T09:10:39.366Z'),
+    'vector': fields.List(fields.Float, description='메시지 임베딩 벡터',
+                          example=[0])
+})
+
+# Initialize services
 session_service = SessionService()
+message_service = MessageService()
 
-@ns.route('/')
-class SessionList(Resource):
-    @ns.doc('list_sessions')
-    @ns.marshal_list_with(session_model)
-    @require_auth
-    def get(self):
-        """List all sessions"""
-        return session_service.get_all_sessions()
 
-    @ns.doc('create_session')
-    @ns.expect(session_input)
-    @ns.marshal_with(session_model, code=201)
-    @ns.response(400, 'Invalid input')
-    @ns.response(404, 'User not found')
+@ns.route('/open')
+class SessionOpen(Resource):
+    @ns.doc('세션 열기',
+            description='새로운 채팅 세션을 생성합니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Content-Type': {'description': 'application/json', 'in': 'header'},
+                'Authorization': {
+                    'description': 'Bearer <jwt>',
+                    'in': 'header',
+                    'required': not Config.DEV_MODE
+                },
+                'user_id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
+            })
+    @ns.response(201, '세션이 생성됨', session_response)
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
     @require_auth
     def post(self):
-        """Create a new session"""
-        data = request.json
-        
-        # Validate input
-        if not data or 'user_id' not in data:
-            ns.abort(400, 'user_id is required')
-            
+        """새로운 채팅 세션을 생성합니다."""
+        user_id = request.headers.get('user_id')
+        if not user_id:
+            return {'error': 'user_id is required'}, 400
+
         try:
-            session = session_service.create_session(uuid.UUID(data['user_id']))
-            return session, 201
+            session = session_service.create_session(uuid.UUID(user_id))
+            return {"session_id": str(session.id)}
+        except Exception as e:
+            return {'error': str(e)}, 400
+
+
+@ns.route('/<uuid:session_id>/close')
+class SessionClose(Resource):
+    @ns.doc('세션 닫기',
+            description='채팅 세션을 종료하고 요약 정보를 생성합니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Authorization': {
+                    'description': 'Bearer <jwt>',
+                    'in': 'header',
+                    'required': not Config.DEV_MODE
+                }
+            })
+    @ns.response(200, '세션이 종료됨', session_close_response)
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
+    @require_auth
+    def post(self, session_id):
+        """채팅 세션을 종료하고 요약 정보를 생성합니다."""
+        try:
+            session = session_service.finish_session(session_id)
+            return {
+                'id': str(session.id),
+                'user_id': str(session.user_id),
+                'start_at': session.start_at,
+                'finish_at': session.finish_at,
+                'title': session.title,
+                'description': session.description
+            }
+        except Exception as e:
+            ns.abort(400, f"Failed to close session: {str(e)}")
+
+
+@ns.route('/<uuid:session_id>/send')
+@ns.param('session_id', 'The session identifier')
+@ns.response(404, 'Session not found')
+@ns.response(400, 'Invalid input or session is finished')
+@ns.response(500, 'Failed to get AI completion')
+class MessageSend(Resource):
+    @ns.doc('메시지 전송',
+            description='사용자 메시지를 전송하고 AI의 응답을 스트리밍으로 받습니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Authorization': {
+                        'description': 'Bearer <jwt>',
+                        'in': 'header',
+                        'required': not Config.DEV_MODE
+                },
+                'Accept': {
+                    'description': 'text/event-stream',
+                    'in': 'header',
+                    'required': True
+                },
+                'user_id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
+            })
+    @ns.expect(message_send_input)
+    @require_auth
+    def post(self, session_id):
+        """Create a completion using LangGraph"""
+        try:
+            user_id = request.headers.get('user-id')
+            if not user_id:
+                ns.abort(400, "User ID is required")
+
+            data = request.get_json()
+            if not data or 'content' not in data:
+                ns.abort(400, "Message content is required")
+
+            # AI 응답 스트리밍
+
+            def generate():
+                try:
+                    for chunk in message_service.create_langgraph_completion(
+                        session_id=session_id,
+                        user_id=uuid.UUID(user_id),
+                        content=data['content']
+                    ):
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'error': str(e)}, ensure_ascii=False)}\n\n"
+                finally:
+                    yield "data: [DONE]\n\n"
+
+            return Response(
+                stream_with_context(generate()),
+                mimetype='text/event-stream',
+                headers={
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'X-Accel-Buffering': 'no'
+                }
+            )
+
         except ValueError as e:
-            ns.abort(404, str(e))
+            ns.abort(400, str(e))
         except Exception as e:
             ns.abort(500, str(e))
 
-@ns.route('/<uuid:session_id>')
-@ns.param('session_id', 'The session identifier')
-@ns.response(404, 'Session not found')
-class SessionResource(Resource):
-    @ns.doc('get_session')
-    @ns.marshal_with(session_model)
+
+@ns.route('/<uuid:user_id>')
+class UserSessions(Resource):
+    @ns.doc('사용자 세션 목록',
+            description='특정 사용자의 모든 채팅 세션 목록을 가져옵니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Authorization': {
+                    'description': 'Bearer <jwt>',
+                    'in': 'header',
+                    'required': not Config.DEV_MODE
+                }
+            })
+    @ns.response(200, '세션 목록 조회 성공', [session_close_response])
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
+    @require_auth
+    def get(self, user_id):
+        """특정 사용자의 모든 채팅 세션 목록을 가져옵니다."""
+        try:
+            sessions = session_service.get_user_sessions(user_id)
+            return [{
+                'id': str(session.id),
+                'user_id': str(session.user_id),
+                'start_at': session.start_at,
+                'finish_at': session.finish_at,
+                'title': session.title,
+                'description': session.description
+            } for session in sessions]
+        except Exception as e:
+            ns.abort(400, f"Failed to get user sessions: {str(e)}")
+
+
+@ns.route('/<uuid:session_id>/m')
+class SessionMessages(Resource):
+    @ns.doc('세션 메시지 목록',
+            description='특정 세션의 모든 메시지 기록을 가져옵니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Authorization': {
+                    'description': 'Bearer <jwt>',
+                    'in': 'header',
+                    'required': not Config.DEV_MODE
+                }
+            })
+    @ns.response(200, '메시지 목록 조회 성공', [session_message_response])
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
     @require_auth
     def get(self, session_id):
-        """Get a session by ID"""
+        """특정 세션의 모든 메시지 기록을 가져옵니다."""
         try:
-            return session_service.get_session(session_id)
-        except ValueError as e:
-            ns.abort(404, str(e))
-
-    @ns.doc('update_session')
-    @ns.expect(session_update)
-    @ns.marshal_with(session_model)
-    @require_auth
-    def put(self, session_id):
-        """Update a session"""
-        try:
-            data = request.json
-            return session_service.update_session(session_id, **data)
-        except ValueError as e:
-            ns.abort(404, str(e))
-
-    @ns.doc('delete_session')
-    @ns.response(204, 'Session deleted')
-    @require_auth
-    def delete(self, session_id):
-        """Delete a session"""
-        try:
-            session_service.delete_session(session_id)
-            return '', 204
-        except ValueError as e:
-            ns.abort(404, str(e))
-
-@ns.route('/<uuid:session_id>/finish')
-@ns.param('session_id', 'The session identifier')
-@ns.response(404, 'Session not found')
-@ns.response(400, 'Session already finished')
-class SessionFinish(Resource):
-    @ns.doc('finish_session')
-    @ns.marshal_with(session_model)
-    def post(self, session_id):
-        """Mark a session as finished"""
-        try:
-            return session_service.finish_session(session_id)
-        except ValueError as e:
-            if 'already finished' in str(e):
-                ns.abort(400, str(e))
-            ns.abort(404, str(e))
-
-@ns.route('/user/<uuid:user_id>')
-@ns.param('user_id', 'The user identifier')
-@ns.response(404, 'User not found')
-class UserSessions(Resource):
-    @ns.doc('get_user_sessions')
-    @ns.marshal_list_with(session_model)
-    def get(self, user_id):
-        """Get all sessions for a specific user"""
-        try:
-            return session_service.get_user_sessions(user_id)
-        except ValueError as e:
-            ns.abort(404, str(e))
+            messages = message_service.get_session_messages(session_id)
+            return messages
         except Exception as e:
-            ns.abort(500, str(e))
-
-# Register the namespace
-api.add_namespace(ns)
+            ns.abort(400, f"Failed to get session messages: {str(e)}")

@@ -53,17 +53,28 @@ def create_app():
     from app.models.mcp_server import MCPServer
     from app.models.mcp_server_activation import ActiveMCPServer
 
-    # Register namespaces
-    from app.routes.user import ns as user_ns
+    # Register production namespaces
+    from app.routes.auth import ns as auth_ns
     from app.routes.session import ns as session_ns
     from app.routes.message import ns as message_ns
-    from app.routes.mcp_server import ns as mcp_server_ns
-    from app.routes.mcp_server_activation import ns as mcp_server_activation_ns
 
-    api.add_namespace(user_ns, path='/users')
-    api.add_namespace(session_ns, path='/sessions')
-    api.add_namespace(message_ns, path='/messages')
-    api.add_namespace(mcp_server_ns, path='/mcp_servers')
-    api.add_namespace(mcp_server_activation_ns, path='/mcp_server_activations')
+    # Register debug namespaces
+    from app.routes.debug.user import ns as debug_user_ns
+    from app.routes.debug.session import ns as debug_session_ns
+    from app.routes.debug.message import ns as debug_message_ns
+    from app.routes.debug.mcp_server import ns as debug_mcp_server_ns
+    from app.routes.debug.mcp_server_activation import ns as debug_mcp_server_activation_ns
+
+    # Add production namespaces
+    api.add_namespace(auth_ns)  # /sign, /verify
+    api.add_namespace(session_ns)  # /s/*
+    api.add_namespace(message_ns)  # /m/*
+
+    # Add debug namespaces with prefix
+    api.add_namespace(debug_user_ns, path='/debug/users')
+    api.add_namespace(debug_session_ns, path='/debug/sessions')
+    api.add_namespace(debug_message_ns, path='/debug/messages')
+    api.add_namespace(debug_mcp_server_ns, path='/debug/mcp_servers')
+    api.add_namespace(debug_mcp_server_activation_ns, path='/debug/mcp_server_activations')
 
     return app

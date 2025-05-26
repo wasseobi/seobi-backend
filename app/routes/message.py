@@ -1,108 +1,57 @@
-"""Message 관련 라우트를 정의하는 모듈입니다."""
+"""메시지 기록 관련 라우트를 정의하는 모듈입니다."""
 from flask import request
-from flask_restx import Resource, Namespace
+from flask_restx import Resource, Namespace, fields
 from app.services.message_service import MessageService
-from app.schemas.message_schema import register_models
 from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
+import json
+from config import Config
 
 # Create namespace
-ns = Namespace('messages', description='Message operations for chat with AI')
+ns = Namespace('m', description='메시지 기록 조회')
 
-# Register models for documentation
-message_model, message_input, message_update, completion_input, completion_response = register_models(
-    ns)
+# Define models for documentation
+message_response = ns.model('MessageResponse', {
+    'id': fields.String(description='메시지 UUID',
+                       example='123e4567-e89b-12d3-a456-426614174000'),
+    'session_id': fields.String(description='세션 UUID',
+                              example='321e1267-e89b-12d3-a456-23131232330'),
+    'user_id': fields.String(description='사용자 UUID',
+                           example='123e4567-e89b-12d3-a456-426614174000'),
+    'content': fields.String(description='메시지 내용',
+                          example='안녕하세요, 도움이 필요합니다.'),
+    'role': fields.String(description='메시지 작성자 역할',
+                        enum=['user', 'assistant', 'system', 'tool'],
+                        example='user'),
+    'timestamp': fields.DateTime(description='메시지 작성 시간',
+                              example='2025-05-23T09:10:39.366Z'),
+    'vector': fields.List(fields.Float, description='메시지 임베딩 벡터',
+                        example=[0])
+})
 
+# Initialize service
 message_service = MessageService()
 
-
-@ns.route('/session/<uuid:session_id>')
-@ns.param('session_id', 'The session identifier')
-@ns.response(404, 'Session not found')
-@ns.response(400, 'Invalid input or session is finished')
-class SessionMessageList(Resource):
-    @ns.doc('list_session_messages',
-            description='Get all messages in a session, ordered by timestamp')
-    @ns.marshal_list_with(message_model)
-    @require_auth
-    def get(self, session_id):
-        """List all messages in a session"""
-        try:
-            return message_service.get_session_messages(session_id)
-        except ValueError as e:
-            ns.abort(400, str(e))
-
-    @ns.doc('create_message',
-            description='Create a new message in a session. Use this for system messages or manual message creation.')
-    @ns.expect(message_input)
-    @ns.marshal_with(message_model, code=201)
-    @require_auth
-    def post(self, session_id):
-        """Create a new message in a session"""
-        try:
-            data = request.json
-            if not data or 'content' not in data or 'user_id' not in data:
-                ns.abort(400, 'Message content and user_id are required')
-
-            message = message_service.create_message(
-                session_id=session_id,
-                user_id=data['user_id'],
-                content=data['content'],
-                role=data.get('role', 'user')
-            )
-            return message, 201
-        except ValueError as e:
-            ns.abort(400, str(e))
-
-
-@ns.route('/session/<uuid:session_id>/langgraph-completion')
-@ns.param('session_id', 'The session identifier')
-@ns.response(404, 'Session not found')
-@ns.response(400, 'Invalid input or session is finished')
-@ns.response(500, 'Failed to get AI completion')
-class MessageLangGraphCompletion(Resource):
-    @ns.doc('create_langgraph_completion',
-            description='Send a message to the AI via LangGraph and get a response. This will:\n'
-            '1. Save your message\n'
-            '2. Get AI response via LangGraph\n'
-            '3. Save AI response\n'
-            '4. Return both messages')
-    @ns.expect(completion_input)
-    @ns.marshal_with(completion_response)
-    @require_auth
-    def post(self, session_id):
-        try:
-            data = request.json
-            if not data or 'content' not in data or 'user_id' not in data:
-                ns.abort(400, 'Message content and user_id are required')
-
-            result = message_service.create_langgraph_completion(
-                session_id=session_id,
-                user_id=data['user_id'],
-                content=data['content']
-            )
-            return result
-        except ValueError as e:
-            ns.abort(400, str(e))
-
-
-@ns.route('/user/<uuid:user_id>')
-@ns.param('user_id', 'The user identifier')
-@ns.response(404, 'User not found')
+@ns.route('/<uuid:user_id>')
 class UserMessages(Resource):
-    @ns.doc('get_user_messages')
-    @ns.marshal_list_with(message_model)
+    @ns.doc('사용자 전체 메시지',
+            description='특정 사용자의 모든 메시지 기록을 가져옵니다.',
+            security='Bearer' if not Config.DEV_MODE else None,
+            params={
+                'Authorization': {
+                    'description': 'Bearer <jwt>', 
+                    'in': 'header', 
+                    'required': not Config.DEV_MODE
+                }
+            })
+    @ns.response(200, '메시지 목록 조회 성공', [message_response])
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
     @require_auth
     def get(self, user_id):
-        """Get all messages for a specific user"""
+        """특정 사용자의 모든 메시지 기록을 가져옵니다."""
         try:
             return message_service.get_user_messages(user_id)
-        except ValueError as e:
-            ns.abort(404, str(e))
         except Exception as e:
-            ns.abort(500, str(e))
-
-
-# Register the namespace
-api.add_namespace(ns)
+            return {'error': str(e)}, 400
