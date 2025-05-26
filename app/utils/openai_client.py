@@ -15,7 +15,6 @@ def init_langchain_llm(tools: List[BaseTool] = None):
         azure_endpoint=current_app.config['AZURE_OPENAI_ENDPOINT'],
         api_key=current_app.config['AZURE_OPENAI_API_KEY'],
         api_version=current_app.config['AZURE_OPENAI_API_VERSION'],
-        temperature=0.5,
         timeout=60,
         streaming=True
     )
