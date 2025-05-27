@@ -1,5 +1,5 @@
 """Background processing executor."""
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from uuid import UUID
 from flask import current_app
 import graphviz
@@ -33,11 +33,11 @@ def save_graph_visualization(graph: Graph, output_name: str = 'background_graph'
     dot.render(output_name, format='png', cleanup=True)
 
 
-def create_background_executor() -> callable:
+def create_background_executor() -> Callable[[UUID], BackgroundState]:
     """백그라운드 처리 실행기를 생성합니다.
     
     Returns:
-        callable: 세션 처리를 위한 실행 함수
+        Callable: 세션 처리를 위한 실행 함수
     """
     # 그래프 생성 및 컴파일
     graph = build_background_graph()
@@ -95,4 +95,20 @@ def create_background_executor() -> callable:
                 "next_step": "end"
             }
     
-    return execute_session 
+    return execute_session
+
+
+# Create executor instance
+_executor = create_background_executor()
+
+
+async def process_session(session_id: UUID) -> BackgroundState:
+    """Process a session's messages through the background graph.
+    
+    Args:
+        session_id: UUID of the session to process
+        
+    Returns:
+        BackgroundState: Final processing state
+    """
+    return await _executor(session_id) 

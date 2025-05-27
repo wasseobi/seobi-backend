@@ -68,7 +68,17 @@ class SessionService:
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
-        """Finish a session with validation"""
+        """Finish a session with validation and start background processing.
+        
+        Args:
+            session_id: UUID of the session to finish
+            
+        Returns:
+            Dict: Serialized session data
+            
+        Raises:
+            ValueError: If session not found or already finished
+        """
         session = self.dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
@@ -79,6 +89,15 @@ class SessionService:
         updated_session = self.dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
+            
+        # Start background processing
+        try:
+            # 비동기 처리를 시작하되 결과는 기다리지 않음
+            process_session(session_id)
+        except Exception as e:
+            # 백그라운드 처리 실패는 세션 종료를 막지 않음
+            print(f"Failed to start background processing: {str(e)}")
+            # TODO: 적절한 로깅 추가
 
         return self._serialize_session(updated_session)
 

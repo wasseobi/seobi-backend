@@ -1,13 +1,10 @@
 """Background processing graph implementation."""
 from typing import Dict, Any
-from uuid import UUID
 from langgraph.graph import Graph, END
 
 from .nodes.processor import conversation_processor_node
 from .nodes.analyzer import conversation_analyzer_node
 from .nodes.summarizer import conversation_summarizer_node
-from .state import BackgroundState
-from .executor import create_background_executor
 
 
 def build_background_graph() -> Graph:
@@ -74,19 +71,3 @@ def build_background_graph() -> Graph:
     workflow.add_edge("summarizer", END)
     
     return workflow
-
-
-# Create executor instance
-_executor = create_background_executor()
-
-
-async def process_session(session_id: UUID) -> BackgroundState:
-    """Process a session's messages through the background graph.
-    
-    Args:
-        session_id: UUID of the session to process
-        
-    Returns:
-        BackgroundState: Final processing state
-    """
-    return await _executor(session_id)

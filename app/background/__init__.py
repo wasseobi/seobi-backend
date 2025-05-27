@@ -1,5 +1,4 @@
 """Background processing package for Seobi."""
-from .graph import build_background_graph
-from .queue import BackgroundQueue
+from .executor import process_session
 
-__all__ = ['build_background_graph', 'BackgroundQueue'] 
+__all__ = ['process_session'] 
