@@ -33,3 +33,34 @@ def build_graph():
 
         
     return workflow
+
+
+def save_graph_visualization(graph: Graph, output_name: str = 'chatbot_graph'):
+    """Save a visualization of the graph using graphviz.
+    
+    Args:
+        graph: The LangGraph Graph object to visualize
+        output_name: Name of the output file (without extension)
+    """
+    try:
+        import graphviz
+        # Create a new Digraph
+        dot = graphviz.Digraph()
+        dot.attr(rankdir='LR')
+        
+        # Add nodes from the graph's nodes
+        for node in graph.nodes:
+            dot.node(str(node), str(node))
+            
+        # Add edges from the graph's edges
+        for edge in graph.edges:
+            dot.edge(str(edge[0]), str(edge[1]))
+            
+        # Save the visualization
+        dot.render(output_name, format='png', cleanup=True)
+        print(f"\nGraph visualization saved as '{output_name}.png'")
+    except Exception as e:
+        print(f"\nCould not generate graph visualization: {e}")
+        print("To enable graph visualization, install graphviz:")
+        print("  pip install graphviz")
+        print("  sudo apt-get install graphviz")

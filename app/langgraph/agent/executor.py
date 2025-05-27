@@ -2,11 +2,14 @@
 from typing import Dict, List, Callable, Any
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-from .graph import build_graph
+from app.langgraph.graph import build_graph, save_graph_visualization
 
 def create_agent_executor() -> Callable:
     """Agent 실행기를 생성합니다."""
     graph = build_graph()
+    # 그래프 시각화 저장
+    save_graph_visualization(graph, 'chatbot_workflow')
+    
     compiled_graph = graph.compile()
     
     def invoke(
