@@ -21,7 +21,7 @@ session_response = ns.model('SessionResponse', {
 session_close_response = ns.model('SessionCloseResponse', {
     'id': fields.String(description='세션 UUID',
                         example='123e4567-e89b-12d3-a456-426614174000'),
-    'user_id': fields.String(description='사용자 UUID',
+    'user-id': fields.String(description='사용자 UUID',
                              example='123e4567-e89b-12d3-a456-426614174000'),
     'start_at': fields.DateTime(description='세션 시작 시간',
                                 example='2025-05-23T09:13:11.475Z'),
@@ -44,7 +44,7 @@ session_message_response = ns.model('SessionMessage', {
                         example='123e4567-e89b-12d3-a456-426614174000'),
     'session_id': fields.String(description='세션 UUID',
                                 example='123e4567-e89b-12d3-a456-426614174000'),
-    'user_id': fields.String(description='사용자 UUID',
+    'user-id': fields.String(description='사용자 UUID',
                              example='123e4567-e89b-12d3-a456-426614174000'),
     'content': fields.String(description='메시지 내용',
                              example='안녕하세요, 도움이 필요합니다.'),
@@ -74,7 +74,7 @@ class SessionOpen(Resource):
                     'in': 'header',
                     'required': not Config.DEV_MODE
                 },
-                'user_id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
+                'user-id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
             })
     @ns.response(201, '세션이 생성됨', session_response)
     @ns.response(400, '잘못된 요청')
@@ -82,13 +82,20 @@ class SessionOpen(Resource):
     @require_auth
     def post(self):
         """새로운 채팅 세션을 생성합니다."""
-        user_id = request.headers.get('user_id')
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"[헤더 확인] request.headers: {dict(request.headers)}")
+
+        user_id = (
+            request.headers.get('user-id')
+            or request.headers.get('User-Id')
+        )
         if not user_id:
-            return {'error': 'user_id is required'}, 400
+            return {'error': 'user-id is required'}, 400
 
         try:
             session = session_service.create_session(uuid.UUID(user_id))
-            return {"session_id": str(session.id)}
+            return {"session_id": str(session["id"])}, 201
         except Exception as e:
             return {'error': str(e)}, 400
 
@@ -114,12 +121,12 @@ class SessionClose(Resource):
         try:
             session = session_service.finish_session(session_id)
             return {
-                'id': str(session.id),
-                'user_id': str(session.user_id),
-                'start_at': session.start_at,
-                'finish_at': session.finish_at,
-                'title': session.title,
-                'description': session.description
+                'id': str(session["id"]),
+                'user_id': str(session["user_id"]),
+                'start_at': session["start_at"],
+                'finish_at': session["finish_at"],
+                'title': session["title"],
+                'description': session["description"]
             }
         except Exception as e:
             ns.abort(400, f"Failed to close session: {str(e)}")
@@ -145,7 +152,7 @@ class MessageSend(Resource):
                     'in': 'header',
                     'required': True
                 },
-                'user_id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
+                'user-id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
             })
     @ns.expect(message_send_input)
     @require_auth
