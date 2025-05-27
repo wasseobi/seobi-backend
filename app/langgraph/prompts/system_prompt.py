@@ -8,6 +8,7 @@ SYSTEM_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의
 2. 계산이 필요한 경우
 3. 사실 확인이 필요한 경우
 4. 최신 정보가 필요한 경우
+5. 사용자의 이전 대화 내용을 참고해야 하는 경우
 
 사용 가능한 도구:
 1. search_web: 웹에서 정보를 검색합니다. 날씨, 뉴스, 정보 조회 등에 사용하세요.
@@ -22,6 +23,17 @@ SYSTEM_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의
    {{
      "name": "calculator",
      "arguments": {{"expression": "계산할 수식"}}
+   }}
+
+3. search_similar_messages_by_user_id_tool: 사용자의 이전 대화 내용 중 현재 질문과 관련된 내용을 검색합니다.
+   이전 대화 맥락이 필요하거나, 사용자의 과거 발언을 참고해야 할 때 반드시 사용하세요.
+   사용법:
+   {{
+     "name": "search_similar_messages",
+     "arguments": {{
+       "query": "검색할 내용",
+       "top_k": 5
+     }}
    }}
 
 도구 사용 결과는 scratchpad에서 확인할 수 있습니다.

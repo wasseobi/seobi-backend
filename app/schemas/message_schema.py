@@ -30,8 +30,8 @@ def register_models(ns):
     })
 
     completion_response = ns.model('CompletionResponse', {
-        'user_message': api_fields.Nested(message_model, description='The user message that was sent'),
-        'assistant_message': api_fields.Nested(message_model, description='The AI assistant\'s response')
+        'answer': api_fields.String(description='AI가 생성한 전체 답변(한글, 사람이 읽기 쉬움)', example='아침 여덟시에 피푸라는 표현이 구체적으로 어떤 의미를 가지는지 명확하지 않습니다...'),
+        'chunks': api_fields.List(api_fields.Raw, description='AI 응답의 청크 배열(디버깅/고급용)')
     })
 
     return message_model, message_input, message_update, completion_input, completion_response 
