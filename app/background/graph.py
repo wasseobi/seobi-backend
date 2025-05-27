@@ -3,13 +3,11 @@ from typing import Dict, Any
 from uuid import UUID
 from langgraph.graph import Graph, END
 
-from ..services.message_service import MessageService
 from .nodes.processor import conversation_processor_node
 from .nodes.analyzer import conversation_analyzer_node
 from .nodes.summarizer import conversation_summarizer_node
-from .state import BackgroundState, create_initial_state
-
-import graphviz
+from .state import BackgroundState
+from .executor import create_background_executor
 
 
 def build_background_graph() -> Graph:
@@ -78,6 +76,10 @@ def build_background_graph() -> Graph:
     return workflow
 
 
+# Create executor instance
+_executor = create_background_executor()
+
+
 async def process_session(session_id: UUID) -> BackgroundState:
     """Process a session's messages through the background graph.
     
@@ -87,40 +89,4 @@ async def process_session(session_id: UUID) -> BackgroundState:
     Returns:
         BackgroundState: Final processing state
     """
-    # Get messages
-    messages = MessageService().get_session_messages(session_id)
-    
-    # Create initial state
-    initial_state = create_initial_state(
-        conversation_id=str(session_id),
-        messages=messages,
-        metadata={
-            "session_id": str(session_id)
-        }
-    )
-    
-    # Run graph
-    return await build_background_graph().ainvoke(initial_state)
-
-
-def save_graph_visualization(graph: Graph, output_name: str = 'background_graph'):
-    """Save a visualization of the background graph using graphviz.
-    
-    Args:
-        graph: The graph to visualize
-        output_name: Name for the output file (without extension)
-    """
-    # Create a new Digraph
-    dot = graphviz.Digraph()
-    dot.attr(rankdir='LR')
-    
-    # Add nodes from the graph's nodes
-    for node in graph.nodes:
-        dot.node(str(node), str(node))
-        
-    # Add edges from the graph's edges
-    for edge in graph.edges:
-        dot.edge(str(edge[0]), str(edge[1]))
-        
-    # Save the visualization
-    dot.render(output_name, format='png', cleanup=True)
+    return await _executor(session_id)
