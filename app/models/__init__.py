@@ -4,3 +4,6 @@ from .message import Message
 from .session import Session
 from .user import User
 from .db import db
+from .schedule import Schedule
+from .report import Report
+from .insight_article import InsightArticle
