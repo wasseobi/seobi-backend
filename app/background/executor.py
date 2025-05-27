@@ -17,19 +17,39 @@ def save_graph_visualization(graph: Graph, output_name: str = 'background_graph'
         graph: The graph to visualize
         output_name: Name for the output file (without extension)
     """
-    # Create a new Digraph
+    # Create a new Digraph with better styling
     dot = graphviz.Digraph()
-    dot.attr(rankdir='LR')
+    dot.attr(rankdir='LR')  # Left to right layout
+    dot.attr('node', shape='box', style='rounded,filled', fillcolor='lightblue')
+    dot.attr('edge', fontsize='10')
     
-    # Add nodes from the graph's nodes
+    # Add nodes with better labels
+    node_labels = {
+        'processor': '1. Process Messages',
+        'analyzer': '2. Analyze Content',
+        'summarizer': '3. Generate Summary',
+        'end': 'End'
+    }
+    
     for node in graph.nodes:
-        dot.node(str(node), str(node))
-        
-    # Add edges from the graph's edges
-    for edge in graph.edges:
-        dot.edge(str(edge[0]), str(edge[1]))
-        
-    # Save the visualization
+        label = node_labels.get(node, node)
+        dot.node(str(node), label)
+    
+    # Add edges with conditional labels
+    edge_labels = {
+        ('processor', 'analyzer'): 'next_step = "analyze"',
+        ('processor', 'summarizer'): 'next_step = "summarize"',
+        ('processor', 'end'): 'next_step = "end" or error',
+        ('analyzer', 'summarizer'): 'next_step = "summarize"',
+        ('analyzer', 'end'): 'next_step = "end" or error',
+        ('summarizer', 'end'): 'complete'
+    }
+    
+    # Add all possible edges with their conditions
+    for (src, dst), label in edge_labels.items():
+        dot.edge(str(src), str(dst), label=label)
+    
+    # Save the visualization with better formatting
     dot.render(output_name, format='png', cleanup=True)
 
 
@@ -42,7 +62,7 @@ def create_background_executor() -> Callable[[UUID], BackgroundState]:
     # 그래프 생성 및 컴파일
     graph = build_background_graph()
     
-    # 그래프 시각화 저장 (개발 환경에서만)
+    # 그래프 시각화 저장
     save_graph_visualization(graph, 'background_workflow')
     
     compiled_graph = graph.compile()
