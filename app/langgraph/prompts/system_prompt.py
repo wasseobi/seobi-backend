@@ -29,7 +29,7 @@ SYSTEM_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의
    이전 대화 맥락이 필요하거나, 사용자의 과거 발언을 참고해야 할 때 반드시 사용하세요.
    사용법:
    {{
-     "name": "search_similar_messages_by_user_id_tool",
+     "name": "search_similar_messages",
      "arguments": {{
        "query": "검색할 내용",
        "top_k": 5

@@ -301,7 +301,7 @@ class MessageService:
             logger.error(f"메시지 저장 중 오류 발생: {str(e)}")
             raise
 
-    def search_similar_messages_by_user_id(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
+    def search_similar_messages(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
         """
         user_id로 해당 사용자의 모든 메시지 벡터를 불러와 쿼리 임베딩과의 유사도를 계산, top-N 결과 반환
         """

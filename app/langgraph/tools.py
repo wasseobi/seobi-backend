@@ -34,7 +34,7 @@ def calculator(expression: str) -> Union[float, str]:
         return error_msg
 
 @tool
-def search_similar_messages_by_user_id_tool(query: str, top_k: int = 5) -> str:
+def search_similar_messages(query: str, top_k: int = 5) -> str:
     """
     현재 세션의 user_id로 해당 사용자의 모든 메시지 벡터 중 쿼리와 가장 유사한 메시지 top-N을 반환합니다.
     Args:
@@ -56,18 +56,18 @@ def search_similar_messages_by_user_id_tool(query: str, top_k: int = 5) -> str:
         user_id = request.json.get('user_id')
     if not user_id:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
-    print(f"[TOOL 호출] search_similar_messages_by_user_id_tool(user_id={user_id}, query={query}, top_k={top_k})")
+    print(f"[TOOL 호출] search_similar_messages(user_id={user_id}, query={query}, top_k={top_k})")
     logger = logging.getLogger(__name__)
-    logger.debug(f"[TOOL 호출] search_similar_messages_by_user_id_tool(user_id={user_id}, query={query}, top_k={top_k})")
+    logger.debug(f"[TOOL 호출] search_similar_messages(user_id={user_id}, query={query}, top_k={top_k})")
     from app.services.message_service import MessageService
     message_service = MessageService()
-    results = message_service.search_similar_messages_by_user_id(user_id, query, top_k)
-    print(f"[TOOL 반환] search_similar_messages_by_user_id_tool 결과: {results}")
-    logger.debug(f"[TOOL 반환] search_similar_messages_by_user_id_tool 결과: {results}")
+    results = message_service.search_similar_messages(user_id, query, top_k)
+    print(f"[TOOL 반환] search_similar_messages 결과: {results}")
+    logger.debug(f"[TOOL 반환] search_similar_messages 결과: {results}")
     return json.dumps(results, ensure_ascii=False)
 
 # 도구 목록
 if 'tools' in globals():
-    tools = [search_web, calculator, search_similar_messages_by_user_id_tool]
+    tools = [search_web, calculator, search_similar_messages]
 else:
-    tools = [search_web, calculator, search_similar_messages_by_user_id_tool]
+    tools = [search_web, calculator, search_similar_messages]
