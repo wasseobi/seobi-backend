@@ -1,23 +1,31 @@
 """Background processing graph implementation."""
-import graphviz
-
 from typing import Dict, Any
+from uuid import UUID
 from langgraph.graph import Graph, END
 
+from ..services.message_service import MessageService
 from .nodes.processor import conversation_processor_node
 from .nodes.analyzer import conversation_analyzer_node
 from .nodes.summarizer import conversation_summarizer_node
+from .state import BackgroundState, create_initial_state
+
+import graphviz
 
 
-def build_background_graph():
+def build_background_graph() -> Graph:
     """Build the background processing graph.
     
-    This graph processes conversations after they are completed, performing
-    analysis, summarization, and other background tasks.
+    This graph processes conversations through three stages:
+    1. Processing: Normalize and validate messages
+    2. Analysis: Analyze conversation content
+    3. Summarization: Generate final summary
+    
+    Returns:
+        Graph: Configured processing graph
     """
     workflow = Graph()
     
-    # Add processing nodes
+    # Add nodes
     workflow.add_node("processor", conversation_processor_node)
     workflow.add_node("analyzer", conversation_analyzer_node)
     workflow.add_node("summarizer", conversation_summarizer_node)
@@ -25,32 +33,27 @@ def build_background_graph():
     # Set entry point
     workflow.set_entry_point("processor")
     
-    # Define condition function for edges
+    # Define state-based routing
     def state_conditional(state: Dict[str, Any]) -> str:
-        """Determine the next node based on the current state.
+        """Route to next node based on state.
         
         Args:
-            state: Current state dictionary containing processing results
+            state: Current processing state
             
         Returns:
-            str: Next node to execute or END
+            str: Next node or END
         """
-        # Check if there was an error
         if state.get("error"):
             return END
             
-        # Get the next step from state
         next_step = state.get("next_step", "end")
-        
-        # Map next_step to actual node names
-        if next_step == "analyze":
-            return "analyzer"
-        elif next_step == "summarize":
-            return "summarizer"
-        else:
-            return END
+        return {
+            "analyze": "analyzer",
+            "summarize": "summarizer",
+            "end": END
+        }.get(next_step, END)
     
-    # Add conditional edges
+    # Add edges
     workflow.add_conditional_edges(
         source="processor",
         path=state_conditional,
@@ -61,7 +64,6 @@ def build_background_graph():
         }
     )
     
-    # Add edges from analyzer
     workflow.add_conditional_edges(
         source="analyzer",
         path=state_conditional,
@@ -71,15 +73,43 @@ def build_background_graph():
         }
     )
     
-    # Add edge from summarizer to end
     workflow.add_edge("summarizer", END)
     
     return workflow
 
 
-def save_graph_visualization(graph: Graph, output_name: str = 'background_graph'):
-    """Save a visualization of the background graph using graphviz."""
+async def process_session(session_id: UUID) -> BackgroundState:
+    """Process a session's messages through the background graph.
     
+    Args:
+        session_id: UUID of the session to process
+        
+    Returns:
+        BackgroundState: Final processing state
+    """
+    # Get messages
+    messages = MessageService().get_session_messages(session_id)
+    
+    # Create initial state
+    initial_state = create_initial_state(
+        conversation_id=str(session_id),
+        messages=messages,
+        metadata={
+            "session_id": str(session_id)
+        }
+    )
+    
+    # Run graph
+    return await build_background_graph().ainvoke(initial_state)
+
+
+def save_graph_visualization(graph: Graph, output_name: str = 'background_graph'):
+    """Save a visualization of the background graph using graphviz.
+    
+    Args:
+        graph: The graph to visualize
+        output_name: Name for the output file (without extension)
+    """
     # Create a new Digraph
     dot = graphviz.Digraph()
     dot.attr(rankdir='LR')

@@ -1,11 +1,14 @@
 """Background task queue management."""
-from typing import Dict, Any, List
+from typing import Dict, Any, Optional
+from datetime import datetime
+from uuid import UUID
 from flask import current_app
 from redis import Redis
 from rq import Queue, Job
 from rq.job import JobStatus
 
-from .graph import build_background_graph
+from .graph import build_background_graph, process_session
+from .state import BackgroundState
 
 
 class BackgroundQueue:
@@ -15,31 +18,32 @@ class BackgroundQueue:
         """Initialize the background queue with Redis connection."""
         self.redis_conn = Redis.from_url(current_app.config['REDIS_URL'])
         self.queue = Queue('background', connection=self.redis_conn)
-        self.graph = build_background_graph()
         
-    def enqueue_conversation(self, conversation_id: str, messages: List[Dict[str, Any]]) -> str:
-        """Enqueue a conversation for background processing.
+    def enqueue_session_processing(self, session_id: UUID) -> str:
+        """Enqueue a session for background processing.
         
         Args:
-            conversation_id: ID of the conversation to process
-            messages: List of messages in the conversation
+            session_id: UUID of the session to process
             
         Returns:
             str: Job ID for tracking the processing status
         """
-        # Create initial state
-        initial_state = {
-            "conversation_id": conversation_id,
-            "messages": messages
-        }
+        # Build graph first to validate configuration
+        graph = build_background_graph()
         
         # Enqueue the job
         job = self.queue.enqueue(
-            self.graph.ainvoke,
-            initial_state,
+            process_session,
+            session_id,
             job_timeout='1h',  # Set reasonable timeout
             result_ttl=86400,  # Keep results for 24 hours
-            failure_ttl=86400  # Keep failed jobs for 24 hours
+            failure_ttl=86400,  # Keep failed jobs for 24 hours
+            meta={
+                "graph_config": {
+                    "nodes": list(graph.nodes),
+                    "edges": [(str(e[0]), str(e[1])) for e in graph.edges]
+                }
+            }
         )
         
         return job.id
@@ -53,9 +57,9 @@ class BackgroundQueue:
         Returns:
             Dict containing:
                 - status: Current job status
-                - result: Job result if completed
+                - state: Current processing state if available
                 - error: Error message if failed
-                - progress: Processing progress if available
+                - metadata: Job metadata including graph configuration
         """
         try:
             job = Job.fetch(job_id, connection=self.redis_conn)
@@ -63,11 +67,26 @@ class BackgroundQueue:
             status_info = {
                 "status": job.get_status(),
                 "created_at": job.created_at.isoformat() if job.created_at else None,
-                "ended_at": job.ended_at.isoformat() if job.ended_at else None
+                "ended_at": job.ended_at.isoformat() if job.ended_at else None,
+                "metadata": {
+                    "job_id": job.id,
+                    "queue": job.origin,
+                    "timeout": str(job.timeout),
+                    "result_ttl": str(job.result_ttl),
+                    "failure_ttl": str(job.failure_ttl),
+                    "graph_config": job.meta.get("graph_config", {})
+                }
             }
             
             if job.is_finished:
-                status_info["result"] = job.result
+                # Get the final state
+                final_state: BackgroundState = job.result
+                status_info["state"] = {
+                    "conversation_id": final_state["conversation_id"],
+                    "next_step": final_state["next_step"],
+                    "error": final_state["error"],
+                    "final_result": final_state["final_result"]
+                }
             elif job.is_failed:
                 status_info["error"] = str(job.exc_info)
                 
@@ -97,4 +116,34 @@ class BackgroundQueue:
             return False
         except Exception as e:
             current_app.logger.error(f"Error cancelling job: {str(e)}")
-            return False 
+            return False
+            
+    def process_job_result(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Process and store the final job result.
+        
+        This method should be called after a job is completed to store
+        the results in the database or other persistent storage.
+        
+        Args:
+            job_id: ID of the completed job
+            
+        Returns:
+            Optional[Dict]: Stored result data if successful, None if failed
+        """
+        try:
+            status = self.get_job_status(job_id)
+            if status["status"] != "finished" or "state" not in status:
+                return None
+                
+            state: BackgroundState = status["state"]
+            if not state.get("final_result"):
+                return None
+                
+            # TODO: Implement database storage
+            # This is where you would store the results in your database
+            # For now, just return the final result
+            return state["final_result"]
+            
+        except Exception as e:
+            current_app.logger.error(f"Error processing job result: {str(e)}")
+            return None 

@@ -1,14 +1,15 @@
 """Conversation analyzer node implementation."""
 from typing import Dict, Any, List
+from datetime import datetime
 from flask import current_app
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+import json
 
-from app.models.session import Session
-from app.models.db import db
+from ..state import BackgroundState, AnalysisResults, AnalysisMetadata
 
 
-async def conversation_analyzer_node(state: Dict[str, Any]) -> Dict[str, Any]:
+async def conversation_analyzer_node(state: BackgroundState) -> BackgroundState:
     """Analyze a processed conversation.
     
     This node performs analysis on the processed conversation, such as:
@@ -18,30 +19,27 @@ async def conversation_analyzer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     - User intent analysis
     
     Args:
-        state: Current state dictionary containing:
-            - processed_data: Data from the processor node
-            - conversation_id: ID of the conversation
-            
+        state: Current background processing state
+        
     Returns:
-        Updated state dictionary with:
-            - next_step: Next processing step ("summarize" or "end")
-            - error: Error message if analysis failed
-            - analysis_results: Results of the conversation analysis
+        Updated background processing state
     """
     try:
         processed_data = state.get("processed_data", {})
         if not processed_data:
             return {
+                **state,
                 "error": "No processed data available",
                 "next_step": "end"
             }
             
-        session = processed_data.get("session")
         messages = processed_data.get("messages", [])
+        metadata = processed_data.get("metadata", {})
         
-        if not session or not messages:
+        if not messages:
             return {
-                "error": "Missing session or messages in processed data",
+                **state,
+                "error": "No messages available for analysis",
                 "next_step": "end"
             }
             
@@ -60,45 +58,77 @@ async def conversation_analyzer_node(state: Dict[str, Any]) -> Dict[str, Any]:
             4. Overall sentiment
             5. Action items or follow-ups needed
             
+            Additional context about the conversation:
+            - Total messages: {message_count}
+            - Time span: {time_span}
+            - Participants: {participants}
+            
             Format your response as a JSON object with these keys:
             - topics: list of main topics
             - key_points: list of key points
             - user_intent: string describing primary intent
             - sentiment: string (positive, negative, neutral, or mixed)
             - action_items: list of action items
+            - confidence: float between 0 and 1 indicating analysis confidence
             """),
             ("user", "{conversation}")
         ])
         
         # Format conversation for analysis
         conversation_text = "\n".join([
-            f"{msg.role}: {msg.content}"
+            f"{msg['role']}: {msg['content']}"
             for msg in messages
         ])
         
+        # Calculate time span
+        time_span = "Unknown"
+        if metadata.get("first_message_time") and metadata.get("last_message_time"):
+            first_time = datetime.fromisoformat(metadata["first_message_time"])
+            last_time = datetime.fromisoformat(metadata["last_message_time"])
+            time_span = f"{last_time - first_time}"
+            
         # Run analysis
         chain = analysis_prompt | llm
         analysis_result = await chain.ainvoke({
-            "conversation": conversation_text
+            "conversation": conversation_text,
+            "message_count": metadata.get("message_count", 0),
+            "time_span": time_span,
+            "participants": ", ".join(metadata.get("unique_roles", []))
         })
         
-        # Parse and store analysis results
-        # TODO: Create an AnalysisResult model to store this
-        session.analysis_results = analysis_result.content
-        db.session.commit()
-        
-        # Determine next step
-        next_step = "summarize"  # Default to summarization
+        # Parse analysis results
+        try:
+            analysis_data: AnalysisResults = json.loads(analysis_result.content)
+        except json.JSONDecodeError:
+            current_app.logger.warning("Failed to parse analysis results as JSON")
+            analysis_data = {
+                "topics": [],
+                "key_points": [],
+                "user_intent": "Unknown",
+                "sentiment": "Unknown",
+                "action_items": [],
+                "confidence": 0.0
+            }
+            
+        # Add analysis metadata
+        analysis_metadata: AnalysisMetadata = {
+            "analyzed_at": datetime.now().isoformat(),
+            "model_used": "gpt-3.5-turbo",
+            "confidence": analysis_data.get("confidence", 0.0),
+            "analysis_version": "1.0"
+        }
         
         return {
-            "next_step": next_step,
-            "analysis_results": analysis_result.content,
-            "processed_data": processed_data  # Pass through processed data
+            **state,
+            "next_step": "summarize",
+            "analysis_results": analysis_data,
+            "analysis_metadata": analysis_metadata
         }
         
     except Exception as e:
         current_app.logger.error(f"Error in conversation analyzer: {str(e)}")
         return {
+            **state,
             "error": str(e),
             "next_step": "end"
         } 
