@@ -92,10 +92,8 @@ class MessageService:
         try:
             client = get_openai_client()
             vector = get_embedding(client, content)
-            print(f"[임베딩] 벡터 생성 성공 - content: {content[:30]}...")
             logger.debug(f"[임베딩] 벡터 생성 성공 - content: {content[:30]}...")
         except Exception as e:
-            print(f"[임베딩] 벡터 생성 실패: {str(e)}")
             logger.error(f"[임베딩] 벡터 생성 실패: {str(e)}")
             vector = None
 
@@ -123,7 +121,6 @@ class MessageService:
         
         try:
             context.add_user_message(content if content is not None else messages[-1]['content'])
-            print(f"[LangGraph] 사용자 입력: {content if content is not None else messages[-1]['content']}")
             logger.debug(f"[LangGraph] 사용자 입력: {content if content is not None else messages[-1]['content']}")
             yield {
                 'type': 'start',
@@ -135,17 +132,14 @@ class MessageService:
             for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
                 try:
                     chunk_data = None
-                    print(f"[LangGraph] msg_chunk 타입: {type(msg_chunk)}, 내용: {str(msg_chunk)[:100]}")
                     logger.debug(f"[LangGraph] msg_chunk 타입: {type(msg_chunk)}, 내용: {str(msg_chunk)[:100]}")
                     if isinstance(msg_chunk, ToolMessage):
-                        print(f"[LangGraph] ToolMessage 도착: {msg_chunk}")
                         logger.debug(f"[LangGraph] ToolMessage 도착: {msg_chunk}")
                         for processed in processor.process_ai_or_tool_message(msg_chunk):
                             context.add_tool_result(
                                 tool_name=processed.get("metadata", {}).get("tool_name", "unknown"),
                                 result=processed.get("content", "")
                             )
-                            print(f"[LangGraph] ToolMessage 처리 결과: {processed}")
                             logger.debug(f"[LangGraph] ToolMessage 처리 결과: {processed}")
                             chunk_data = {
                                 'type': 'chunk',
@@ -156,11 +150,9 @@ class MessageService:
                                 }
                             }
                     elif isinstance(msg_chunk, AIMessage):
-                        print(f"[LangGraph] AIMessage 도착: {msg_chunk}")
                         logger.debug(f"[LangGraph] AIMessage 도착: {msg_chunk}")
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
                             tool_calls = msg_chunk.additional_kwargs["tool_calls"]
-                            print(f"[LangGraph] AIMessage tool_calls: {tool_calls}")
                             logger.debug(f"[LangGraph] AIMessage tool_calls: {tool_calls}")
                             context.add_tool_call_chunk(tool_calls[0])
                             chunk_data = {
@@ -169,7 +161,6 @@ class MessageService:
                             }
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
-                            print(f"[LangGraph] AIMessage content: {msg_chunk.content}")
                             logger.debug(f"[LangGraph] AIMessage content: {msg_chunk.content}")
                             chunk_data = {
                                 'type': 'chunk',
@@ -177,14 +168,12 @@ class MessageService:
                                 'metadata': metadata
                             }
                     elif isinstance(msg_chunk, dict):
-                        print(f"[LangGraph] dict msg_chunk: {msg_chunk}")
                         logger.debug(f"[LangGraph] dict msg_chunk: {msg_chunk}")
                         if "agent" in msg_chunk:
                             messages_to_process = msg_chunk["agent"].get("formatted_messages", [])
                             for processed in processor.process_agent_messages(messages_to_process):
                                 if processed.get("content"):
                                     context.append_assistant_content(processed["content"])
-                                    print(f"[LangGraph] agent 메시지 처리: {processed}")
                                     logger.debug(f"[LangGraph] agent 메시지 처리: {processed}")
                                     chunk_data = {
                                         'type': 'chunk',
@@ -195,7 +184,6 @@ class MessageService:
                             for processed in processor.process_dict_message(msg_chunk):
                                 if processed.get("content"):
                                     context.append_assistant_content(processed["content"])
-                                    print(f"[LangGraph] dict 메시지 처리: {processed}")
                                     logger.debug(f"[LangGraph] dict 메시지 처리: {processed}")
                                     chunk_data = {
                                         'type': 'chunk',
@@ -204,24 +192,20 @@ class MessageService:
                                     }
                     if chunk_data and chunk_data.get('content'):
                         final_response.append(chunk_data.get('content'))
-                        print(f"[LangGraph] chunk_data 최종 content: {chunk_data.get('content')}")
                         logger.debug(f"[LangGraph] chunk_data 최종 content: {chunk_data.get('content')}")
                         yield chunk_data
                 except Exception as processing_error:
-                    print(f"[LangGraph] 메시지 처리 중 오류 발생: {str(processing_error)}")
                     logger.error(f"메시지 처리 중 오류 발생: {str(processing_error)}")
                     continue
             context.finalize_assistant_response()
             self._save_context_messages(context)
             if final_response:
-                print(f"[AI응답] 최종:\n{json.dumps(''.join(final_response), ensure_ascii=False, indent=2)}")
                 logger.debug(f"[AI응답] 최종:\n{json.dumps(''.join(final_response), ensure_ascii=False)}")
             yield {
                 'type': 'end',
                 'context_saved': True
             }
         except Exception as e:
-            print(f"[LangGraph] LangGraph 완료 생성 중 오류 발생: {str(e)}")
             logger.error(f"LangGraph 완료 생성 중 오류 발생: {str(e)}")
             yield {
                 'type': 'error',
@@ -307,21 +291,17 @@ class MessageService:
         """
         import logging, json
         logger = logging.getLogger(__name__)
-        print(f"[벡터검색] user_id: {user_id}, query: {query}, top_k: {top_k}")
         logger.debug(f"[벡터검색] user_id: {user_id}, query: {query}, top_k: {top_k}")
         user_uuid = uuid.UUID(user_id) if not isinstance(user_id, uuid.UUID) else user_id
         messages = self.dao.get_user_messages(user_uuid)
-        print(f"[벡터검색] 불러온 메시지 수: {len(messages)}")
         logger.debug(f"[벡터검색] 불러온 메시지 수: {len(messages)}")
         if not messages:
-            print("[벡터검색] 메시지가 없습니다.")
             logger.debug("[벡터검색] 메시지가 없습니다.")
             return []
 
         # 쿼리 임베딩 생성
         client = get_openai_client()
         query_vec = np.array(get_embedding(client, query))
-        print(f"[벡터검색] 쿼리 임베딩: {json.dumps(query_vec.tolist(), ensure_ascii=False)}")
         logger.debug(f"[벡터검색] 쿼리 임베딩: {json.dumps(query_vec.tolist(), ensure_ascii=False)}")
 
         # 각 메시지와의 코사인 유사도 계산
@@ -338,7 +318,6 @@ class MessageService:
                 })
         # 유사도 내림차순 정렬 후 top_k 반환
         results.sort(key=lambda x: x["similarity"], reverse=True)
-        print(f"[벡터검색] 최종 반환 결과: {json.dumps(results[:top_k], ensure_ascii=False, indent=2)}")
         logger.debug(f"[벡터검색] 최종 반환 결과: {json.dumps(results[:top_k], ensure_ascii=False)}")
         return results[:top_k]
 
@@ -355,7 +334,6 @@ class MessageService:
             updated = 0
             errors = 0
             
-            print(f"[벡터 업데이트] 시작: 총 {total}개 메시지")
             logger.debug(f"[벡터 업데이트] 시작: 총 {total}개 메시지")
 
             client = get_openai_client()
@@ -365,11 +343,9 @@ class MessageService:
                         vector = get_embedding(client, msg.content)
                         self.dao.update_message(msg.id, vector=vector)
                         updated += 1
-                        print(f"[벡터 업데이트] 성공 {updated}/{total}: {msg.content[:30]}...")
                         logger.debug(f"[벡터 업데이트] 성공 {updated}/{total}: {msg.content[:30]}...")
                     except Exception as e:
                         errors += 1
-                        print(f"[벡터 업데이트] 실패 {msg.id}: {str(e)}")
                         logger.error(f"[벡터 업데이트] 실패 {msg.id}: {str(e)}")
 
             result = {
@@ -378,7 +354,6 @@ class MessageService:
                 "errors": errors,
                 "skipped": total - updated - errors
             }
-            print(f"[벡터 업데이트] 완료: {json.dumps(result, ensure_ascii=False)}")
             logger.debug(f"[벡터 업데이트] 완료: {json.dumps(result, ensure_ascii=False)}")
             return result
 
