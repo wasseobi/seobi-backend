@@ -14,8 +14,8 @@ class InterestService:
         self.session_dao = SessionDAO()
         self.message_service = MessageService()
 
-    def create_interest(self, user_id, content, source_message):
-        return self.dao.create_interest(user_id, content, source_message)
+    def create_interest(self, user_id, content, source_message, importance=0.5):
+        return self.dao.create_interest(user_id, content, source_message, importance)
 
     def get_interest_by_id(self, interest_id):
         return self.dao.get_interest_by_id(interest_id)
@@ -41,8 +41,12 @@ class InterestService:
             {"id": str(msg["id"]), "content": msg["content"]} for msg in messages
         ]
 
-        # 2. 프롬프트 생성
-        user_prompt = get_interest_user_prompt(message_list)
+        # 기존 키워드 리스트 추출
+        interests = self.dao.get_interests_by_user(user_id)
+        user_keywords = [interest.content for interest in interests]
+
+        # 2. 프롬프트 생성 (기존 키워드 리스트 포함)
+        user_prompt = get_interest_user_prompt(message_list, user_keywords)
 
         context_messages = [
             {"role": "system", "content": EXTRACT_KEYWORDS_SYSTEM_PROMPT},
@@ -56,11 +60,19 @@ class InterestService:
         # 4. 결과 파싱 및 저장 (response는 LLM이 반환하는 JSON 문자열이어야 함)
         try:
             result = json.loads(response)
+            # 기존 키워드 importance 감소 및 update
+            for interest in interests:
+                interest.importance *= 0.9  # 예시: 10% 감소
+                self.dao.update_interest(interest.id, importance=interest.importance)
+            # 새 키워드 처리
             for item in result:
+                keyword = item["keyword"]
+                importance = item.get("importance", 0.5)
                 self.dao.create_interest(
                     user_id=user_id,
-                    content=item["keyword"],
-                    source_message=item["message_ids"]
+                    content=keyword,
+                    source_message=item["message_ids"],
+                    importance=importance
                 )
         except Exception as e:
             print(f"[InterestService] LLM 결과 파싱 실패: {e}\n응답: {response}")

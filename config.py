@@ -25,6 +25,10 @@ class Config:
     AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
     
+    # Google Search API Configuration
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID")
+
     # JWT Configuration
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_jwt_secret_key")
     SECRET_KEY = os.getenv("SECRET_KEY", "dev_flask_secret_key")

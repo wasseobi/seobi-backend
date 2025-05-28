@@ -13,7 +13,7 @@ class Interest(db.Model):
                         ForeignKey('user.id'), nullable=False)
     content = db.Column(Text, nullable=False)
     source_message = db.Column(JSON, nullable=False)  # message_id 리스트
-    created_at = db.Column(db.DateTime(
-        timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    importance = db.Column(db.Float, nullable=False, default=0.5)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', back_populates='interests')

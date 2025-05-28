@@ -1,23 +1,32 @@
 # 관심사 추출 프롬프트
 EXTRACT_KEYWORDS_SYSTEM_PROMPT = (
     "아래 메시지 리스트를 참고해서 사용자의 관심 키워드를 추출하고, "
-    "각 키워드가 어떤 message_id에서 추출됐는지 반드시 JSON 배열 형태로 반환하세요. "
-    "출력 예시: [{\"keyword\": \"국내여행\", \"message_ids\": [\"c7da6b58-3700-469d-9fd7-0b0f5b78571b\", \"55460f94-f1c2-423b-a3e3-4f9011f4633c\"]}...]"
+    "각 키워드가 어떤 message_id에서 추출됐는지와 중요도(importance, 0~1 float)를 반드시 JSON 배열 형태로 반환하세요. "
+    "출력 예시: [{\"keyword\": \"국내여행\", \"importance\": 0.92, \"message_ids\": [\"c7da6b58-3700-469d-9fd7-0b0f5b78571b\", \"55460f94-f1c2-423b-a3e3-4f9011f4633c\"]}]"
     "\n각 message_ids는 문자열 리스트로, 키워드별로 연관된 message_id만 포함해야 합니다. "
+    "importance는 해당 키워드가 사용자 관심사에서 차지하는 의미/비중을 0~1 사이 실수로 평가해 주세요. "
+    "특히, 새로 추출된 키워드가 기존 키워드 리스트와 비슷할수록 importance를 높게 평가하세요. "
     "불필요한 설명 없이 JSON 데이터만 출력하세요."
 )
 
 
-def get_interest_user_prompt(message_list):
+def get_interest_user_prompt(message_list, user_keywords=None):
     """
     message_list: [{'id': '...', 'content': '...'}, ...]
+    user_keywords: ["키워드1", "키워드2", ...] (optional)
     """
     joined = "\n".join(
         f"- id: {m['id']}, content: {m['content']}" for m in message_list)
-    return (
-        "아래 메시지 리스트를 참고해서 사용자의 관심 키워드와, 각 키워드가 어떤 message_id에서 추출됐는지 JSON 형태로 반환해줘.\n"
-        "메시지 리스트:\n" + joined
+    prompt = (
+        "아래 메시지 리스트를 참고해서 사용자의 관심 키워드와, 각 키워드가 어떤 message_id에서 추출됐는지, 그리고 중요도(importance, 0~1 float)를 JSON 형태로 반환해줘.\n"
+        "중요도는 해당 키워드가 사용자 관심사에서 차지하는 의미/비중을 0~1 사이 실수로 평가해줘.\n"
     )
+    if user_keywords:
+        prompt += (
+            f"\n참고: 사용자의 기존 관심 키워드 리스트는 다음과 같아. 새로 추출된 키워드가 이 리스트와 비슷할수록 중요도를 높게 평가해줘.\n기존 키워드: {', '.join(user_keywords)}\n"
+        )
+    prompt += "메시지 리스트:\n" + joined
+    return prompt
 
 
 # 세션 요약 프롬프트
