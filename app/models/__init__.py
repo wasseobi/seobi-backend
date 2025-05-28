@@ -7,3 +7,4 @@ from .db import db
 from .schedule import Schedule
 from .report import Report
 from .insight_article import InsightArticle
+from .interest import Interest
