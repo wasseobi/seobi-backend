@@ -22,7 +22,7 @@ depends_on = None
 def upgrade():
     # 1. nullable=True로 컬럼 추가
     with op.batch_alter_table('schedule', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('timestamp', sa.DateTime(timezone=True), nullable=True))
+        batch_op.add_column(sa.Column('timestamp', sa.DateTime(timezone=True), nullable=False))
 
     # 2. 기존 row에 대해 현재 UTC 시간으로 값 채우기
     schedule = table('schedule',

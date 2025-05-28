@@ -15,6 +15,8 @@ class Schedule(db.Model):
     status = db.Column(ENUM('undone', 'doing', 'done', name='schedule_status_enum'), nullable=False, default='undone')
     memo = db.Column(db.Text, nullable=True)
     linked_service = db.Column(db.Text, nullable=False)  # 외부 연동 서비스명 등
+    timestamp = db.Column(db.DateTime(
+        timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # 관계 설정 (User와 연결)
     user = db.relationship('User', back_populates='schedules')

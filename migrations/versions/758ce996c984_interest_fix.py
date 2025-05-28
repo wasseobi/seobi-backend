@@ -22,9 +22,6 @@ def upgrade():
         batch_op.add_column(sa.Column('importance', sa.Float(), nullable=False))
         batch_op.drop_column('created_at')
 
-    with op.batch_alter_table('schedule', schema=None) as batch_op:
-        batch_op.drop_column('timestamp')
-
     # ### end Alembic commands ###
 
 
