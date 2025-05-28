@@ -115,12 +115,23 @@ def google_news(query: str, num_results: int = 5, tbs: str = None) -> list:
 
 
 @tool
-def run_insight_graph(user_id: str) -> str:
-    """인사이트 그래프를 실행하여 인사이트 결과를 반환합니다."""
-    graph = build_insight_graph()
-    context = {"user_id": user_id}
-    result = graph.invoke(context)
-    return result.get("insight", "인사이트 생성 실패")
+def run_insight_graph(user_id: str) -> dict:
+    """인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다."""
+    from app.services.insight_article_service import InsightArticleService
+    service = InsightArticleService()
+    article = service.create_article(user_id, type="chat")
+    # article이 SQLAlchemy 모델 객체라면 dict로 변환
+    result = {
+        "id": str(article.id),
+        "title": article.title,
+        "content": article.content,
+        "tags": article.tags,
+        "source": article.source,
+        "type": article.type,
+        "keywords": article.keywords,
+        "interest_ids": article.interest_ids,
+    }
+    return result
 
 
 agent_tools = [
