@@ -14,5 +14,6 @@ class Interest(db.Model):
     content = db.Column(Text, nullable=False)
     source_message = db.Column(JSON, nullable=False)  # message_id 리스트
     importance = db.Column(db.Float, nullable=False, default=0.5)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', back_populates='interests')
