@@ -2,6 +2,7 @@ from app.dao.insight_article_dao import InsightArticleDAO
 from app.services.interest_service import InterestService
 from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.service_prompts import INSIGHT_ARTICLE_SYSTEM_PROMPT
+from app.langgraph.insight.graph import build_insight_graph
 
 from datetime import datetime, timezone
 
@@ -11,19 +12,23 @@ class InsightArticleService:
         self.interest_service = InterestService()
 
     def create_article(self, user_id, type):
-        client = get_openai_client()
-        response = get_completion(client, context_messages)
-
+        """
+        insight 그래프를 실행하고, 결과 context를 받아 DB에 저장
+        """
+        graph = build_insight_graph()
+        context = {"user_id": user_id, "type": type}
+        result = graph.invoke(context)
         data = {
             "user_id": user_id,
-            "title": title,
-            "content": response,
-            "tags": tags,
-            "source": source,
+            "title": result.get("title", ""),
+            "content": result.get("text", ""),
+            "tags": result.get("tags", []),
+            "source": result.get("source", []),
             "type": type,
             "created_at": datetime.now(timezone.utc),
-            "keywords": keywords,
-            "interest_ids": interest_ids,
+            "keywords": result.get("keywords", []),
+            "interest_ids": result.get("interest_ids", []),
+            "script": result.get("script", "")
         }
         return self.insight_article_dao.create(**data)
 
