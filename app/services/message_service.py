@@ -64,7 +64,15 @@ class MessageService:
             raise ValueError('Cannot get messages from finished session')
 
         messages = self.dao.get_session_messages(session_id)
-        return [self._serialize_message(msg) for msg in messages]
+        serialized = [self._serialize_message(msg) for msg in messages]
+        # 디버깅: 메시지 role별 카운트 및 내용
+        user_count = sum(1 for m in serialized if m.get('role') == 'user')
+        assistant_count = sum(1 for m in serialized if m.get('role') == 'assistant')
+        print(f"[get_session_messages 디버그] user_count: {user_count}, assistant_count: {assistant_count}")
+        for m in serialized:
+            print(f"[get_session_messages 디버그] role: {m.get('role')}, content: {m.get('content')}")
+        print(f"[get_session_messages 디버그] 전체 messages: {json.dumps(serialized, ensure_ascii=False)}")
+        return serialized
 
     def get_conversation_history(self, session_id: uuid.UUID) -> List[Dict[str, str]]:
         """Get conversation history formatted for AI completion"""
@@ -241,6 +249,12 @@ class MessageService:
             if final_response:
                 logger.debug(
                     f"[AI응답] 최종:\n{json.dumps(''.join(final_response), ensure_ascii=False)}")
+            # 디버깅: 저장 후 메시지 리스트
+            try:
+                all_msgs = self.get_session_messages(session_id)
+                print(f"[create_langgraph_completion 디버그] 저장 후 messages: {json.dumps(all_msgs, ensure_ascii=False)}")
+            except Exception as e:
+                print(f"[create_langgraph_completion 디버그] messages 조회 실패: {e}")
             yield {
                 'type': 'end',
                 'context_saved': True
