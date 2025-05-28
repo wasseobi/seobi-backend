@@ -1,5 +1,6 @@
 import uuid
 import json
+import re
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
@@ -84,7 +85,6 @@ class SessionService:
     def update_summary_conversation(self, session_id: uuid.UUID,
                                     user_message: str, assistant_message: str) -> None:
         """Update session title and description based on conversation"""
-        import re
         def extract_json_string(s):
             s = s.strip()
             if s.startswith("```json"):
@@ -114,10 +114,8 @@ class SessionService:
             try:
                 json_str = extract_json_string(response)
                 result = json.loads(json_str)
-                print(f"[디버그] LLM result: {result}")
                 title = result.get('title')
                 description = result.get('description')
-                print(f"[디버그] title: {title}, description: {description}")
                 # fallback: title/description이 None이거나 빈 문자열이면 일부라도 채워넣기
                 if not title:
                     title = (description or response)[:20]
@@ -173,7 +171,6 @@ class SessionService:
         dialogue = "\n".join(
             f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
         )
-        import re
         def extract_json_string(s):
             s = s.strip()
             if s.startswith("```json"):

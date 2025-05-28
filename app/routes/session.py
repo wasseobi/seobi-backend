@@ -188,14 +188,10 @@ class MessageSend(Resource):
                 finally:
                     try:
                         messages = message_service.get_session_messages(session_id)
-                        print(f"[디버그] messages: {json.dumps(messages, ensure_ascii=False)}")
                         user_count = sum(1 for m in messages if m.get('role') == 'user')
                         assistant_count = sum(1 for m in messages if m.get('role') == 'assistant')
-                        print(f"[디버그] user_count: {user_count}, assistant_count: {assistant_count}")
-                        print(f"[디버그] assistant_message_chunks: {assistant_message_chunks}")
                         if user_count == 1 and assistant_count >= 1:
                             user_msg = next((m['content'] for m in messages if m.get('role') == 'user'), user_message)
-                            # message_metadata에 'tools_used'가 있는 assistant 메시지 content 우선 사용
                             assistant_msg = next(
                                 (
                                     m['content']
@@ -207,19 +203,15 @@ class MessageSend(Resource):
                                 ),
                                 None
                             )
-                            # 없으면 content가 비어있지 않은 첫 assistant 메시지 사용
                             if not assistant_msg:
                                 assistant_msg = next((m['content'] for m in messages if m.get('role') == 'assistant' and m.get('content')), '')
-                            print(f"[디버그] update_summary_conversation 호출! user_msg: {user_msg}, assistant_msg: {assistant_msg}")
                             session_service.update_summary_conversation(
                                 session_id,
                                 user_msg,
                                 assistant_msg
                             )
-                        else:
-                            print(f"[디버그] update_summary_conversation 조건 불충족, 호출 안함")
-                    except Exception as e:
-                        print(f"[update_summary_conversation] error: {e}")
+                    except Exception:
+                        pass
                     yield "data: [DONE]\n\n"
 
             return Response(
