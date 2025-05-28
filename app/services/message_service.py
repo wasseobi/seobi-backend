@@ -5,7 +5,6 @@ from app.utils.message.message_context import MessageContext
 
 from app.utils.openai_client import get_openai_client, get_embedding
 from app.utils.message.processor import MessageProcessor
-from app.utils.message.formatter import format_message_content
 from app.langgraph.executor import create_agent_executor
 from app.langgraph.graph import build_graph
 
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class MessageService:
     def __init__(self):
-        self.dao = MessageDAO()
+        self.message_dao = MessageDAO()
         self.session_service = SessionService()
         self.agent_executor = create_agent_executor()
         self.graph = build_graph().compile()
@@ -45,12 +44,12 @@ class MessageService:
 
     def get_all_messages(self) -> List[Dict]:
         """Get all messages"""
-        messages = self.dao.get_all_messages()
+        messages = self.message_dao.get_all_messages()
         return [self._serialize_message(msg) for msg in messages]
 
     def get_message(self, message_id: uuid.UUID) -> Dict:
         """Get a message by ID"""
-        message = self.dao.get_message_by_id(message_id)
+        message = self.message_dao.get_message_by_id(message_id)
         if not message:
             raise ValueError('Message not found')
         return self._serialize_message(message)
@@ -63,7 +62,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.dao.get_session_messages(session_id)
+        messages = self.message_dao.get_session_messages(session_id)
         serialized = [self._serialize_message(msg) for msg in messages]
         return serialized
 
@@ -75,7 +74,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.dao.get_session_messages(session_id)
+        messages = self.message_dao.get_session_messages(session_id)
         return [
             {"role": msg.role, "content": msg.content}
             for msg in messages
@@ -96,20 +95,20 @@ class MessageService:
         except Exception as e:
             vector = None
 
-        message = self.dao.create_message(
+        message = self.message_dao.create(
             session_id, user_id, content, role, vector, metadata)
         return self._serialize_message(message)
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Dict:
         """Update a message"""
-        message = self.dao.update_message(message_id, **kwargs)
+        message = self.message_dao.update(message_id, **kwargs)
         if not message:
             raise ValueError('Message not found')
         return self._serialize_message(message)
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
         """Delete a message"""
-        return self.dao.delete_message(message_id)
+        return self.message_dao.delete(message_id)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
                                     content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
@@ -234,7 +233,7 @@ class MessageService:
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
-            messages = self.dao.get_user_messages(user_id)
+            messages = self.message_dao.get_user_messages(user_id)
             return [self._serialize_message(msg) for msg in messages]
         except Exception as e:
             raise ValueError(f"Failed to get messages for user {user_id}")
@@ -287,7 +286,7 @@ class MessageService:
         logger = logging.getLogger(__name__)
         user_uuid = uuid.UUID(user_id) if not isinstance(
             user_id, uuid.UUID) else user_id
-        messages = self.dao.get_user_messages(user_uuid)
+        messages = self.message_dao.get_user_messages(user_uuid)
         if not messages:
             logger.debug("[벡터검색] 메시지가 없습니다.")
             return []
@@ -318,9 +317,9 @@ class MessageService:
         try:
             # 특정 사용자 또는 전체 메시지 조회
             if user_id:
-                messages = self.dao.get_user_messages(user_id)
+                messages = self.message_dao.get_user_messages(user_id)
             else:
-                messages = self.dao.get_all_messages()
+                messages = self.message_dao.get_all_messages()
 
             total = len(messages)
             updated = 0
@@ -333,7 +332,7 @@ class MessageService:
                 if msg.vector is None:  # 벡터가 없는 메시지만 업데이트
                     try:
                         vector = get_embedding(client, msg.content)
-                        self.dao.update_message(msg.id, vector=vector)
+                        self.message_dao.update(msg.id, vector=vector)
                         updated += 1
                     except Exception as e:
                         errors += 1

@@ -41,7 +41,7 @@ class SessionService:
     def create_session(self, user_id: uuid.UUID) -> Dict:
         """Create a new session with validation"""
         # User validation should be moved to UserDAO
-        session = self.dao.create_session(user_id)
+        session = self.dao.create(user_id)
         if not session:
             raise ValueError('Failed to create session')
         return self._serialize_session(session)
@@ -64,7 +64,7 @@ class SessionService:
 
     def delete_session(self, session_id: uuid.UUID) -> None:
         """Delete a session"""
-        if not self.dao.delete_session(session_id):
+        if not self.dao.delete(session_id):
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:

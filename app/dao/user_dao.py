@@ -17,10 +17,10 @@ class UserDAO(BaseDAO[User]):
         """Get a user by username"""
         return self.query().filter_by(username=username).first()
 
-    def create_user(self, username: str, email: str) -> User:
+    def create(self, username: str, email: str) -> User:
         """Create a new user with specific fields"""
         return self.create(username=username, email=email)
 
-    def update_user(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
+    def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
         """Update a user with specific fields"""
         return self.update(str(user_id), username=username, email=email) 

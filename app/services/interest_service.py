@@ -10,24 +10,24 @@ from app.services.prompts import (
 
 class InterestService:
     def __init__(self):
-        self.dao = InterestDAO()
+        self.interest_dao = InterestDAO()
         self.session_dao = SessionDAO()
         self.message_service = MessageService()
 
     def create_interest(self, user_id, content, source_message, importance=0.5):
-        return self.dao.create_interest(user_id, content, source_message, importance)
+        return self.interest_dao.create(user_id, content, source_message, importance)
 
     def get_interest_by_id(self, interest_id):
-        return self.dao.get_interest_by_id(interest_id)
+        return self.interest_dao.get_interest_by_id(interest_id)
 
     def get_interests_by_user(self, user_id):
-        return self.dao.get_interests_by_user(user_id)
+        return self.interest_dao.get_interests_by_user(user_id)
 
     def update_interest(self, interest_id, **kwargs):
-        return self.dao.update_interest(interest_id, **kwargs)
+        return self.interest_dao.update(interest_id, **kwargs)
 
     def delete_interest(self, interest_id):
-        return self.dao.delete_interest(interest_id)
+        return self.interest_dao.delete(interest_id)
 
     def extract_interests_keywords(self, session_id):
         # 1. 세션의 모든 메시지 조회
@@ -42,7 +42,7 @@ class InterestService:
         ]
 
         # 기존 키워드 리스트 추출
-        interests = self.dao.get_interests_by_user(user_id)
+        interests = self.interest_dao.get_interests_by_user(user_id)
         user_keywords = [interest.content for interest in interests]
 
         # 2. 프롬프트 생성 (기존 키워드 리스트 포함)
@@ -63,12 +63,12 @@ class InterestService:
             # 기존 키워드 importance 감소 및 update
             for interest in interests:
                 interest.importance *= 0.9  # 예시: 10% 감소
-                self.dao.update_interest(interest.id, importance=interest.importance)
+                self.interest_dao.update(interest.id, importance=interest.importance)
             # 새 키워드 처리
             for item in result:
                 keyword = item["keyword"]
                 importance = item.get("importance", 0.5)
-                self.dao.create_interest(
+                self.interest_dao.create(
                     user_id=user_id,
                     content=keyword,
                     source_message=item["message_ids"],
