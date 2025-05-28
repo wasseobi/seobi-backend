@@ -6,10 +6,10 @@ from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
 from app.utils.openai_client import get_openai_client, get_completion
-
-# Define KST timezone (UTC+9)
-KST = timezone(timedelta(hours=9))
-
+from app.services.prompts import (
+    SESSION_SUMMARY_SYSTEM_PROMPT,
+    SESSION_SUMMARY_USER_PROMPT
+)
 
 class SessionService:
     def __init__(self):
@@ -75,7 +75,7 @@ class SessionService:
         if session.finish_at:
             raise ValueError('Session is already finished')
 
-        current_time = datetime.now(KST)
+        current_time = datetime.now(timezone.utc)
         updated_session = self.dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
@@ -100,10 +100,8 @@ class SessionService:
 
         try:
             context_messages = [
-                {"role": "system", "content": "다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요. "
-                 "제목은 20자 이내로, 설명은 100자 이내로 작성해주세요. "
-                 "응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."},
-                {"role": "user", "content": "다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요:\n\n"
+                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT +
                  f"user: {user_message}\n"
                  f"assistant: {assistant_message}"}
             ]
@@ -184,7 +182,7 @@ class SessionService:
                 return match.group(1)
             return s
         context_messages = [
-            {"role": "system", "content": "다음 대화 전체를 바탕으로 세션의 제목과 설명을 생성해주세요. 제목은 20자 이내, 설명은 100자 이내로 작성하고, 응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."},
+            {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
             {"role": "user", "content": dialogue}
         ]
         client = get_openai_client()
