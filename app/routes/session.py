@@ -3,6 +3,7 @@ from flask import request, Response, stream_with_context
 from flask_restx import Resource, Namespace, fields
 from app.services.session_service import SessionService
 from app.services.message_service import MessageService
+from app.services.interest_service import InterestService
 from app.utils.auth_middleware import require_auth
 from config import Config
 import uuid
@@ -60,6 +61,7 @@ session_message_response = ns.model('SessionMessage', {
 # Initialize services
 session_service = SessionService()
 message_service = MessageService()
+interest_service = InterestService()
 
 
 @ns.route('/open')
@@ -119,8 +121,12 @@ class SessionClose(Resource):
     def post(self, session_id):
         """채팅 세션을 종료하고 요약 정보를 생성합니다."""
         try:
-            # 1. 전체 메시지 기반 요약 생성
+            # 1-1. 전체 메시지 기반 요약 생성
             session_service.summarize_session(session_id)
+
+            # 1-2. 관심사 추출
+            interest_service.extract_interests_keywords(session_id)
+            
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)
             return {
@@ -187,11 +193,15 @@ class MessageSend(Resource):
                     yield f"data: {json.dumps({'type': 'error', 'error': str(e)}, ensure_ascii=False)}\n\n"
                 finally:
                     try:
-                        messages = message_service.get_session_messages(session_id)
-                        user_count = sum(1 for m in messages if m.get('role') == 'user')
-                        assistant_count = sum(1 for m in messages if m.get('role') == 'assistant')
+                        messages = message_service.get_session_messages(
+                            session_id)
+                        user_count = sum(
+                            1 for m in messages if m.get('role') == 'user')
+                        assistant_count = sum(
+                            1 for m in messages if m.get('role') == 'assistant')
                         if user_count == 1 and assistant_count >= 1:
-                            user_msg = next((m['content'] for m in messages if m.get('role') == 'user'), user_message)
+                            user_msg = next((m['content'] for m in messages if m.get(
+                                'role') == 'user'), user_message)
                             assistant_msg = next(
                                 (
                                     m['content']
@@ -204,7 +214,8 @@ class MessageSend(Resource):
                                 None
                             )
                             if not assistant_msg:
-                                assistant_msg = next((m['content'] for m in messages if m.get('role') == 'assistant' and m.get('content')), '')
+                                assistant_msg = next((m['content'] for m in messages if m.get(
+                                    'role') == 'assistant' and m.get('content')), '')
                             session_service.update_summary_conversation(
                                 session_id,
                                 user_msg,

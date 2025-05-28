@@ -44,7 +44,6 @@ class MessageContext:
             "timestamp": datetime.now(timezone.utc)
         }
         self.messages.append(message)
-        logger.debug(f"사용자 메시지 추가: {json.dumps(datetime_to_str(message))}")
     
     def combine_tool_call_chunks(self) -> Optional[Dict[str, Any]]:
         """도구 호출 청크들을 하나의 완성된 도구 호출로 합칩니다."""
@@ -74,7 +73,6 @@ class MessageContext:
             self.current_tool_call_chunks = [chunk]
         else:
             self.current_tool_call_chunks.append(chunk)
-        logger.debug(f"도구 호출 청크 추가: {json.dumps(chunk)}")
     
     def flush_tool_call_chunks(self) -> None:
         """현재 도구 호출 청크들을 처리하고 메시지로 저장합니다."""
@@ -92,7 +90,6 @@ class MessageContext:
                 }
             }
             self.messages.append(message)
-            logger.debug(f"도구 호출 메시지 추가: {json.dumps(datetime_to_str(message))}")
         
         self.current_tool_call_chunks = []
     
@@ -108,12 +105,12 @@ class MessageContext:
             }
         }
         self.messages.append(message)
-        logger.debug(f"도구 실행 결과 추가: {json.dumps(datetime_to_str(message))}")
+        # logger.debug(f"도구 실행 결과 추가: {json.dumps(datetime_to_str(message))}")
     
     def append_assistant_content(self, content: str) -> None:
         """AI 응답 청크를 누적합니다."""
         self.final_content += content
-        logger.debug(f"AI 응답 청크 추가 (현재 길이: {len(self.final_content)})")
+        # logger.debug(f"AI 응답 청크 추가 (현재 길이: {len(self.final_content)})")
     
     def finalize_assistant_response(self) -> None:
         """완성된 AI 응답을 메시지에 추가합니다."""
@@ -135,7 +132,6 @@ class MessageContext:
             }
         }
         self.messages.append(message)
-        logger.debug(f"최종 AI 응답 추가: {json.dumps(datetime_to_str(message))}")
     
     def get_messages_for_storage(self) -> List[Dict[str, Any]]:
         """저장할 메시지 목록을 반환합니다. datetime 객체를 문자열로 변환합니다."""
