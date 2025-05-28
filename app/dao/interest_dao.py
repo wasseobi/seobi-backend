@@ -3,11 +3,12 @@ from app.models.db import db
 from sqlalchemy.exc import SQLAlchemyError
 
 class InterestDAO:
-    def create_interest(self, user_id, content, source_message):
+    def create_interest(self, user_id, content, source_message, importance=0.5):
         interest = Interest(
             user_id=user_id,
             content=content,
-            source_message=source_message
+            source_message=source_message,
+            importance=importance
         )
         db.session.add(interest)
         db.session.commit()

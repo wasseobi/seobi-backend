@@ -1,6 +1,7 @@
 from langchain_core.tools import BaseTool, tool
 from langchain_community.tools.tavily_search import TavilySearchResults
-from typing import Dict, Union, Any
+from langchain_google_community import GoogleSearchAPIWrapper
+from typing import Dict, Union, Any, List
 import os
 import json
 import logging
@@ -63,4 +64,34 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
     results = message_service.search_similar_messages(user_id, query, top_k)
     return json.dumps(results, ensure_ascii=False)
 
-tools = [search_web, calculator, search_similar_messages]
+@tool
+def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
+    """Google 검색을 수행합니다.
+
+    Args:
+        query (str): 검색할 키워드나 문장
+        num_results (int, optional): 가져올 결과 수. 기본값 3.
+
+    Returns:
+        List[Dict[str, str]]: 검색 결과 리스트. 각 결과는 title, link, snippet을 포함
+    """
+    try:
+        api_key = os.environ['GOOGLE_API_KEY']
+        cse_id = os.environ['GOOGLE_CSE_ID']
+        if not api_key or not cse_id:
+            return [{"error": "환경 변수 GOOGLE_API_KEY 또는 GOOGLE_CSE_ID가 비어 있습니다."}]
+        if not isinstance(query, str):
+            return [{"error": f"검색어(query)는 문자열이어야 합니다. 현재 타입: {type(query)}"}]
+        if not isinstance(num_results, int):
+            return [{"error": f"num_results는 int여야 합니다. 현재 타입: {type(num_results)}"}]
+        search = GoogleSearchAPIWrapper(
+            google_api_key=api_key,
+            google_cse_id=cse_id
+        )
+        results = search.results(query, num_results=num_results)
+        return results
+        
+    except Exception as e:
+        return [{"error": f"검색 중 오류 발생: {str(e)}"}]
+
+tools = [search_web, calculator, search_similar_messages, google_search]
