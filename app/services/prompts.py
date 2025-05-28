@@ -8,7 +8,7 @@ EXTRACT_KEYWORDS_SYSTEM_PROMPT = (
 )
 
 
-def get_extract_keywords_user_prompt(message_list):
+def get_interest_user_prompt(message_list):
     """
     message_list: [{'id': '...', 'content': '...'}, ...]
     """

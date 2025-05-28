@@ -12,6 +12,7 @@ class User(db.Model):
     # Relationships
     sessions = db.relationship('Session', back_populates='user', lazy=True)
     messages = db.relationship('Message', back_populates='user', lazy=True)
-    schedules = db.relationship('Schedule', back_populates='user')
-    reports = db.relationship('Report', back_populates='user')
-    insight_articles = db.relationship('InsightArticle', back_populates='user')
+    schedules = db.relationship('Schedule', back_populates='user', lazy=True)
+    reports = db.relationship('Report', back_populates='user', lazy=True)
+    insight_articles = db.relationship('InsightArticle', back_populates='user', lazy=True)
+    interests = db.relationship('Interest', back_populates='user', lazy=True)

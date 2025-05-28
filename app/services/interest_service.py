@@ -1,15 +1,17 @@
 import json
 
 from app.dao.interest_dao import InterestDAO
+from app.dao.session_dao import SessionDAO
 from app.services.message_service import MessageService
 from app.utils.openai_client import get_openai_client, get_completion
 from app.services.prompts import (
-    EXTRACT_KEYWORDS_SYSTEM_PROMPT, get_extract_keywords_user_prompt)
+    EXTRACT_KEYWORDS_SYSTEM_PROMPT, get_interest_user_prompt)
 
 
 class InterestService:
     def __init__(self):
         self.dao = InterestDAO()
+        self.session_dao = SessionDAO()
         self.message_service = MessageService()
 
     def create_interest(self, user_id, content, source_message):
@@ -27,17 +29,20 @@ class InterestService:
     def delete_interest(self, interest_id):
         return self.dao.delete_interest(interest_id)
 
-    def extract_and_save_interests_for_session(self, session_id, user_id):
+    def extract_interests_keywords(self, session_id):
         # 1. 세션의 모든 메시지 조회
-        messages = self.message_service.get_all_messages(session_id)
+        messages = self.message_service.get_session_messages(session_id)
+
+        # 1-1. session_id로 user_id 조회
+        user_id = self.session_dao.get_user_id_by_session_id(session_id)
 
         # 메시지 포맷: [{'id': '...', 'content': '...'}, ...]
         message_list = [
-            {"id": str(msg.id), "content": msg.content} for msg in messages
+            {"id": str(msg["id"]), "content": msg["content"]} for msg in messages
         ]
 
         # 2. 프롬프트 생성
-        user_prompt = get_extract_keywords_user_prompt(message_list)
+        user_prompt = get_interest_user_prompt(message_list)
 
         context_messages = [
             {"role": "system", "content": EXTRACT_KEYWORDS_SYSTEM_PROMPT},
