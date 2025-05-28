@@ -1,4 +1,4 @@
-from app.langgraph.tools import google_search
+from app.langgraph.tools import google_news
 
 
 def search_related_news(context):
@@ -10,7 +10,7 @@ def search_related_news(context):
     related_news = {}
     for keyword in related_keywords:
         try:
-            results = google_search(keyword, num_results=5)
+            results = google_news(keyword, num_results=5, tbs=None)
             related_news[keyword] = results
         except Exception as e:
             related_news[keyword] = [{"error": str(e)}]

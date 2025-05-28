@@ -1,4 +1,4 @@
-from app.langgraph.tools import google_search, google_news
+from app.langgraph.tools import google_news
 
 
 def search_web_for_keywords(context):

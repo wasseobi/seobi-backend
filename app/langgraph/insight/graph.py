@@ -8,6 +8,8 @@ from .nodes.document_loader import load_documents
 from .nodes.relation_analyzer import analyze_relations
 from .nodes.related_news_search import search_related_news
 from .nodes.insight_generator import generate_insight
+from .nodes.title_tags_generator import generate_title_tags
+from .nodes.tts_script_generator import generate_tts_script
 
 def build_insight_graph():
     graph = Graph()
@@ -25,8 +27,10 @@ def build_insight_graph():
     graph.add_node("analyze_relations", analyze_relations)
     graph.add_node("search_related_news", search_related_news)
     graph.add_node("generate_insight", generate_insight)
+    graph.add_node("generate_title_tags", generate_title_tags)
+    graph.add_node("generate_tts_script", generate_tts_script)
 
-    # 엣지 연결: 1 → 2 → 3 → 4 → (조건부) 2 or 5 → 6 → END
+    # 엣지 연결: 1 → 2 → 3 → 4 → (조건부) 2 or 5 → 6 → 7 → 8 → END
     graph.add_edge("extract_keywords", "search_web")
     graph.add_edge("search_web", "load_docs")
     graph.add_edge("load_docs", "analyze_relations")
@@ -50,6 +54,8 @@ def build_insight_graph():
         }
     )
     graph.add_edge("search_related_news", "generate_insight")
-    graph.add_edge("generate_insight", END)
+    graph.add_edge("generate_insight", "generate_title_tags")
+    graph.add_edge("generate_title_tags", "generate_tts_script")
+    graph.add_edge("generate_tts_script", END)
 
     return graph
