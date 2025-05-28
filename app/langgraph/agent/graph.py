@@ -4,7 +4,7 @@ from langgraph.graph import Graph, END
 from langgraph.prebuilt import ToolNode
 
 from .nodes.model_node import model_node
-from ..tools import tools
+from ..tools import agent_tools
 
 
 def build_graph():
@@ -12,7 +12,7 @@ def build_graph():
     workflow = Graph()
     
     # Create Runnable nodes
-    tool_node = ToolNode(tools, handle_tool_errors=True)    # Add nodes
+    tool_node = ToolNode(agent_tools, handle_tool_errors=True)    # Add nodes
     workflow.add_node("agent", model_node)
     workflow.add_node("tool", tool_node)
     

@@ -6,12 +6,12 @@ import json
 from app.utils.openai_client import init_langchain_llm
 from app.utils.message.converter import convert_to_openai_messages
 from app.utils.message.formatter import format_message_content, format_message_list
-from ...tools import tools
+from ...tools import agent_tools
 from ..agent_state import AgentState
-from ..prompts.system_prompt import prompt
+from ....utils.prompt.agent_prompt import prompt
 
 # 도구가 바인딩된 모델 초기화
-model = init_langchain_llm(tools)
+model = init_langchain_llm(agent_tools)
 
 def format_tool_results(tool_results: List[Any]) -> Dict:
     """도구 실행 결과를 ToolMessage 형식으로 변환."""
