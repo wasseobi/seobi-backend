@@ -4,7 +4,7 @@ from langgraph.graph import Graph, END
 from langgraph.prebuilt import ToolNode
 
 from .nodes.model_node import model_node
-from .tools import tools
+from ..tools import tools
 
 
 def build_graph():
