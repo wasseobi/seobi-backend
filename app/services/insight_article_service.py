@@ -1,7 +1,7 @@
 from app.dao.insight_article_dao import InsightArticleDAO
 from app.services.interest_service import InterestService
 from app.utils.openai_client import get_openai_client, get_completion
-from app.services.prompts import INSIGHT_ARTICLE_SYSTEM_PROMPT
+from app.utils.prompt.service_prompts import INSIGHT_ARTICLE_SYSTEM_PROMPT
 
 from datetime import datetime, timezone
 
@@ -12,11 +12,11 @@ class InsightArticleService:
 
     # def create_article(self, user_id, type):
     #     # 상위 3개 interest 추출
-    #     top_interests = sorted(
-    #         self.interest_service.get_interests_by_user(user_id),
-    #         key=lambda i: i.importance,
-    #         reverse=True
-    #     )[:3]
+        # top_interests = sorted(
+        #     self.interest_service.get_interests_by_user(user_id),
+        #     key=lambda i: i.importance,
+        #     reverse=True
+        # )[:3]
     #     keywords = [i.content for i in top_interests]
     #     interest_ids = [str(i.id) for i in top_interests]
         

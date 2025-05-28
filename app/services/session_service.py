@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
 from app.utils.openai_client import get_openai_client, get_completion
-from app.services.prompts import (
+from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )

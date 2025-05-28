@@ -5,8 +5,8 @@ from app.utils.message.message_context import MessageContext
 
 from app.utils.openai_client import get_openai_client, get_embedding
 from app.utils.message.processor import MessageProcessor
-from app.langgraph.executor import create_agent_executor
-from app.langgraph.graph import build_graph
+from app.langgraph.agent.executor import create_agent_executor
+from app.langgraph.agent.graph import build_graph
 
 from langchain.schema import HumanMessage, AIMessage
 from langchain_core.messages import BaseMessage, ToolMessage

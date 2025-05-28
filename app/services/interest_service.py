@@ -4,7 +4,7 @@ from app.dao.interest_dao import InterestDAO
 from app.dao.session_dao import SessionDAO
 from app.services.message_service import MessageService
 from app.utils.openai_client import get_openai_client, get_completion
-from app.services.prompts import (
+from app.utils.prompt.service_prompts import (
     EXTRACT_KEYWORDS_SYSTEM_PROMPT, get_interest_user_prompt)
 
 
