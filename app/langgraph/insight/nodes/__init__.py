@@ -1,0 +1,1 @@
+# insight graph nodes package
