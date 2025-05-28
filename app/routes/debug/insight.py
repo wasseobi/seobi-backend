@@ -24,6 +24,7 @@ insight_detail = ns.model('InsightDetail', {
     'source': fields.String(description='생성 소스'),
 })
 
+
 @ns.route('/generate')
 class InsightGenerate(Resource):
     """user_id로 인사이트 그래프를 실행하여 인사이트 결과를 반환합니다."""
@@ -31,10 +32,20 @@ class InsightGenerate(Resource):
     @ns.expect(ns.model('GenerateRequest', {'user_id': fields.String(required=True)}), validate=True)
     def post(self):
         user_id = request.json.get('user_id')
-        graph = build_insight_graph()
-        context = {"user_id": user_id}
-        result = graph.invoke(context)
-        return {"insight": result.get("insight", "인사이트 생성 실패")}
+        article = insight_service.create_article(user_id, type="chat")
+        result = {
+            "id": str(article.id),
+            "title": article.title,
+            "content": article.content,
+            "tags": article.tags,
+            "source": article.source,
+            "type": article.type,
+            "created_at": article.created_at.isoformat() if article.created_at else None,
+            "keywords": article.keywords,
+            "interest_ids": article.interest_ids
+        }
+        return result, 201
+
 
 @ns.route('/list')
 class InsightList(Resource):
@@ -47,6 +58,7 @@ class InsightList(Resource):
         return [
             {"id": str(a.id), "title": a.title, "created_at": a.created_at.isoformat()} for a in articles
         ]
+
 
 @ns.route('/<uuid:article_id>')
 @ns.param('article_id', '인사이트 기사 ID')

@@ -128,8 +128,9 @@ def run_insight_graph(user_id: str) -> dict:
         "tags": article.tags,
         "source": article.source,
         "type": article.type,
+        "created_at": article.created_at.isoformat() if article.created_at else None,
         "keywords": article.keywords,
-        "interest_ids": article.interest_ids,
+        "interest_ids": article.interest_ids
     }
     return result
 
