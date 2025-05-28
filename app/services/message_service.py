@@ -93,9 +93,7 @@ class MessageService:
         try:
             client = get_openai_client()
             vector = get_embedding(client, content)
-            logger.debug(f"[임베딩] 벡터 생성 성공 - content: {content[:30]}...")
         except Exception as e:
-            logger.error(f"[임베딩] 벡터 생성 실패: {str(e)}")
             vector = None
 
         message = self.dao.create_message(
@@ -287,12 +285,9 @@ class MessageService:
         import logging
         import json
         logger = logging.getLogger(__name__)
-        logger.debug(
-            f"[벡터검색] user_id: {user_id}, query: {query}, top_k: {top_k}")
         user_uuid = uuid.UUID(user_id) if not isinstance(
             user_id, uuid.UUID) else user_id
         messages = self.dao.get_user_messages(user_uuid)
-        logger.debug(f"[벡터검색] 불러온 메시지 수: {len(messages)}")
         if not messages:
             logger.debug("[벡터검색] 메시지가 없습니다.")
             return []
@@ -300,8 +295,6 @@ class MessageService:
         # 쿼리 임베딩 생성
         client = get_openai_client()
         query_vec = np.array(get_embedding(client, query))
-        logger.debug(
-            f"[벡터검색] 쿼리 임베딩: {json.dumps(query_vec.tolist(), ensure_ascii=False)}")
 
         # 각 메시지와의 코사인 유사도 계산
         results = []
@@ -318,8 +311,6 @@ class MessageService:
                 })
         # 유사도 내림차순 정렬 후 top_k 반환
         results.sort(key=lambda x: x["similarity"], reverse=True)
-        logger.debug(
-            f"[벡터검색] 최종 반환 결과: {json.dumps(results[:top_k], ensure_ascii=False)}")
         return results[:top_k]
 
     def update_message_vectors(self, user_id: uuid.UUID = None) -> Dict[str, Any]:
@@ -344,8 +335,6 @@ class MessageService:
                         vector = get_embedding(client, msg.content)
                         self.dao.update_message(msg.id, vector=vector)
                         updated += 1
-                        logger.debug(
-                            f"[벡터 업데이트] 성공 {updated}/{total}: {msg.content[:30]}...")
                     except Exception as e:
                         errors += 1
                         logger.error(f"[벡터 업데이트] 실패 {msg.id}: {str(e)}")
@@ -356,8 +345,6 @@ class MessageService:
                 "errors": errors,
                 "skipped": total - updated - errors
             }
-            logger.debug(
-                f"[벡터 업데이트] 완료: {json.dumps(result, ensure_ascii=False)}")
             return result
 
         except Exception as e:

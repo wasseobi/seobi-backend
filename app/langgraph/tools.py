@@ -61,7 +61,6 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
     from app.services.message_service import MessageService
     message_service = MessageService()
     results = message_service.search_similar_messages(user_id, query, top_k)
-    logger.debug(f"[TOOL 반환] search_similar_messages 결과: {results}")
     return json.dumps(results, ensure_ascii=False)
 
 tools = [search_web, calculator, search_similar_messages]
