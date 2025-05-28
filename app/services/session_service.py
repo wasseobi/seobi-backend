@@ -1,5 +1,6 @@
 import uuid
 import json
+import re
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 
@@ -84,6 +85,19 @@ class SessionService:
     def update_summary_conversation(self, session_id: uuid.UUID,
                                     user_message: str, assistant_message: str) -> None:
         """Update session title and description based on conversation"""
+        def extract_json_string(s):
+            s = s.strip()
+            if s.startswith("```json"):
+                s = s[len("```json"):].strip()
+            if s.startswith("```"):
+                s = s[len("```"):].strip()
+            if s.startswith("json"):
+                s = s[4:].strip()
+            match = re.search(r'({.*})', s, re.DOTALL)
+            if match:
+                return match.group(1)
+            return s
+
         try:
             context_messages = [
                 {"role": "system", "content": "다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요. "
@@ -98,13 +112,20 @@ class SessionService:
             response = get_completion(client, context_messages)
 
             try:
-                result = json.loads(response)
-                if 'title' in result and 'description' in result:
-                    self.dao.update_session(
-                        session_id,
-                        title=result['title'],
-                        description=result['description']
-                    )
+                json_str = extract_json_string(response)
+                result = json.loads(json_str)
+                title = result.get('title')
+                description = result.get('description')
+                # fallback: title/description이 None이거나 빈 문자열이면 일부라도 채워넣기
+                if not title:
+                    title = (description or response)[:20]
+                if not description:
+                    description = response[:100]
+                self.dao.update_session(
+                    session_id,
+                    title=title,
+                    description=description
+                )
             except json.JSONDecodeError:
                 self.dao.update_session(
                     session_id,
@@ -139,3 +160,51 @@ class SessionService:
             } for session in sessions]
         except Exception as e:
             raise ValueError(f"Failed to get sessions for user {user_id}")
+
+    def summarize_session(self, session_id: uuid.UUID) -> None:
+        """
+        세션의 모든 메시지를 기반으로 title/description 요약을 생성하고 세션에 저장
+        """
+        from app.services.message_service import MessageService
+        message_service = MessageService()
+        messages = message_service.get_session_messages(session_id)
+        dialogue = "\n".join(
+            f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
+        )
+        def extract_json_string(s):
+            s = s.strip()
+            if s.startswith("```json"):
+                s = s[len("```json"):].strip()
+            if s.startswith("```"):
+                s = s[len("```"):].strip()
+            if s.startswith("json"):
+                s = s[4:].strip()
+            match = re.search(r'({.*})', s, re.DOTALL)
+            if match:
+                return match.group(1)
+            return s
+        context_messages = [
+            {"role": "system", "content": "다음 대화 전체를 바탕으로 세션의 제목과 설명을 생성해주세요. 제목은 20자 이내, 설명은 100자 이내로 작성하고, 응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."},
+            {"role": "user", "content": dialogue}
+        ]
+        client = get_openai_client()
+        response = get_completion(client, context_messages)
+        try:
+            json_str = extract_json_string(response)
+            result = json.loads(json_str)
+            title = result.get('title')
+            description = result.get('description')
+            if not title:
+                title = (description or response)[:20]
+            if not description:
+                description = response[:100]
+            self.dao.update_session(
+                session_id,
+                title=title,
+                description=description
+            )
+        except Exception as e:
+            self.dao.update_session(
+                session_id,
+                description=response[:100]
+            )

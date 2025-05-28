@@ -64,7 +64,8 @@ class MessageService:
             raise ValueError('Cannot get messages from finished session')
 
         messages = self.dao.get_session_messages(session_id)
-        return [self._serialize_message(msg) for msg in messages]
+        serialized = [self._serialize_message(msg) for msg in messages]
+        return serialized
 
     def get_conversation_history(self, session_id: uuid.UUID) -> List[Dict[str, str]]:
         """Get conversation history formatted for AI completion"""
@@ -122,8 +123,6 @@ class MessageService:
         try:
             context.add_user_message(
                 content if content is not None else messages[-1]['content'])
-            logger.debug(
-                f"[LangGraph] 사용자 입력: {content if content is not None else messages[-1]['content']}")
             yield {
                 'type': 'start',
                 'user_message': {'content': content}
@@ -134,11 +133,7 @@ class MessageService:
             for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
                 try:
                     chunk_data = None
-                    logger.debug(
-                        f"[LangGraph] msg_chunk 타입: {type(msg_chunk)}, 내용: {str(msg_chunk)[:100]}")
                     if isinstance(msg_chunk, ToolMessage):
-                        logger.debug(
-                            f"[LangGraph] ToolMessage 도착: {msg_chunk}")
                         processed_list = list(
                             processor.process_ai_or_tool_message(msg_chunk))
                         for processed in processed_list:
@@ -172,11 +167,8 @@ class MessageService:
                                         chunk_data.get('content'))
                                     yield chunk_data
                     elif isinstance(msg_chunk, AIMessage):
-                        logger.debug(f"[LangGraph] AIMessage 도착: {msg_chunk}")
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
                             tool_calls = msg_chunk.additional_kwargs["tool_calls"]
-                            logger.debug(
-                                f"[LangGraph] AIMessage tool_calls: {tool_calls}")
                             context.add_tool_call_chunk(tool_calls[0])
                             chunk_data = {
                                 'type': 'tool_calls',
@@ -185,8 +177,6 @@ class MessageService:
                             yield chunk_data
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
-                            logger.debug(
-                                f"[LangGraph] AIMessage content: {msg_chunk.content}")
                             chunk_data = {
                                 'type': 'chunk',
                                 'content': msg_chunk.content,
@@ -197,8 +187,6 @@ class MessageService:
                                     chunk_data.get('content'))
                                 yield chunk_data
                     elif isinstance(msg_chunk, dict):
-                        logger.debug(
-                            f"[LangGraph] dict msg_chunk: {msg_chunk}")
                         if "agent" in msg_chunk:
                             messages_to_process = msg_chunk["agent"].get(
                                 "formatted_messages", [])
@@ -206,8 +194,6 @@ class MessageService:
                                 if processed.get("content"):
                                     context.append_assistant_content(
                                         processed["content"])
-                                    logger.debug(
-                                        f"[LangGraph] agent 메시지 처리: {processed}")
                                     chunk_data = {
                                         'type': 'chunk',
                                         'content': processed["content"],
@@ -222,8 +208,6 @@ class MessageService:
                                 if processed.get("content"):
                                     context.append_assistant_content(
                                         processed["content"])
-                                    logger.debug(
-                                        f"[LangGraph] dict 메시지 처리: {processed}")
                                     chunk_data = {
                                         'type': 'chunk',
                                         'content': processed["content"],
@@ -233,20 +217,17 @@ class MessageService:
                                         final_response.append(
                                             chunk_data.get('content'))
                                         yield chunk_data
-                except Exception as processing_error:
-                    logger.error(f"메시지 처리 중 오류 발생: {str(processing_error)}")
+                except Exception:
                     continue
             context.finalize_assistant_response()
             self._save_context_messages(context)
             if final_response:
-                logger.debug(
-                    f"[AI응답] 최종:\n{json.dumps(''.join(final_response), ensure_ascii=False)}")
+                pass
             yield {
                 'type': 'end',
                 'context_saved': True
             }
         except Exception as e:
-            logger.error(f"LangGraph 완료 생성 중 오류 발생: {str(e)}")
             yield {
                 'type': 'error',
                 'error': str(e)
@@ -254,17 +235,6 @@ class MessageService:
             raise
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
-        """Get all messages for a user
-
-        Args:
-            user_id (uuid.UUID): User's ID
-
-        Returns:
-            List[Dict]: List of serialized messages for the user
-
-        Raises:
-            ValueError: If user_id is invalid
-        """
         try:
             messages = self.dao.get_user_messages(user_id)
             return [self._serialize_message(msg) for msg in messages]
@@ -286,12 +256,7 @@ class MessageService:
         try:
             session_id = uuid.UUID(context.session_id)
             user_id = uuid.UUID(context.user_id)
-
-            logger.debug(f"메시지 저장 시작 - 세션: {session_id}")
             messages = context.get_messages_for_storage()
-            logger.debug(
-                f"저장할 메시지: {json.dumps(messages, ensure_ascii=False)}")
-
             for message in messages:
                 try:
                     # timestamp는 메타데이터에서 DB 필드로 이동
@@ -299,14 +264,9 @@ class MessageService:
                         timestamp = message.pop("timestamp")
                     else:
                         timestamp = datetime.now(timezone.utc).isoformat()
-
                     metadata = message.get("metadata", {})
                     if isinstance(metadata, dict) and "timestamp" in metadata:
                         del metadata["timestamp"]
-
-                    logger.debug(
-                        f"메시지 저장 시도: role={message['role']}, metadata={json.dumps(metadata, ensure_ascii=False)}")
-
                     self.create_message(
                         session_id=session_id,
                         user_id=user_id,
@@ -314,17 +274,10 @@ class MessageService:
                         role=message["role"],
                         metadata=metadata
                     )
-                    logger.debug(f"메시지 저장 성공: {message['role']}")
-                except Exception as msg_error:
-                    logger.error(f"개별 메시지 저장 실패: {str(msg_error)}")
+                except Exception:
                     raise
-
-            # 컨텍스트 제거
             self.active_contexts.pop(context.session_id, None)
-            logger.debug(f"모든 메시지 저장 완료 - 세션: {session_id}")
-
         except Exception as e:
-            logger.error(f"메시지 저장 중 오류 발생: {str(e)}")
             raise
 
     def search_similar_messages(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
