@@ -1,7 +1,7 @@
 import logging
 from app.utils.openai_client import init_langchain_llm
-from .utils import strip_quotes
-from .prompts import title_prompt, memo_prompt
+from app.utils.message.parser import strip_quotes
+from app.utils.prompt.parse_prompts import title_prompt, memo_prompt
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -125,8 +125,8 @@ def tool(input_data):
 def handoff(input_data):
     llm = init_langchain_llm()
     text = input_data['text']
-    title_resp = llm.invoke([{"role": "user", "content": f"{title_prompt}\n{text}"}])
-    memo_resp = llm.invoke([{"role": "user", "content": f"{memo_prompt}\n{text}"}])
+    title_resp = llm.invoke([{"role": "user", "content": f"{title_prompt}\n{text}"}], max_tokens=20)
+    memo_resp = llm.invoke([{"role": "user", "content": f"{memo_prompt}\n{text}"}], max_tokens=30)
     title = getattr(title_resp, 'content', str(title_resp))
     memo = getattr(memo_resp, 'content', str(memo_resp))
     title = strip_quotes(title)
@@ -135,6 +135,15 @@ def handoff(input_data):
     if not title.strip():
         title = text[:20] + '...'
         memo = (memo or '') + ' [AI가 제목을 추출하지 못해 원문 일부를 제목으로 사용함]'
+    # 후처리: title이 원문 전체이거나 너무 길면, 핵심 단어만 추출
+    if len(title) > 15 or title.strip() == text.strip():
+        import re
+        # 대표 키워드 후보
+        keywords = ['파티', '모임', '회식', '회의', '식사', '발표', '강연', '운동', '산책', '공연', '관람', '스터디', '캠핑', '여행', '봉사', '야유회', '등산', '피크닉', '바베큐', '홈파티']
+        for kw in keywords:
+            if kw in text:
+                title = kw
+                break
     return {**input_data,
             'handoff_result': 'LLM 추가 분석',
             'title': title,
