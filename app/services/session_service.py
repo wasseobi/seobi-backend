@@ -10,12 +10,19 @@ from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )
-from app.langgraph.cleanup.executor import create_cleanup_executor
 
 class SessionService:
     def __init__(self):
         self.session_dao = SessionDAO()
-        self.cleanup_executor = create_cleanup_executor()
+        self._cleanup_executor = None
+
+    @property
+    def cleanup_executor(self):
+        """Lazy initialization of cleanup executor."""
+        if self._cleanup_executor is None:
+            from app.langgraph.cleanup.executor import create_cleanup_executor
+            self._cleanup_executor = create_cleanup_executor()
+        return self._cleanup_executor
 
     def _serialize_session(self, session: Any) -> Dict[str, Any]:
         """Serialize session data for API response"""
@@ -85,16 +92,20 @@ class SessionService:
         if not updated_session:
             raise ValueError('Failed to update session finish time')
 
-        # Run cleanup using executor
-        cleanup_result = self.cleanup_executor(session_id, conversation_history)
-        
-        # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
-        if cleanup_result.get("error"):
-            print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
-        else:
-            print(f"Cleanup completed for session {session_id}")
-            print(f"Analysis: {cleanup_result.get('analysis_result')}")
-            print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
+        try:
+            # Run cleanup using executor
+            cleanup_result = self.cleanup_executor(session_id, conversation_history)
+            
+            # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
+            if cleanup_result.get("error"):
+                print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
+            else:
+                print(f"Cleanup completed for session {session_id}")
+                print(f"Analysis: {cleanup_result.get('analysis_result')}")
+                print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")
+            # Cleanup 실패는 세션 종료를 막지 않음
         
         return self._serialize_session(updated_session)
 
