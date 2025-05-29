@@ -27,6 +27,9 @@ class DailyReportService:
         return start_of_today.astimezone(timezone.utc), start_of_tomorrow.astimezone(timezone.utc)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
     def _get_tomorrow_range(self, tz=KST):
         now = datetime.now(tz)
         start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -36,6 +39,7 @@ class DailyReportService:
 
 
     def get_today_schedules_done(self, user_id: uuid.UUID, tz=KST):
+<<<<<<< HEAD
         start, end = self._get_today_range(tz)
         schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
                      if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'done']
@@ -43,12 +47,14 @@ class DailyReportService:
             {
 =======
     def collect_today_sessions(self, user_id: uuid.UUID, tz=KST):
+=======
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
         start, end = self._get_today_range(tz)
-        sessions = self.session_service.dao.query().filter_by(user_id=user_id) \
-            .filter(self.session_service.dao.model.start_at >= start) \
-            .filter(self.session_service.dao.model.start_at < end).all()
+        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+                     if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'done']
         return [
             {
+<<<<<<< HEAD
                 "id": str(s.id),
                 "title": s.title,
                 "description": s.description,
@@ -67,6 +73,8 @@ class DailyReportService:
         for schedule in schedules:
             result.append({
 >>>>>>> 0cc237c (➕ add: daily_report_service)
+=======
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
                 "id": str(schedule.id),
                 "title": schedule.title,
                 "repeat": getattr(schedule, 'repeat', None),
@@ -75,6 +83,7 @@ class DailyReportService:
                 "location": getattr(schedule, 'location', None),
                 "memo": schedule.memo,
                 "status": schedule.status
+<<<<<<< HEAD
 <<<<<<< HEAD
             }
             for schedule in schedules
@@ -146,21 +155,80 @@ class DailyReportService:
 =======
             })
         return result
+=======
+            }
+            for schedule in schedules
+        ]
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
 
-    def collect_today_articles(self, user_id: uuid.UUID, tz=KST):
+    def get_today_schedules_undone(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_today_range(tz)
-        articles = self.article_service.insight_article_dao.query().filter_by(user_id=user_id) \
-            .filter(self.article_service.insight_article_dao.model.created_at >= start) \
-            .filter(self.article_service.insight_article_dao.model.created_at < end).all()
+        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+                     if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'undone']
         return [
             {
-                "id": str(a.id),
-                "title": a.title,
-                "content": a.content,
-                "created_at": to_local(a.created_at, tz)
+                "id": str(schedule.id),
+                "title": schedule.title,
+                "repeat": getattr(schedule, 'repeat', None),
+                "start_at": to_local(schedule.start_at, tz),
+                "finish_at": to_local(schedule.finish_at, tz),
+                "location": getattr(schedule, 'location', None),
+                "memo": schedule.memo,
+                "status": schedule.status
             }
+<<<<<<< HEAD
             for a in articles
 >>>>>>> 0cc237c (➕ add: daily_report_service)
+=======
+            for schedule in schedules
+        ]
+
+    def get_tomorrow_schedules(self, user_id: uuid.UUID, tz=KST):
+        start, end = self._get_tomorrow_range(tz)
+        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+                     if schedule.start_at >= start and schedule.start_at < end]
+        return [
+            {
+                "id": str(schedule.id),
+                "title": schedule.title,
+                "repeat": getattr(schedule, 'repeat', None),
+                "start_at": to_local(schedule.start_at, tz),
+                "finish_at": to_local(schedule.finish_at, tz),
+                "location": getattr(schedule, 'location', None),
+                "memo": schedule.memo,
+            }
+            for schedule in schedules
+        ]
+
+
+    def get_today_sessions(self, user_id: uuid.UUID, tz=KST):
+        start, end = self._get_today_range(tz)
+        sessions = [session for session in self.session_service.dao.get_user_sessions(user_id)
+                    if session.start_at >= start and session.start_at < end]
+        return [
+            {
+                "id": str(session.id),
+                "title": session.title,
+                "description": session.description,
+                "start_at": to_local(session.start_at, tz),
+                "finish_at": to_local(session.finish_at, tz)
+            }
+            for session in sessions
+        ]
+
+    def get_today_articles(self, user_id: uuid.UUID, tz=KST):
+        start, end = self._get_today_range(tz)
+        articles = [article for article in self.article_service.insight_article_dao.get_user_articles(user_id)
+                    if article.created_at >= start and article.created_at < end]
+        return [
+            {
+                "id": str(article.id),
+                "title": article.title,
+                "tag": article.tags,
+                "created_at": to_local(article.created_at, tz)
+            }
+            for article in articles
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
         ]
 
     def summarize_sessions(self, sessions):
@@ -187,7 +255,12 @@ class DailyReportService:
         ]
         return get_completion(client, prompt)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 =======
 >>>>>>> 0cc237c (➕ add: daily_report_service)
+=======
+
+
+>>>>>>> adc7d4c (🪡 add: daily_report_test)
