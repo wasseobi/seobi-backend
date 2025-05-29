@@ -1,7 +1,5 @@
-from app.langgraph.tools import google_news
-
-
 def search_web_for_keywords(context):
+    from app.langgraph.tools import google_news, google_search
     """
     각 키워드별로 최신 뉴스(tbs='qdr:w')와 과거 뉴스(tbs='qdr:m6')를 각각 google_news로 검색
     context['keywords'] 필요, context['recent_news'], context['past_news']에 결과 저장

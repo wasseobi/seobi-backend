@@ -1,5 +1,4 @@
 from app.dao.message_dao import MessageDAO
-from app.services.session_service import SessionService
 from app.models import Session
 from app.utils.message.message_context import MessageContext
 
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 class MessageService:
     def __init__(self):
         self.message_dao = MessageDAO()
-        self.session_service = SessionService()
         self.agent_executor = create_agent_executor()
         self.graph = build_graph().compile()
         self.active_contexts: Dict[str, MessageContext] = {}  # 세션별 활성 컨텍스트

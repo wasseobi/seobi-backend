@@ -140,4 +140,5 @@ agent_tools = [
     calculator,
     search_similar_messages,
     google_search,
+    run_insight_graph
 ]
