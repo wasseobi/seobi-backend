@@ -9,7 +9,7 @@ class InsightArticle(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.Text, nullable=False)
-    content = db.Column(db.Text, nullable=False)
+    content = db.Column(db.JSON, nullable=False)
     tags = db.Column(db.JSON, nullable=True)  # 관련 키워드 리스트
     source = db.Column(db.Text, nullable=False)
     created_at = db.Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
