@@ -4,19 +4,19 @@ from app.langgraph.parsing_agent.graph import parsing_agent
 
 class ScheduleService:
     def __init__(self):
-        self.dao = ScheduleDAO()
+        self.schedule_dao = ScheduleDAO()
 
-    def get_user_schedule(self, user_id):
-        return self.dao.get_by_user(user_id)
+    def get_user_schedules(self, user_id):
+        return self.schedule_dao.get_user_schedules(user_id)
 
     def get_schedule(self, schedule_id):
-        return self.dao.get(schedule_id)
+        return self.schedule_dao.get(schedule_id)
 
     def create(self, data):
-        return self.dao.create(**data)
+        return self.schedule_dao.create(**data)
 
     def delete(self, schedule_id):
-        return self.dao.delete(schedule_id)
+        return self.schedule_dao.delete(schedule_id)
 
     def create_llm(self, user_id, text):
         """
