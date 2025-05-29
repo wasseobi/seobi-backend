@@ -1,7 +1,5 @@
 def search_web_for_keywords(context):
     from app.langgraph.tools import google_news, google_search
-    import logging
-    insight_graph_logger = logging.getLogger("insight_graph_debug")
     """
     각 키워드별로 최신 뉴스(tbs='qdr:w')와 과거 뉴스(tbs='qdr:m6')를 각각 google_news로 검색
     context['keywords'] 필요, context['recent_news'], context['past_news']에 결과 저장
@@ -16,8 +14,6 @@ def search_web_for_keywords(context):
             recent = google_news.run(keyword, num_results=5, tbs="qdr:w")
             past = google_news.run(keyword, num_results=5, tbs="qdr:m6")
             # 반환값 구조 로그
-            insight_graph_logger.debug(f"[WEB_SEARCH] recent({keyword})={recent}")
-            insight_graph_logger.debug(f"[WEB_SEARCH] past({keyword})={past}")
             # news 필드에서 link만 추출
             if isinstance(recent, dict) and 'news' in recent:
                 all_links.extend([item.get('link') for item in recent['news'] if item.get('link')])
@@ -38,5 +34,4 @@ def search_web_for_keywords(context):
     context['recent_news'] = recent_news
     context['past_news'] = past_news
     context['source'] = list(all_links)
-    insight_graph_logger.debug(f"[WEB_SEARCH] context['source']={context['source']}")
     return context

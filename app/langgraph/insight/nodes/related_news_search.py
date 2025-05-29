@@ -1,7 +1,5 @@
 def search_related_news(context):
     from app.langgraph.tools import google_news
-    import logging
-    insight_graph_logger = logging.getLogger("insight_graph_debug")
     """
     연결 키워드로 추가 뉴스 검색 (GoogleSerperAPIWrapper 등)
     context['related_keywords'] 필요, context['related_news']에 결과 저장
@@ -13,7 +11,6 @@ def search_related_news(context):
     for keyword in related_keywords:
         try:
             results = google_news.run(keyword, num_results=5, tbs=None)
-            insight_graph_logger.debug(f"[RELATED_NEWS] {keyword} results={results}")
             if isinstance(results, dict) and 'news' in results:
                 new_links.extend([item.get('link') for item in results['news'] if item.get('link')])
                 related_news[keyword] = results['news']
@@ -26,5 +23,4 @@ def search_related_news(context):
     all_links = prev_links.union(new_links)
     context['related_news'] = related_news
     context['source'] = list(all_links)
-    insight_graph_logger.debug(f"[RELATED_NEWS] context['source']={context['source']}")
     return context

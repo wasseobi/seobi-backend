@@ -10,22 +10,11 @@ from .nodes.related_news_search import search_related_news
 from .nodes.insight_generator import generate_insight
 from .nodes.title_tags_generator import generate_title_tags
 from .nodes.tts_script_generator import generate_tts_script
-import logging
-insight_graph_logger = logging.getLogger("insight_graph_debug")
-insight_graph_logger.setLevel(logging.DEBUG)
-if not insight_graph_logger.handlers:
-    fh = logging.FileHandler("insight_graph_debug.log", encoding="utf-8")
-    fh.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    fh.setFormatter(formatter)
-    insight_graph_logger.addHandler(fh)
 
 # 노드 실행 래퍼
 def log_node(node_name, func):
     def wrapper(context):
-        insight_graph_logger.debug(f"[NODE START] {node_name} | input: {context}")
         result = func(context)
-        insight_graph_logger.debug(f"[NODE END] {node_name} | output: {result}")
         return result
     return wrapper
 
@@ -55,15 +44,11 @@ def build_insight_graph():
     graph.add_edge("load_docs", "analyze_relations")
 
     def analyze_conditional(context):
-        insight_graph_logger.debug(f"[CONDITIONAL] analyze_relations | context: {context}")
         if context.get('use_news_fallback'):
-            insight_graph_logger.debug("[CONDITIONAL] use_news_fallback=True → search_web")
             return "search_web"
         elif context.get('related_keywords'):
-            insight_graph_logger.debug("[CONDITIONAL] related_keywords=True → search_related_news")
             return "search_related_news"
         else:
-            insight_graph_logger.debug("[CONDITIONAL] else → generate_insight")
             return "generate_insight"
 
     graph.add_conditional_edges(
