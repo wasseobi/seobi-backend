@@ -1,7 +1,6 @@
 from app.dao.base import BaseDAO
 from app.models import InsightArticle, db
 from typing import List, Optional
-import json
 import uuid
 
 class InsightArticleDAO(BaseDAO[InsightArticle]):
@@ -21,22 +20,9 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
         """Get all articles for a user ordered by created_at desc"""
         return self.query().filter_by(user_id=user_id).order_by(InsightArticle.created_at.desc()).all()
 
-    def create(self, **kwargs):
-        article = InsightArticle(
-            title=kwargs.get('title'),
-            content=json.dumps(kwargs.get('content', {}), ensure_ascii=False),
-            user_id=kwargs.get('user_id'),
-            created_at=kwargs.get('created_at'),
-            type=kwargs.get('type'),
-            keywords=json.dumps(kwargs.get('keywords', []), ensure_ascii=False),
-            interest_ids=kwargs.get('interest_ids'),
-            tags=json.dumps(kwargs.get('tags', []), ensure_ascii=False),
-            source=json.dumps(kwargs.get('source', []), ensure_ascii=False)
-        )
-        db.session.add(article)
-        db.session.commit()
-        return article
-
+    def create(self, user_id: uuid.UUID, **kwargs) -> InsightArticle:
+        """Create a new article with user_id"""
+        return super().create(user_id=user_id, **kwargs)
 
     def update_article(self, article_id: uuid.UUID, **kwargs) -> Optional[InsightArticle]:
         """Update an article with specific fields"""
