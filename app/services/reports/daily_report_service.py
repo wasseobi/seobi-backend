@@ -4,6 +4,14 @@ from app.services.session_service import SessionService
 from app.services.schedule_service import ScheduleService
 from app.services.insight_article_service import InsightArticleService
 from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.prompt.reports.daily_report_prompts import (
+    SCHEDULES_MARKDOWN_PROMPT,
+    SESSIONS_MARKDOWN_PROMPT,
+    ARTICLES_MARKDOWN_PROMPT,
+    DAILY_REPORT_MARKDOWN_PROMPT,
+    DAILY_REPORT_BRIEFING_PROMPT,
+)
+import json
 
 KST = timezone(timedelta(hours=9))
 
@@ -118,26 +126,182 @@ class DailyReportService:
         ]
 
 
-    def summarize_sessions(self, sessions):
-        client = get_openai_client()
-        prompt = [
-            {"role": "system", "content": "아래 세션 목록을 오늘의 주요 활동 위주로 요약해줘."},
-            {"role": "user", "content": str(sessions)}
-        ]
-        return get_completion(client, prompt)
+    # max_retries - 재시도는 랭그래프로 처리해도 좋을 거 같음
 
-    def summarize_schedules(self, schedules):
+    def summarize_schedules_done_markdown(self, user_id, tz=KST, max_retries=2):
+        schedules = self.get_today_schedules_done(user_id, tz)
+        count = len(schedules)
+        schedules_json = json.dumps(schedules, ensure_ascii=False)
+        prompt = SCHEDULES_MARKDOWN_PROMPT.format(header="완료한 일정", count=count)
         client = get_openai_client()
-        prompt = [
-            {"role": "system", "content": "아래 일정 목록을 오늘의 일정 위주로 요약해줘."},
-            {"role": "user", "content": str(schedules)}
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 마크다운 요약을 생성해줘."},
+            {"role": "user", "content": prompt + "\n[SCHEDULES_DONE] " + schedules_json}
         ]
-        return get_completion(client, prompt)
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response is not None and response.strip() != f"## 완료한 일정 (총 {count}건)":
+                    break
+            except Exception as e:
+                print(f"[WARNING] LLM 호출 실패 (attempt {attempt+1}):", e)
+        if response is None or response.strip() == f"## 완료한 일정 (총 {count}건)":
+            print(f"[WARNING] LLM 응답이 None이거나 헤더만 반환됨. (count={count})")
+            return f"## 완료한 일정 (총 {count}건)"
+        return response
 
-    def summarize_articles(self, articles):
+    def summarize_schedules_undone_markdown(self, user_id, tz=KST, max_retries=2):
+        schedules = self.get_today_schedules_undone(user_id, tz)
+        count = len(schedules)
+        schedules_json = json.dumps(schedules, ensure_ascii=False)
+        # 프롬프트를 더 간결하고 명확하게 개선
+        prompt = SCHEDULES_MARKDOWN_PROMPT.format(header="미완료 일정", count=count)
         client = get_openai_client()
-        prompt = [
-            {"role": "system", "content": "아래 아티클 목록을 오늘의 주요 인사이트 위주로 요약해줘."},
-            {"role": "user", "content": str(articles)}
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 마크다운 요약을 생성해줘."},
+            {"role": "user", "content": prompt + "\n[SCHEDULES_UNDONE] " + schedules_json}
         ]
-        return get_completion(client, prompt)
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response is not None and response.strip() != f"## 미완료 일정 (총 {count}건)":
+                    break
+            except Exception as e:
+                print(f"[WARNING] LLM 호출 실패 (attempt {attempt+1}):", e)
+        if response is None or response.strip() == f"## 미완료 일정 (총 {count}건)":
+            print(f"[WARNING] LLM 응답이 None이거나 헤더만 반환됨. (count={count})")
+            return f"## 미완료 일정 (총 {count}건)"
+        return response
+
+    def summarize_tomorrow_schedules_markdown(self, user_id, tz=KST, max_retries=2):
+        schedules = self.get_tomorrow_schedules(user_id, tz)
+        count = len(schedules)
+        schedules_json = json.dumps(schedules, ensure_ascii=False)
+        prompt = SCHEDULES_MARKDOWN_PROMPT.format(header="내일 일정", count=count)
+        client = get_openai_client()
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 마크다운 요약을 생성해줘."},
+            {"role": "user", "content": prompt + "\n[TOMORROW_SCHEDULES] " + schedules_json}
+        ]
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response is not None and response.strip() != f"## 내일 일정 (총 {count}건)":
+                    break
+            except Exception as e:
+                print(f"[WARNING] LLM 호출 실패 (attempt {attempt+1}):", e)
+        if response is None or response.strip() == f"## 내일 일정 (총 {count}건)":
+            print(f"[WARNING] LLM 응답이 None이거나 헤더만 반환됨. (count={count})")
+            return f"## 내일 일정 (총 {count}건)"
+        return response
+
+    def summarize_sessions_markdown(self, user_id, tz=KST, max_retries=2):
+        sessions = self.get_today_sessions(user_id, tz)
+        count = len(sessions)
+        sessions_json = json.dumps(sessions, ensure_ascii=False)
+        prompt = SESSIONS_MARKDOWN_PROMPT.format(count=count)
+        client = get_openai_client()
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 마크다운 요약을 생성해줘."},
+            {"role": "user", "content": prompt + "\n[SESSIONS] " + sessions_json}
+        ]
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response is not None and response.strip() != f"## 대화 세션 요약 (총 {count}건)":
+                    break
+            except Exception as e:
+                print(f"[WARNING] LLM 호출 실패 (attempt {attempt+1}):", e)
+        if response is None or response.strip() == f"## 대화 세션 요약 (총 {count}건)":
+            print(f"[WARNING] LLM 응답이 None이거나 헤더만 반환됨. (count={count})")
+            return f"## 대화 세션 요약 (총 {count}건)"
+        return response
+
+    def summarize_today_articles_markdown(self, user_id, tz=KST, max_retries=2):
+        articles = self.get_today_articles(user_id, tz)
+        count = len(articles)
+        articles_json = json.dumps(articles, ensure_ascii=False)
+        prompt = ARTICLES_MARKDOWN_PROMPT.format(count=count)
+        client = get_openai_client()
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 마크다운 요약을 생성해줘."},
+            {"role": "user", "content": prompt + "\n[ARTICLES] " + articles_json}
+        ]
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response is not None and response.strip() != f"## 오늘의 아티클 (총 {count}건)":
+                    break
+            except Exception as e:
+                print(f"[WARNING] LLM 호출 실패 (attempt {attempt+1}):", e)
+        if response is None or response.strip() == f"## 오늘의 아티클 (총 {count}건)":
+            print(f"[WARNING] LLM 응답이 None이거나 헤더만 반환됨. (count={count})")
+            return f"## 오늘의 아티클 (총 {count}건)"
+        return response
+
+    def generate_daily_report_markdown(self, user_id, user_name, tz=KST, max_retries=2):
+        from datetime import datetime
+        today = datetime.now(tz).strftime("%Y-%m-%d")
+        done = self.summarize_schedules_done_markdown(user_id, tz, max_retries)
+        undone = self.summarize_schedules_undone_markdown(user_id, tz, max_retries)
+        tomorrow = self.summarize_tomorrow_schedules_markdown(user_id, tz, max_retries)
+        sessions = self.summarize_sessions_markdown(user_id, tz, max_retries)
+        articles = self.summarize_today_articles_markdown(user_id, tz, max_retries)
+        sections = f"{done}\n\n{undone}\n\n{tomorrow}\n\n{sessions}\n\n{articles}"
+        prompt = DAILY_REPORT_MARKDOWN_PROMPT.format(today=today, sections=sections)
+        client = get_openai_client()
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 Daily Report 마크다운을 생성해줘. 반드시 예시 구조와 순서를 지켜야 해."},
+            {"role": "user", "content": prompt}
+        ]
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response and response.strip().startswith(f"# Daily Report – {today}"):
+                    break
+            except Exception as e:
+                print(f"[WARNING] Daily Report 마크다운 LLM 호출 실패 (attempt {attempt+1}):", e)
+        if not response:
+            print("[WARNING] Daily Report 마크다운 생성 실패. 빈 마크다운 반환.")
+            return f"# Daily Report – {today}\n(데이터 없음)"
+        return response
+
+    def generate_briefing_script(self, user_id, user_name, markdown=None, tz=KST, max_retries=2):
+        # 만약 markdown이 None이면, 자동으로 generate_daily_report_markdown을 호출해서 사용
+        if markdown is None:
+            markdown = self.generate_daily_report_markdown(user_id, user_name, tz, max_retries)
+        now = datetime.now(tz)
+        today = now.strftime("%m-%d")
+        now_time = now.strftime("%H:%M")
+        prompt = DAILY_REPORT_BRIEFING_PROMPT.format(user_name=user_name, today=today, now_time=now_time, markdown=markdown)
+        client = get_openai_client()
+        messages = [
+            {"role": "system", "content": "아래 프롬프트에 따라 Daily Report 브리핑 스크립트를 생성해줘. 반드시 예시 구조와 어조를 지켜야 해."},
+            {"role": "user", "content": prompt}
+        ]
+        response = None
+        for attempt in range(max_retries + 1):
+            try:
+                response = get_completion(client, messages)
+                if response and response.strip().startswith(f"안녕하세요. {user_name} 님의 {today} {now_time}"):
+                    break
+            except Exception as e:
+                print(f"[WARNING] 브리핑 스크립트 LLM 호출 실패 (attempt {attempt+1}):", e)
+        if not response:
+            print("[WARNING] Daily Report 브리핑 스크립트 생성 실패. 빈 스크립트 반환.")
+            return f"Daily Report 브리핑 스크립트 생성이 실패했습니다다. 다음 안내가 필요하시면 말씀해주세요."
+        return response
+
+    def generate_daily_report_json(self, user_id, user_name, tz=KST, max_retries=2):
+        markdown = self.generate_daily_report_markdown(user_id, user_name, tz, max_retries)
+        script = self.generate_briefing_script(user_id, user_name, markdown, tz, max_retries)
+        return {
+            "text": markdown,
+            "script": script
+        }
