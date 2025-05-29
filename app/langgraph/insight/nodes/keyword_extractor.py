@@ -1,10 +1,9 @@
-from app.services.interest_service import InterestService
-
 def extract_top_keywords(user_id):
     """
     사용자별 상위 10개 키워드 추출 노드
     context['user_id'] 필요, context['keywords']에 결과 저장
     """
+    from app.services.interest_service import InterestService
     interest_service = InterestService()
     top_interests = sorted(
         interest_service.get_interests_by_user(user_id),

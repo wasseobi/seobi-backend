@@ -1,7 +1,5 @@
-from app.langgraph.tools import google_news
-
-
 def search_related_news(context):
+    from app.langgraph.tools import google_news
     """
     연결 키워드로 추가 뉴스 검색 (GoogleSerperAPIWrapper 등)
     context['related_keywords'] 필요, context['related_news']에 결과 저장

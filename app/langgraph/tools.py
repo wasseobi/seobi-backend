@@ -7,8 +7,6 @@ import os
 import json
 import logging
 from flask import request, g
-from app.langgraph.insight.graph import build_insight_graph
-
 
 @tool
 def search_web(query: str) -> str:
@@ -140,4 +138,5 @@ agent_tools = [
     calculator,
     search_similar_messages,
     google_search,
+    run_insight_graph
 ]

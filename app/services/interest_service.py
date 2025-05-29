@@ -2,7 +2,6 @@ import json
 
 from app.dao.interest_dao import InterestDAO
 from app.dao.session_dao import SessionDAO
-from app.services.message_service import MessageService
 from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.service_prompts import (
     EXTRACT_KEYWORDS_SYSTEM_PROMPT, get_interest_user_prompt)
@@ -12,7 +11,6 @@ class InterestService:
     def __init__(self):
         self.interest_dao = InterestDAO()
         self.session_dao = SessionDAO()
-        self.message_service = MessageService()
 
     def create_interest(self, user_id, content, source_message, importance=0.5):
         return self.interest_dao.create(user_id, content, source_message, importance)
@@ -31,6 +29,8 @@ class InterestService:
 
     def extract_interests_keywords(self, session_id):
         # 1. 세션의 모든 메시지 조회
+        from app.services.message_service import MessageService
+        self.message_service = MessageService()
         messages = self.message_service.get_session_messages(session_id)
 
         # 1-1. session_id로 user_id 조회

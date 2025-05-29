@@ -1,6 +1,6 @@
-from langchain.document_loaders import WebBaseLoader
 
 def load_documents(context):
+    from langchain_community.document_loaders import WebBaseLoader
     """
     최근 뉴스와 과거 뉴스 각각의 링크에서 본문을 로딩
     context['recent_news'], context['past_news'] 필요
