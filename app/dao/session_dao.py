@@ -24,7 +24,7 @@ class SessionDAO(BaseDAO[Session]):
  
     def create(self, user_id: uuid.UUID) -> Session:
         """Create a new session with user_id"""
-        return self.create(user_id=user_id)
+        return super().create(user_id=user_id)
     
     def update_session(self, session_id: uuid.UUID, **kwargs) -> Optional[Session]:
         """Update a session with specific fields"""
@@ -36,7 +36,7 @@ class SessionDAO(BaseDAO[Session]):
     
     def delete(self, session_id: uuid.UUID) -> bool:
         """Delete a session"""
-        return self.delete(str(session_id))
+        return super().delete(str(session_id))
 
     def get_user_id_by_session_id(self, session_id: uuid.UUID) -> Optional[uuid.UUID]:
         """Get user_id by session_id"""
