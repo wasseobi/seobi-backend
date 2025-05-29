@@ -1,7 +1,6 @@
 # 자연어 파싱 에이전트 그래프 scaffold
 
 def start(input_data):
-    print('[DEBUG][start] input:', input_data)  # TODO: 나중에 삭제
     # 그래프 시작점
     return input_data
 
@@ -24,25 +23,39 @@ def tool(input_data):
     loc_match = re.search(r'([가-힣A-Za-z0-9]+)에서', text)
     if loc_match:
         location = loc_match.group(1)
-    # 시간 추출 (예: '아홉시', '9시', '오전 아홉시', '출근하자마자')
-    hour = None
-    time_match = re.search(r'(오전|오후)? ?([0-9]{1,2}|[가-힣]{2,3})시', text)
-    if time_match:
-        h = time_match.group(2)
-        h = {'아홉':9, '열':10, '여덟':8, '일곱':7, '여섯':6, '다섯':5, '네':4, '세':3, '두':2, '한':1}.get(h, h)
+    # 시간 표현 24시간제로 전처리
+    text_proc = text
+    def replace_time(match):
+        period = match.group(1)
+        h = match.group(2)
+        h_num = {'아홉':9, '열':10, '여덟':8, '일곱':7, '여섯':6, '다섯':5, '네':4, '세':3, '두':2, '한':1, '열두':12, '열한':11}.get(h, h)
         try:
-            hour = int(h)
+            h_num = int(h_num)
+        except:
+            return match.group(0)
+        if period in ['오후', '저녁', '밤']:
+            if h_num < 12:
+                h_num += 12
+        elif period in ['오전', '아침'] and h_num == 12:
+            h_num = 0
+        return f'{h_num}시'
+    text_proc = re.sub(r'(오전|오후|저녁|밤|아침) ?([0-9]{1,2}|[가-힣]{2,3})시', replace_time, text_proc)
+    # 시간 추출 (24시간제 변환 후)
+    hour = None
+    time_match = re.search(r'([0-9]{1,2})시', text_proc)
+    if time_match:
+        try:
+            hour = int(time_match.group(1))
         except:
             hour = None
-        if time_match.group(1) == '오후' and hour is not None and hour < 12:
-            hour += 12
-    elif '출근하자마자' in text:
+    elif '출근하자마자' in text_proc:
         hour = 9
     import datetime
     now = datetime.datetime.now()
-    if '내일' in text:
+    # 날짜 계산: '내일' 없으면 기본적으로 오늘로 처리
+    if '내일' in text_proc:
         start_at = now + datetime.timedelta(days=1)
-    elif '오늘' in text:
+    else:
         start_at = now
     if start_at and hour is not None:
         start_at = start_at.replace(hour=hour, minute=0, second=0, microsecond=0)
@@ -88,6 +101,19 @@ def handoff(input_data):
     memo_resp = llm.invoke([{"role": "user", "content": f"{memo_prompt}\n{text}"}])
     title = getattr(title_resp, 'content', str(title_resp))
     memo = getattr(memo_resp, 'content', str(memo_resp))
+    # 따옴표로 감싸진 경우 반복적으로 제거
+    import re
+    def strip_quotes(s):
+        if isinstance(s, str):
+            while True:
+                new_s = re.sub(r"^[\'\"](.*)[\'\"]$", r"\1", s.strip())
+                if new_s == s:
+                    break
+                s = new_s
+            return s
+        return s
+    title = strip_quotes(title)
+    memo = strip_quotes(memo)
     return {**input_data,
             'handoff_result': 'LLM 추가 분석',
             'title': title,
@@ -97,9 +123,10 @@ def handoff(input_data):
 def end(input_data):
     print('[DEBUG][end] result:', input_data)  # TODO: 나중에 삭제
     # memo 한국어 문법 후처리: '~챙겨야 해 이라고함' → '챙겨야 함' 등
-    import re
     memo = input_data.get('memo', '')
+    title = input_data.get('title', '')
     if memo:
+        import re
         memo = re.sub(r'(이[라|라고]? ?함|이[라|라고]? 해|이[라|라고]? 함|이[라|라고]?함|이[라|라고]?함|이[라|라고]? 해요|이[라|라고]? 했음|이[라|라고]? 했어요)', '함', memo)
         memo = re.sub(r'\s+', ' ', memo)
         memo = re.sub(r'해야 해(요)?', '해야 함', memo)
@@ -107,7 +134,19 @@ def end(input_data):
         memo = re.sub(r'해야 돼', '해야 함', memo)
         memo = re.sub(r'해야함', '해야 함', memo)
         memo = re.sub(r'\b함함\b', '함', memo)
-    return {**input_data, 'memo': memo}
+        # 따옴표로 감싸진 경우 반복적으로 제거
+        while True:
+            new_memo = re.sub(r"^[\'\"](.*)[\'\"]$", r"\1", memo.strip())
+            if new_memo == memo:
+                break
+            memo = new_memo
+    if title:
+        while True:
+            new_title = re.sub(r"^[\'\"](.*)[\'\"]$", r"\1", title.strip())
+            if new_title == title:
+                break
+            title = new_title
+    return {**input_data, 'memo': memo, 'title': title}
 
 def validate(input_data):
     print('[DEBUG][validate] input:', input_data)  # TODO: 나중에 삭제
