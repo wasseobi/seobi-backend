@@ -1,7 +1,7 @@
 import uuid
 import json
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
@@ -13,7 +13,16 @@ from app.utils.prompt.service_prompts import (
 
 class SessionService:
     def __init__(self):
-        self.dao = SessionDAO()
+        self.session_dao = SessionDAO()
+        self._cleanup_executor = None
+
+    @property
+    def cleanup_executor(self):
+        """Lazy initialization of cleanup executor."""
+        if self._cleanup_executor is None:
+            from app.langgraph.cleanup.executor import create_cleanup_executor
+            self._cleanup_executor = create_cleanup_executor()
+        return self._cleanup_executor
 
     def _serialize_session(self, session: Any) -> Dict[str, Any]:
         """Serialize session data for API response"""
@@ -28,12 +37,12 @@ class SessionService:
 
     def get_all_sessions(self) -> List[Dict]:
         """Get all sessions"""
-        sessions = self.dao.get_all_sessions()
+        sessions = self.session_dao.get_all_sessions()
         return [self._serialize_session(session) for session in sessions]
 
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
         """Get a session by ID"""
-        session = self.dao.get_session_by_id(session_id)
+        session = self.session_dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -41,7 +50,7 @@ class SessionService:
     def create_session(self, user_id: uuid.UUID) -> Dict:
         """Create a new session with validation"""
         # User validation should be moved to UserDAO
-        session = self.dao.create(user_id)
+        session = self.session_dao.create(user_id)
         if not session:
             raise ValueError('Failed to create session')
         return self._serialize_session(session)
@@ -57,29 +66,47 @@ class SessionService:
         if finish_at is not None:
             update_data['finish_at'] = finish_at
 
-        session = self.dao.update_session(session_id, **update_data)
+        session = self.session_dao.update_session(session_id, **update_data)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
 
     def delete_session(self, session_id: uuid.UUID) -> None:
         """Delete a session"""
-        if not self.dao.delete(session_id):
+        if not self.session_dao.delete(session_id):
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
-        """Finish a session with validation"""
-        session = self.dao.get_session_by_id(session_id)
+        """Finish a session with validation and run cleanup graph"""
+        session = self.session_dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Session is already finished')
 
+        # Get conversation history
+        conversation_history = self.session_dao.get_session_messages(session_id)
+
         current_time = datetime.now(timezone.utc)
-        updated_session = self.dao.update_finish_time(session_id, current_time)
+        updated_session = self.session_dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
 
+        try:
+            # Run cleanup using executor
+            cleanup_result = self.cleanup_executor(session_id, conversation_history)
+            
+            # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
+            if cleanup_result.get("error"):
+                print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
+            else:
+                print(f"Cleanup completed for session {session_id}")
+                print(f"Analysis: {cleanup_result.get('analysis_result')}")
+                print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
+        except Exception as e:
+            print(f"Error during cleanup: {str(e)}")
+            # Cleanup 실패는 세션 종료를 막지 않음
+        
         return self._serialize_session(updated_session)
 
     def update_summary_conversation(self, session_id: uuid.UUID,
@@ -119,13 +146,13 @@ class SessionService:
                     title = (description or response)[:20]
                 if not description:
                     description = response[:100]
-                self.dao.update_session(
+                self.session_dao.update_session(
                     session_id,
                     title=title,
                     description=description
                 )
             except json.JSONDecodeError:
-                self.dao.update_session(
+                self.session_dao.update_session(
                     session_id,
                     description=response[:100]
                 )
@@ -147,7 +174,7 @@ class SessionService:
             ValueError: If user_id is invalid
         """
         try:
-            sessions = self.dao.get_user_sessions(user_id)
+            sessions = self.session_dao.get_user_sessions(user_id)
             return [{
                 'id': str(session.id),
                 'user_id': str(session.user_id),
@@ -196,13 +223,13 @@ class SessionService:
                 title = (description or response)[:20]
             if not description:
                 description = response[:100]
-            self.dao.update_session(
+            self.session_dao.update_session(
                 session_id,
                 title=title,
                 description=description
             )
         except Exception as e:
-            self.dao.update_session(
+            self.session_dao.update_session(
                 session_id,
                 description=response[:100]
             )
