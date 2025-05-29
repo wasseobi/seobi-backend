@@ -12,7 +12,7 @@ class Schedule(db.Model):
     start_at = db.Column(db.DateTime(timezone=True), nullable=True)  # 시작 시간
     finish_at = db.Column(db.DateTime(timezone=True), nullable=True)  # 종료 시간
     location = db.Column(db.Text, nullable=True) # 우선은 Text로 저장. but 추후 바꿀 수 있음. 좌표값이라던지.
-    status = db.Column(ENUM('undone', 'doing', 'done', name='schedule_status_enum'), nullable=False, default='undone')
+    status = db.Column(ENUM('undone', 'done', name='schedule_status_enum'), nullable=False, default='undone')
     memo = db.Column(db.Text, nullable=True)
     linked_service = db.Column(db.Text, nullable=False)  # 외부 연동 서비스명 등
     timestamp = db.Column(db.DateTime(
