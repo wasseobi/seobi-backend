@@ -35,3 +35,10 @@ SESSION_SUMMARY_SYSTEM_PROMPT = (
 )
 
 SESSION_SUMMARY_USER_PROMPT = ("다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요: \n\n")
+
+INSIGHT_ARTICLE_SYSTEM_PROMPT = (
+    "다음 대화 내용을 바탕으로 사용자의 관심사에 맞는 인사이트 아티클을 작성해주세요. "
+    "아티클은 사용자의 상위 3개 관심사를 반영하고, 제목과 내용을 포함해야 합니다. "
+    "제목은 50자 이내로 작성하고, 내용은 500자 이상이어야 합니다. "
+    "응답은 JSON 형식으로 'title'과 'content' 키를 포함해야 합니다."
+)

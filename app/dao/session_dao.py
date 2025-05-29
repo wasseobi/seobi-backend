@@ -4,9 +4,6 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 import uuid
 
-# Define KST timezone (UTC+9)
-KST = timezone(timedelta(hours=9))
-
 class SessionDAO(BaseDAO[Session]):
     """Data Access Object for Session model"""
     
@@ -25,7 +22,7 @@ class SessionDAO(BaseDAO[Session]):
         """Get all sessions for a user ordered by creation time"""
         return self.query().filter_by(user_id=user_id).order_by(Session.start_at.desc()).all()
  
-    def create_session(self, user_id: uuid.UUID) -> Session:
+    def create(self, user_id: uuid.UUID) -> Session:
         """Create a new session with user_id"""
         return self.create(user_id=user_id)
     
@@ -37,7 +34,7 @@ class SessionDAO(BaseDAO[Session]):
         """Update session finish time"""
         return self.update_session(session_id, finish_at=finish_time)
     
-    def delete_session(self, session_id: uuid.UUID) -> bool:
+    def delete(self, session_id: uuid.UUID) -> bool:
         """Delete a session"""
         return self.delete(str(session_id))
 

@@ -77,7 +77,7 @@ class MessageProcessor:
             
         self.seen_messages.add(msg_key)
         
-        saved_message = self.dao.create_message(
+        saved_message = self.dao.create(
             session_id=self.session_info["session_id"],
             user_id=self.session_info["user_id"],
             content=formatted_msg["content"],

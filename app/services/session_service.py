@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
 from app.utils.openai_client import get_openai_client, get_completion
-from app.services.prompts import (
+from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )
@@ -41,7 +41,7 @@ class SessionService:
     def create_session(self, user_id: uuid.UUID) -> Dict:
         """Create a new session with validation"""
         # User validation should be moved to UserDAO
-        session = self.dao.create_session(user_id)
+        session = self.dao.create(user_id)
         if not session:
             raise ValueError('Failed to create session')
         return self._serialize_session(session)
@@ -64,7 +64,7 @@ class SessionService:
 
     def delete_session(self, session_id: uuid.UUID) -> None:
         """Delete a session"""
-        if not self.dao.delete_session(session_id):
+        if not self.dao.delete(session_id):
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:

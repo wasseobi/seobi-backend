@@ -25,7 +25,7 @@ class MessageDAO(BaseDAO[Message]):
         """Get all messages in a session ordered by timestamp"""
         return self.query().filter_by(session_id=session_id).order_by(Message.timestamp.asc()).all()
 
-    def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID, 
+    def create(self, session_id: uuid.UUID, user_id: uuid.UUID, 
                       content: str, role: str, vector=None, metadata=None) -> Message:
         """Create a new message (vector 임베딩 포함)"""
         return self.create(
@@ -37,10 +37,10 @@ class MessageDAO(BaseDAO[Message]):
             message_metadata=metadata
         )
 
-    def update_message(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
+    def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
         """Update a message"""
         return self.update(str(message_id), **kwargs)
 
-    def delete_message(self, message_id: uuid.UUID) -> bool:
+    def delete(self, message_id: uuid.UUID) -> bool:
         """Delete a message"""
         return self.delete(str(message_id))

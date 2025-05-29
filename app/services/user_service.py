@@ -47,7 +47,7 @@ class UserService:
         if self.dao.get_by_username(username):
             raise ValueError("User with this username already exists")
             
-        user = self.dao.create_user(username=username, email=email)
+        user = self.dao.create(username=username, email=email)
         return self._serialize_user(user)
 
     def update_user(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[Dict]:
@@ -57,7 +57,7 @@ class UserService:
         if username and self.dao.get_by_username(username):
             raise ValueError("Username already in use")
             
-        user = self.dao.update_user(user_id=user_id, username=username, email=email)
+        user = self.dao.update(user_id=user_id, username=username, email=email)
         if not user:
             return None
         return self._serialize_user(user)

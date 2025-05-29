@@ -2,7 +2,7 @@
 from typing import Dict, List, Callable, Any
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-from app.langgraph.graph import build_graph
+from .graph import build_graph
 
 def create_agent_executor() -> Callable:
     """Agent 실행기를 생성합니다."""

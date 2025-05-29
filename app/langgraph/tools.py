@@ -1,11 +1,14 @@
 from langchain_core.tools import BaseTool, tool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_google_community import GoogleSearchAPIWrapper
+from langchain_community.utilities import GoogleSerperAPIWrapper
 from typing import Dict, Union, Any, List
 import os
 import json
 import logging
 from flask import request, g
+from app.langgraph.insight.graph import build_insight_graph
+
 
 @tool
 def search_web(query: str) -> str:
@@ -20,6 +23,7 @@ def search_web(query: str) -> str:
         print(f"Search error: {type(e)} - {str(e)}")
         return f"검색 중 오류 발생: {str(e)}"
 
+
 @tool
 def calculator(expression: str) -> Union[float, str]:
     """수식을 계산하는 도구입니다. 예: '2 + 2', '5 * 3' 등의 수식을 계산할 수 있습니다."""
@@ -33,6 +37,7 @@ def calculator(expression: str) -> Union[float, str]:
         error_msg = f"계산 오류: {str(e)}"
         print(f"Error: {error_msg}")
         return error_msg
+
 
 @tool
 def search_similar_messages(query: str, top_k: int = 5) -> str:
@@ -58,11 +63,13 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
     if not user_id:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
     logger = logging.getLogger(__name__)
-    logger.debug(f"[TOOL 호출] search_similar_messages(user_id={user_id}, query={query}, top_k={top_k})")
+    logger.debug(
+        f"[TOOL 호출] search_similar_messages(user_id={user_id}, query={query}, top_k={top_k})")
     from app.services.message_service import MessageService
     message_service = MessageService()
     results = message_service.search_similar_messages(user_id, query, top_k)
     return json.dumps(results, ensure_ascii=False)
+
 
 @tool
 def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
@@ -90,8 +97,47 @@ def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
         )
         results = search.results(query, num_results=num_results)
         return results
-        
+
     except Exception as e:
         return [{"error": f"검색 중 오류 발생: {str(e)}"}]
 
-tools = [search_web, calculator, search_similar_messages, google_search]
+
+@tool
+def google_news(query: str, num_results: int = 5, tbs: str = None) -> list:
+    """Google Serper API를 활용한 뉴스 검색 도구 (tbs로 기간 지정)"""
+    serper_api_key = os.environ['SERPER_API_KEY']
+    search = GoogleSerperAPIWrapper(
+        serper_api_key=serper_api_key, type="news", tbs=tbs)
+    print(
+        f"[DEBUG] google_news called with query={query}, num_results={num_results}, tbs={tbs}")
+    results = search.results(query, num_results=num_results)
+    return results
+
+
+@tool
+def run_insight_graph(user_id: str) -> dict:
+    """인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다."""
+    from app.services.insight_article_service import InsightArticleService
+    service = InsightArticleService()
+    article = service.create_article(user_id, type="chat")
+    # article이 SQLAlchemy 모델 객체라면 dict로 변환
+    result = {
+        "id": str(article.id),
+        "title": article.title,
+        "content": article.content,
+        "tags": article.tags,
+        "source": article.source,
+        "type": article.type,
+        "created_at": article.created_at.isoformat() if article.created_at else None,
+        "keywords": article.keywords,
+        "interest_ids": article.interest_ids
+    }
+    return result
+
+
+agent_tools = [
+    search_web,
+    calculator,
+    search_similar_messages,
+    google_search,
+]
