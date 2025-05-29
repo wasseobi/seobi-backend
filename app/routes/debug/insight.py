@@ -1,7 +1,6 @@
 from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.services.insight_article_service import InsightArticleService
-from app.langgraph.insight.graph import build_insight_graph
 
 ns = Namespace('insight', description='인사이트 생성 및 조회 API')
 insight_service = InsightArticleService()
