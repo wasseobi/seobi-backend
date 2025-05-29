@@ -1,133 +1,126 @@
 """Conversation summarizer node implementation."""
-from typing import Dict, Any, List
 from datetime import datetime
-from flask import current_app
+import json
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-import json
 
-from ..state import BackgroundState, SummaryResults
+from ..state import BackgroundState, SummaryResults, SummaryMetadata
+from ..prompts.summarizer import SUMMARY_PROMPT
 
 
 async def conversation_summarizer_node(state: BackgroundState) -> BackgroundState:
-    """Summarize a processed and analyzed conversation.
-    
-    This node creates a concise summary of the conversation, incorporating
-    the analysis results to provide a comprehensive overview.
+    """대화 내용을 요약하는 노드.
     
     Args:
-        state: Current background processing state
+        state: 현재 처리 상태
         
     Returns:
-        Updated background processing state
+        BackgroundState: 요약 결과가 포함된 업데이트된 상태
     """
     try:
+        # 분석 결과 확인
+        if not state.get("analysis_results"):
+            return {
+                **state,
+                "error": "분석 결과가 없습니다",
+                "next_step": "end"
+            }
+            
+        analysis_results = state["analysis_results"]
         processed_data = state.get("processed_data", {})
-        analysis_results = state.get("analysis_results", {})
-        analysis_metadata = state.get("analysis_metadata", {})
-        
-        if not processed_data or not analysis_results:
-            return {
-                **state,
-                "error": "Missing processed data or analysis results",
-                "next_step": "end"
-            }
-            
         messages = processed_data.get("messages", [])
-        conversation_metadata = processed_data.get("metadata", {})
+        metadata = processed_data.get("metadata", {})
         
-        if not messages:
-            return {
-                **state,
-                "error": "No messages available for summarization",
-                "next_step": "end"
-            }
-            
-        # Initialize LLM
+        # LLM 초기화
         llm = ChatOpenAI(
-            temperature=0,
-            model_name="gpt-3.5-turbo"
+            temperature=0.1,
+            model_name="gpt-4"
         )
         
-        # Create summarization prompt
+        # 요약 프롬프트 설정
         summary_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert conversation summarizer. Create a concise summary of the following conversation,
-            incorporating the provided analysis results. The summary should:
-            1. Capture the main points of the conversation
-            2. Include key decisions or agreements
-            3. Highlight any action items
-            4. Be clear and easy to understand
-            5. Be no longer than 3 paragraphs
-            
-            Additional context:
-            - Analysis confidence: {confidence}
-            - Main topics: {topics}
-            - User intent: {user_intent}
-            - Sentiment: {sentiment}
-            
-            Format your response as a JSON object with these keys:
-            - summary: string containing the main summary
-            - key_decisions: list of key decisions or agreements
-            - action_items: list of specific action items
-            - confidence: float between 0 and 1 indicating summary confidence
-            """),
-            ("user", "Conversation:\n{conversation}\n\nAnalysis Results:\n{analysis}")
+            ("system", """당신은 전문적인 대화 요약가입니다. 다음 대화 분석 결과를 바탕으로 요약을 작성해주세요:
+
+분석 결과:
+{analysis_results}
+
+추가 컨텍스트:
+- 총 메시지 수: {message_count}
+- 시간 범위: {time_span}
+- 참여자: {participants}
+
+다음 내용을 포함한 요약을 작성해주세요:
+1. 대화의 간단한 개요
+2. 주요 결정사항이나 결론
+3. 중요한 액션 아이템이나 다음 단계
+4. 주목할 만한 우려사항이나 하이라이트
+
+응답은 다음 키를 가진 JSON 객체 형식으로 작성해주세요:
+- overview: 전체 대화의 간단한 요약
+- key_decisions: 중요한 결정사항이나 결론 목록
+- action_items: 구체적인 액션 아이템이나 다음 단계 목록
+- highlights: 주목할 만한 포인트나 우려사항 목록
+- confidence: 요약 신뢰도 (0에서 1 사이의 실수)
+"""),
+            ("user", "{conversation}")
         ])
         
-        # Format conversation for summarization
-        conversation_text = "\n".join([
-            f"{msg['role']}: {msg['content']}"
-            for msg in messages
-        ])
+        # 시간 범위 계산
+        timestamps = [datetime.fromisoformat(msg["timestamp"]) for msg in messages if msg.get("timestamp")]
+        time_span = "알 수 없음"
+        if timestamps:
+            start_time = min(timestamps)
+            end_time = max(timestamps)
+            time_span = f"{start_time.strftime('%Y-%m-%d %H:%M')} ~ {end_time.strftime('%Y-%m-%d %H:%M')}"
         
-        # Run summarization
+        # 요약 실행
         chain = summary_prompt | llm
-        summary_result = await chain.ainvoke({
-            "conversation": conversation_text,
-            "analysis": json.dumps(analysis_results, indent=2),
-            "confidence": analysis_metadata.get("confidence", 0.0),
-            "topics": ", ".join(analysis_results.get("topics", [])),
-            "user_intent": analysis_results.get("user_intent", "Unknown"),
-            "sentiment": analysis_results.get("sentiment", "Unknown")
+        result = await chain.ainvoke({
+            "analysis_results": json.dumps(analysis_results.dict(), ensure_ascii=False, indent=2),
+            "message_count": len(messages),
+            "time_span": time_span,
+            "participants": metadata.get("participants", "알 수 없음")
         })
         
-        # Parse summary results
         try:
-            summary_data: SummaryResults = json.loads(summary_result.content)
+            summary_data = json.loads(result.content)
         except json.JSONDecodeError:
-            current_app.logger.warning("Failed to parse summary results as JSON")
+            # JSON 파싱 실패 시 기본값 사용
             summary_data = {
-                "summary": "Failed to generate summary",
+                "overview": "요약 생성 실패",
                 "key_decisions": [],
                 "action_items": [],
+                "highlights": [],
                 "confidence": 0.0
             }
-            
-        # Create final result
-        final_result = {
-            "conversation_id": processed_data["conversation_id"],
-            "summary": summary_data,
-            "analysis": analysis_results,
-            "metadata": {
-                **conversation_metadata,
-                **analysis_metadata,
-                "summarized_at": datetime.now().isoformat(),
-                "summary_confidence": summary_data.get("confidence", 0.0),
-                "summary_version": "1.0"
-            }
-        }
         
+        # 요약 메타데이터 추가
+        summary_metadata = SummaryMetadata(
+            summarized_at=datetime.now().isoformat(),
+            model_used="gpt-4",
+            confidence=summary_data.get("confidence", 0.0),
+            version="1.0"
+        )
+        
+        # 요약 결과 생성
+        summary_results = SummaryResults(
+            overview=summary_data.get("overview", ""),
+            key_decisions=summary_data.get("key_decisions", []),
+            action_items=summary_data.get("action_items", []),
+            highlights=summary_data.get("highlights", []),
+            metadata=summary_metadata
+        )
+        
+        # 상태 업데이트
         return {
             **state,
-            "next_step": "end",
-            "summary_results": summary_data,
-            "final_result": final_result
+            "summary_results": summary_results,
+            "next_step": "end"
         }
         
     except Exception as e:
-        current_app.logger.error(f"Error in conversation summarizer: {str(e)}")
         return {
             **state,
-            "error": str(e),
+            "error": f"요약 중 오류 발생: {str(e)}",
             "next_step": "end"
         } 
