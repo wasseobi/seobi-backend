@@ -10,10 +10,12 @@ from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )
+from app.langgraph.cleanup.executor import create_cleanup_executor
 
 class SessionService:
     def __init__(self):
         self.session_dao = SessionDAO()
+        self.cleanup_executor = create_cleanup_executor()
 
     def _serialize_session(self, session: Any) -> Dict[str, Any]:
         """Serialize session data for API response"""
@@ -68,18 +70,32 @@ class SessionService:
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
-        """Finish a session with validation"""
+        """Finish a session with validation and run cleanup graph"""
         session = self.session_dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Session is already finished')
 
+        # Get conversation history
+        conversation_history = self.session_dao.get_session_messages(session_id)
+
         current_time = datetime.now(timezone.utc)
         updated_session = self.session_dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
 
+        # Run cleanup using executor
+        cleanup_result = self.cleanup_executor(session_id, conversation_history)
+        
+        # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
+        if cleanup_result.get("error"):
+            print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
+        else:
+            print(f"Cleanup completed for session {session_id}")
+            print(f"Analysis: {cleanup_result.get('analysis_result')}")
+            print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
+        
         return self._serialize_session(updated_session)
 
     def update_summary_conversation(self, session_id: uuid.UUID,
