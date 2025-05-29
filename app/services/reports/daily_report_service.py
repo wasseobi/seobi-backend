@@ -26,14 +26,7 @@ class DailyReportService:
         start_of_tomorrow = start_of_today + timedelta(days=1)
         return start_of_today.astimezone(timezone.utc), start_of_tomorrow.astimezone(timezone.utc)
 
-    def _get_tomorrow_range(self, tz=KST):
-        now = datetime.now(tz)
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_of_tomorrow = start_of_today + timedelta(days=1)
-        start_of_day_after = start_of_today + timedelta(days=2)
-        return start_of_tomorrow.astimezone(timezone.utc), start_of_day_after.astimezone(timezone.utc)
-
-    def get_today_schedules_done(self, user_id: uuid.UUID, tz=KST):
+    def collect_today_sessions(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_today_range(tz)
         schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
                      if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'done']
