@@ -8,9 +8,16 @@ from app.utils.prompt.cleanup_prompts import TASK_GENERATION_PROMPT
 
 class GenerateTasksNode:
     def __init__(self):
-        """Initialize the node with default model."""
-        self.llm = init_langchain_llm()
+        """Initialize the node."""
+        self._model = None
         
+    @property
+    def model(self):
+        """Lazy initialization of LLM."""
+        if self._model is None:
+            self._model = init_langchain_llm()
+        return self._model
+
     def __call__(self, state: CleanupState) -> CleanupState:
         """Generate AI tasks based on conversation analysis"""
         try:
@@ -19,7 +26,7 @@ class GenerateTasksNode:
                 return state
                 
             # Get tasks from LLM
-            response = self.llm.invoke([
+            response = self.model.invoke([
                 HumanMessage(content=TASK_GENERATION_PROMPT.format(
                     analysis_result=json.dumps(state["analysis_result"], indent=2)
                 ))

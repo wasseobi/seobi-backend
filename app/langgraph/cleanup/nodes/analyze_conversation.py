@@ -7,9 +7,16 @@ from app.utils.prompt.cleanup_prompts import ANALYSIS_PROMPT
 
 class AnalyzeConversationNode:
     def __init__(self):
-        """Initialize the node with default model."""
-        self.llm = init_langchain_llm()
+        """Initialize the node."""
+        self._model = None
         
+    @property
+    def model(self):
+        """Lazy initialization of LLM."""
+        if self._model is None:
+            self._model = init_langchain_llm()
+        return self._model
+
     def __call__(self, state: CleanupState) -> CleanupState:
         """Analyze the conversation and extract key insights"""
         try:
@@ -22,7 +29,7 @@ class AnalyzeConversationNode:
                     messages.append(AIMessage(content=msg["content"]))
             
             # Get analysis from LLM
-            response = self.llm.invoke([
+            response = self.model.invoke([
                 HumanMessage(content=ANALYSIS_PROMPT),
                 *messages
             ])
