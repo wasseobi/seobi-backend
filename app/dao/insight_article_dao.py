@@ -1,5 +1,8 @@
 from app.dao.base import BaseDAO
+from app.dao.base import BaseDAO
 from app.models import InsightArticle, db
+from typing import List, Optional
+import uuid
 from typing import List, Optional
 import uuid
 
@@ -8,6 +11,9 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
     def __init__(self):
         super().__init__(InsightArticle)
 
+    def get_all_articles(self) -> List[InsightArticle]:
+        """Get all articles ordered by created_at desc"""
+        return self.query().order_by(InsightArticle.created_at.desc()).all()
     def get_all_articles(self) -> List[InsightArticle]:
         """Get all articles ordered by created_at desc"""
         return self.query().order_by(InsightArticle.created_at.desc()).all()
