@@ -64,6 +64,7 @@ def create_app():
     from app.routes.debug.message import ns as debug_message_ns
     from app.routes.debug.mcp_server import ns as debug_mcp_server_ns
     from app.routes.debug.mcp_server_activation import ns as debug_mcp_server_activation_ns
+    from app.routes.debug.schedule import ns as debug_schedule_ns
 
     # Add production namespaces
     api.add_namespace(auth_ns)  # /sign, /verify
@@ -76,5 +77,6 @@ def create_app():
     api.add_namespace(debug_message_ns, path='/debug/messages')
     api.add_namespace(debug_mcp_server_ns, path='/debug/mcp_servers')
     api.add_namespace(debug_mcp_server_activation_ns, path='/debug/mcp_server_activations')
+    api.add_namespace(debug_schedule_ns, path='/debug/schedule')
 
     return app
