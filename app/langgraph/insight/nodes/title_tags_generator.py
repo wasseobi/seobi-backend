@@ -9,7 +9,7 @@ def generate_title_tags(context):
     if not content:
         return context
     prompt = (
-        "아래 기사 본문을 읽고, 반드시 JSON 형태로만 응답해. 예시: {\"title\": \"...\", \"tags\": [\"...\", ...]}\n"
+        "아래 기사 본문을 읽고, JSON 형태로 변형해줘. 예시: {\"title\": \"...\", \"tags\": [\"...\", ...]}\n"
         "[기사 본문]\n" + content
     )
     client = get_openai_client()
@@ -18,12 +18,16 @@ def generate_title_tags(context):
         {"role": "user", "content": prompt}
     ]
     response = get_completion(client, messages)
+    import json
+    # JSON 문자열이 코드블록(```json ... ```)으로 감싸져 있을 경우 처리
+    if response.strip().startswith('```'):
+        response = response.strip().strip('`').replace('json', '', 1).strip()
     try:
-        import json
         parsed = json.loads(response)
         context['title'] = parsed.get('title', '')
         context['tags'] = parsed.get('tags', [])
     except Exception:
+        # fallback: title만 텍스트로 저장, tags는 빈 리스트
         context['title'] = response
         context['tags'] = []
     return context

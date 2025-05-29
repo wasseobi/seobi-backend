@@ -9,7 +9,7 @@ def generate_tts_script(context):
     if not content:
         return context
     prompt = (
-        "아래 기사 본문을 자연스럽게 읽어줄 수 있는 TTS 스크립트로 변환해줘. "
+        "아래의 칼럼을 자연스럽게 읽어줄 수 있는 TTS 스크립트로 변환해줘. "
         "구어체, 청취자 친화적으로 작성해줘.\n"
         "[기사 본문]\n" + content
     )
@@ -20,6 +20,9 @@ def generate_tts_script(context):
     ]
     response = get_completion(client, messages)
     context['script'] = response
-    # 최종 반환 형태: {text: 기사 본문, script: TTS 스크립트, title, tags, ...}
     context['text'] = content
+    # source가 없으면 빈 리스트로 보정
+    if 'source' not in context or context['source'] is None:
+        context['source'] = []
+    # 최종 반환 형태: {text, script, title, tags, source, ...}
     return context

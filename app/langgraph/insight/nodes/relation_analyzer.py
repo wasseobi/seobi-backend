@@ -30,7 +30,7 @@ def analyze_relations(context):
         past_summary=past_summary
     )
     messages = [
-        {"role": "system", "content": "아래 두 요약의 차이점, 연결점, 시사점을 분석해줘."},
+        {"role": "system", "content": "아래 두 요약의 차이점, 연결점, 시사점을 분석해서 "},
         {"role": "user", "content": compare_prompt}
     ]
     insight_analysis = get_completion(client, messages)
