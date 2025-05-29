@@ -13,7 +13,7 @@ from app.utils.prompt.service_prompts import (
 
 class SessionService:
     def __init__(self):
-        self.dao = SessionDAO()
+        self.session_dao = SessionDAO()
 
     def _serialize_session(self, session: Any) -> Dict[str, Any]:
         """Serialize session data for API response"""
@@ -28,12 +28,12 @@ class SessionService:
 
     def get_all_sessions(self) -> List[Dict]:
         """Get all sessions"""
-        sessions = self.dao.get_all_sessions()
+        sessions = self.session_dao.get_all_sessions()
         return [self._serialize_session(session) for session in sessions]
 
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
         """Get a session by ID"""
-        session = self.dao.get_session_by_id(session_id)
+        session = self.session_dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -41,7 +41,7 @@ class SessionService:
     def create_session(self, user_id: uuid.UUID) -> Dict:
         """Create a new session with validation"""
         # User validation should be moved to UserDAO
-        session = self.dao.create(user_id)
+        session = self.session_dao.create(user_id)
         if not session:
             raise ValueError('Failed to create session')
         return self._serialize_session(session)
@@ -57,26 +57,26 @@ class SessionService:
         if finish_at is not None:
             update_data['finish_at'] = finish_at
 
-        session = self.dao.update_session(session_id, **update_data)
+        session = self.session_dao.update_session(session_id, **update_data)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
 
     def delete_session(self, session_id: uuid.UUID) -> None:
         """Delete a session"""
-        if not self.dao.delete(session_id):
+        if not self.session_dao.delete(session_id):
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
         """Finish a session with validation"""
-        session = self.dao.get_session_by_id(session_id)
+        session = self.session_dao.get_session_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Session is already finished')
 
         current_time = datetime.now(timezone.utc)
-        updated_session = self.dao.update_finish_time(session_id, current_time)
+        updated_session = self.session_dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
 
@@ -119,13 +119,13 @@ class SessionService:
                     title = (description or response)[:20]
                 if not description:
                     description = response[:100]
-                self.dao.update_session(
+                self.session_dao.update_session(
                     session_id,
                     title=title,
                     description=description
                 )
             except json.JSONDecodeError:
-                self.dao.update_session(
+                self.session_dao.update_session(
                     session_id,
                     description=response[:100]
                 )
@@ -147,7 +147,7 @@ class SessionService:
             ValueError: If user_id is invalid
         """
         try:
-            sessions = self.dao.get_user_sessions(user_id)
+            sessions = self.session_dao.get_user_sessions(user_id)
             return [{
                 'id': str(session.id),
                 'user_id': str(session.user_id),
@@ -196,13 +196,13 @@ class SessionService:
                 title = (description or response)[:20]
             if not description:
                 description = response[:100]
-            self.dao.update_session(
+            self.session_dao.update_session(
                 session_id,
                 title=title,
                 description=description
             )
         except Exception as e:
-            self.dao.update_session(
+            self.session_dao.update_session(
                 session_id,
                 description=response[:100]
             )
