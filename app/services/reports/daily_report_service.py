@@ -44,7 +44,7 @@ class DailyReportService:
 
     def get_today_schedules_done(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_today_range(tz)
-        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+        schedules = [schedule for schedule in self.schedule_service.schedule_dao.get_user_schedules(user_id)
                      if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'done']
         return [
             {
@@ -62,7 +62,7 @@ class DailyReportService:
 
     def get_today_schedules_undone(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_today_range(tz)
-        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+        schedules = [schedule for schedule in self.schedule_service.schedule_dao.get_user_schedules(user_id)
                      if schedule.start_at >= start and schedule.start_at < end and schedule.status == 'undone']
         return [
             {
@@ -80,7 +80,7 @@ class DailyReportService:
 
     def get_tomorrow_schedules(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_tomorrow_range(tz)
-        schedules = [schedule for schedule in self.schedule_service.dao.get_user_schedules(user_id)
+        schedules = [schedule for schedule in self.schedule_service.schedule_dao.get_user_schedules(user_id)
                      if schedule.start_at >= start and schedule.start_at < end]
         return [
             {
@@ -98,7 +98,7 @@ class DailyReportService:
 
     def get_today_sessions(self, user_id: uuid.UUID, tz=KST):
         start, end = self._get_today_range(tz)
-        sessions = [session for session in self.session_service.dao.get_user_sessions(user_id)
+        sessions = [session for session in self.session_service.session_dao.get_user_sessions(user_id)
                     if session.start_at >= start and session.start_at < end]
         return [
             {
