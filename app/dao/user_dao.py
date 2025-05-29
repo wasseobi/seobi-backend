@@ -19,8 +19,8 @@ class UserDAO(BaseDAO[User]):
 
     def create(self, username: str, email: str) -> User:
         """Create a new user with specific fields"""
-        return self.create(username=username, email=email)
+        return super().create(username=username, email=email)
 
     def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
         """Update a user with specific fields"""
-        return self.update(str(user_id), username=username, email=email) 
+        return super().update(str(user_id), username=username, email=email) 

@@ -28,7 +28,7 @@ class MessageDAO(BaseDAO[Message]):
     def create(self, session_id: uuid.UUID, user_id: uuid.UUID, 
                       content: str, role: str, vector=None, metadata=None) -> Message:
         """Create a new message (vector 임베딩 포함)"""
-        return self.create(
+        return super().create(
             session_id=session_id,
             user_id=user_id,
             content=content,
@@ -39,8 +39,8 @@ class MessageDAO(BaseDAO[Message]):
 
     def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
         """Update a message"""
-        return self.update(str(message_id), **kwargs)
+        return super().update(str(message_id), **kwargs)
 
     def delete(self, message_id: uuid.UUID) -> bool:
         """Delete a message"""
-        return self.delete(str(message_id))
+        return super().delete(str(message_id))
