@@ -1,5 +1,6 @@
 from app.dao.schedule_dao import ScheduleDAO
 import datetime
+from app.langgraph.parsing_agent.graph import parsing_agent
 
 class ScheduleService:
     def __init__(self):
@@ -19,39 +20,23 @@ class ScheduleService:
 
     def create_llm(self, user_id, text):
         """
-        LLM을 활용해 자연어 text를 파싱하여 일정 생성.
-        (현재는 예시 stub)
+        자연어 파싱 에이전트 그래프(parsing_agent)를 활용해 일정 생성.
         """
-        # TODO: 실제 LLM 연동 및 파싱 로직 구현
-        # 예시: 반복 주기 파싱
-        repeat = ''
-        if '매주' in text:
-            repeat = '매주'
-        elif '매월' in text:
-            repeat = '매월'
-        elif '격주' in text:
-            repeat = '격주'
-        elif any(day in text for day in ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']):
-            repeat = '특정요일'
-        # 예시: 날짜/시간 파싱 (stub)
-        now = datetime.datetime.now()
-        start_at = None
-        finish_at = None
-        if '내일' in text:
-            start_at = now + datetime.timedelta(days=1)
-            start_at = start_at.replace(hour=10, minute=0, second=0, microsecond=0)
-        elif '오늘' in text:
-            start_at = now.replace(hour=10, minute=0, second=0, microsecond=0)
-        # 실제로는 LLM 파싱 결과를 사용해야 함
+        input_data = {
+            'user_id': user_id,
+            'text': text
+        }
+        result = parsing_agent(input_data)
+        # 그래프 결과에서 일정 생성에 필요한 데이터 추출 (stub)
         parsed_data = {
             'user_id': user_id,
-            'title': '팀 미팅',
-            'repeat': repeat,
-            'start_at': start_at,
-            'finish_at': finish_at,
-            'location': '',
-            'status': 'undone',
-            'memo': text,
-            'linked_service': '',
+            'title': result.get('title', '팀 미팅'),
+            'repeat': result.get('repeat', ''),
+            'start_at': result.get('start_at', None),
+            'finish_at': result.get('finish_at', None),
+            'location': result.get('location', ''),
+            'status': result.get('status', 'undone'),
+            'memo': result.get('memo', ''),
+            'linked_service': result.get('linked_service', ''),
         }
         return self.create(parsed_data)
