@@ -5,6 +5,7 @@ from app.utils.prompt.service_prompts import INSIGHT_ARTICLE_SYSTEM_PROMPT
 from app.langgraph.insight.graph import build_insight_graph
 
 from datetime import datetime, timezone
+import json
 
 class InsightArticleService:
     def __init__(self):
@@ -18,7 +19,7 @@ class InsightArticleService:
         """
         graph = build_insight_graph()
         context = {"user_id": user_id, "type": type}
-        result = graph.invoke(context)
+        result = graph.compile().invoke(context)
         content_json = {
             "text": result.get("text", ""),
             "script": result.get("script", "")
@@ -41,7 +42,20 @@ class InsightArticleService:
         return sorted(articles, key=lambda a: a.created_at, reverse=True)
 
     def get_article(self, article_id):
-        return self.insight_article_dao.get_by_id(article_id)
+        article = self.insight_article_dao.get_by_id(article_id)
+        def safe_load(val):
+            if isinstance(val, str):
+                try:
+                    return json.loads(val)
+                except Exception:
+                    return val
+            return val
+        if article:
+            article.content = safe_load(article.content)
+            article.tags = safe_load(article.tags)
+            article.keywords = safe_load(article.keywords)
+            article.source = safe_load(article.source)
+        return article
 
     def delete_article(self, article_id):
         return self.insight_article_dao.delete(article_id)

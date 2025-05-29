@@ -12,12 +12,8 @@ from langchain_core.messages import BaseMessage, ToolMessage
 from typing import List, Dict, Any, Generator, Union, Optional
 import uuid
 from datetime import datetime, timezone
-import logging
 import json
 import numpy as np
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 
 class MessageService:
@@ -279,14 +275,11 @@ class MessageService:
         """
         user_id로 해당 사용자의 모든 메시지 벡터를 불러와 쿼리 임베딩과의 유사도를 계산, top-N 결과 반환
         """
-        import logging
         import json
-        logger = logging.getLogger(__name__)
         user_uuid = uuid.UUID(user_id) if not isinstance(
             user_id, uuid.UUID) else user_id
         messages = self.message_dao.get_user_messages(user_uuid)
         if not messages:
-            logger.debug("[벡터검색] 메시지가 없습니다.")
             return []
 
         # 쿼리 임베딩 생성
@@ -323,8 +316,6 @@ class MessageService:
             updated = 0
             errors = 0
 
-            logger.debug(f"[벡터 업데이트] 시작: 총 {total}개 메시지")
-
             client = get_openai_client()
             for msg in messages:
                 if msg.vector is None:  # 벡터가 없는 메시지만 업데이트
@@ -334,7 +325,6 @@ class MessageService:
                         updated += 1
                     except Exception as e:
                         errors += 1
-                        logger.error(f"[벡터 업데이트] 실패 {msg.id}: {str(e)}")
 
             result = {
                 "total": total,
@@ -345,5 +335,4 @@ class MessageService:
             return result
 
         except Exception as e:
-            logger.error(f"벡터 업데이트 중 오류 발생: {str(e)}")
             raise

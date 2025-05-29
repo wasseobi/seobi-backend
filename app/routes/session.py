@@ -84,9 +84,6 @@ class SessionOpen(Resource):
     @require_auth
     def post(self):
         """새로운 채팅 세션을 생성합니다."""
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(f"[헤더 확인] request.headers: {dict(request.headers)}")
 
         user_id = (
             request.headers.get('user-id')

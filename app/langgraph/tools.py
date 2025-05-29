@@ -5,7 +5,6 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 from typing import Dict, Union, Any, List
 import os
 import json
-import logging
 from flask import request, g
 
 @tool
@@ -60,9 +59,6 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
         user_id = request.json.get('user_id')
     if not user_id:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
-    logger = logging.getLogger(__name__)
-    logger.debug(
-        f"[TOOL 호출] search_similar_messages(user_id={user_id}, query={query}, top_k={top_k})")
     from app.services.message_service import MessageService
     message_service = MessageService()
     results = message_service.search_similar_messages(user_id, query, top_k)

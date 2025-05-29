@@ -1,4 +1,3 @@
-
 def load_documents(context):
     from langchain_community.document_loaders import WebBaseLoader
     """
@@ -21,4 +20,7 @@ def load_documents(context):
         return docs
     context['recent_news_docs'] = load_news_docs(context.get('recent_news', {}))
     context['past_news_docs'] = load_news_docs(context.get('past_news', {}))
+    # 보조 안전장치: source가 없으면 빈 리스트로
+    if 'source' not in context or context['source'] is None:
+        context['source'] = []
     return context

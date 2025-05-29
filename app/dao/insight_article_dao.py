@@ -1,6 +1,12 @@
 from app.models import InsightArticle, db
+from app.dao.base import BaseDAO
+import json
 
-class InsightArticleDAO:
+class InsightArticleDAO(BaseDAO[InsightArticle]):
+
+    def __init__(self):
+        super().__init__(InsightArticle)
+
     def get_by_user(self, user_id):
         return InsightArticle.query.filter_by(user_id=user_id).all()
 
@@ -10,12 +16,14 @@ class InsightArticleDAO:
     def create(self, **kwargs):
         article = InsightArticle(
             title=kwargs.get('title'),
-            content=kwargs.get('content'),
+            content=json.dumps(kwargs.get('content', {}), ensure_ascii=False),
             user_id=kwargs.get('user_id'),
             created_at=kwargs.get('created_at'),
             type=kwargs.get('type'),
-            keywords=kwargs.get('keywords'),
-            interest_ids=kwargs.get('interest_ids')
+            keywords=json.dumps(kwargs.get('keywords', []), ensure_ascii=False),
+            interest_ids=kwargs.get('interest_ids'),
+            tags=json.dumps(kwargs.get('tags', []), ensure_ascii=False),
+            source=json.dumps(kwargs.get('source', []), ensure_ascii=False)
         )
         db.session.add(article)
         db.session.commit()
