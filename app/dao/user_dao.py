@@ -1,7 +1,8 @@
+import uuid
+from typing import Optional
+
 from app.dao.base import BaseDAO
 from app.models.user import User
-from typing import Optional
-import uuid
 
 class UserDAO(BaseDAO[User]):
     """Data Access Object for User model"""

@@ -1,6 +1,7 @@
+import json
+
 from app.models import InsightArticle, db
 from app.dao.base import BaseDAO
-import json
 
 class InsightArticleDAO(BaseDAO[InsightArticle]):
 

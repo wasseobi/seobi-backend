@@ -1,6 +1,8 @@
 from typing import Generic, TypeVar, Type, Optional, List
-from app.models.db import db
+
 from sqlalchemy.orm import Query
+
+from app.models.db import db
 
 ModelType = TypeVar("ModelType")
 

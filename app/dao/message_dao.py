@@ -1,7 +1,8 @@
-from app.dao.base import BaseDAO
-from app.models import Message
-from typing import List, Optional
 import uuid
+from typing import List, Optional
+
+from app.models import Message
+from app.dao.base import BaseDAO
 
 class MessageDAO(BaseDAO[Message]):
     """Data Access Object for Message model"""
