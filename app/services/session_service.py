@@ -37,12 +37,12 @@ class SessionService:
 
     def get_all_sessions(self) -> List[Dict]:
         """Get all sessions"""
-        sessions = self.session_dao.get_all_sessions()
+        sessions = self.session_dao.get_all()
         return [self._serialize_session(session) for session in sessions]
 
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
         """Get a session by ID"""
-        session = self.session_dao.get_session_by_id(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -66,7 +66,7 @@ class SessionService:
         if finish_at is not None:
             update_data['finish_at'] = finish_at
 
-        session = self.session_dao.update_session(session_id, **update_data)
+        session = self.session_dao.update(session_id, **update_data)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -78,7 +78,7 @@ class SessionService:
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
         """Finish a session with validation and run cleanup graph"""
-        session = self.session_dao.get_session_by_id(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
@@ -146,13 +146,13 @@ class SessionService:
                     title = (description or response)[:20]
                 if not description:
                     description = response[:100]
-                self.session_dao.update_session(
+                self.session_dao.update(
                     session_id,
                     title=title,
                     description=description
                 )
             except json.JSONDecodeError:
-                self.session_dao.update_session(
+                self.session_dao.update(
                     session_id,
                     description=response[:100]
                 )
@@ -174,7 +174,7 @@ class SessionService:
             ValueError: If user_id is invalid
         """
         try:
-            sessions = self.session_dao.get_user_sessions(user_id)
+            sessions = self.session_dao.get_all_by_user_id(user_id)
             return [{
                 'id': str(session.id),
                 'user_id': str(session.user_id),
@@ -223,13 +223,13 @@ class SessionService:
                 title = (description or response)[:20]
             if not description:
                 description = response[:100]
-            self.session_dao.update_session(
+            self.session_dao.update(
                 session_id,
                 title=title,
                 description=description
             )
         except Exception as e:
-            self.session_dao.update_session(
+            self.session_dao.update(
                 session_id,
                 description=response[:100]
             )

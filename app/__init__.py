@@ -28,7 +28,7 @@ api = Api(
     security='Bearer'  # 모든 엔드포인트에 기본적으로 Bearer 인증 적용
 )
 
-def create_app():
+def create_app(config_name=None):
     load_dotenv()
     app = Flask(__name__)
 
@@ -36,8 +36,10 @@ def create_app():
     app.json.ensure_ascii = False
     app.json.mimetype = 'application/json; charset=utf-8'
     
-
-    app.config.from_object('config.Config')
+    if config_name == 'testing':
+        app.config.from_object('config.TestConfig')
+    else:
+        app.config.from_object('config.Config')
 
     # Initialize extensions
     db.init_app(app)
