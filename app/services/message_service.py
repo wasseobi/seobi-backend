@@ -38,12 +38,12 @@ class MessageService:
 
     def get_all_messages(self) -> List[Dict]:
         """Get all messages"""
-        messages = self.message_dao.get_all_messages()
+        messages = self.message_dao.get_all()
         return [self._serialize_message(msg) for msg in messages]
 
     def get_message(self, message_id: uuid.UUID) -> Dict:
         """Get a message by ID"""
-        message = self.message_dao.get_message_by_id(message_id)
+        message = self.message_dao.get_by_id(message_id)
         if not message:
             raise ValueError('Message not found')
         return self._serialize_message(message)
@@ -56,7 +56,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.message_dao.get_session_messages(session_id)
+        messages = self.message_dao.get_all_by_session_id(session_id)
         serialized = [self._serialize_message(msg) for msg in messages]
         return serialized
 
@@ -68,7 +68,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.message_dao.get_session_messages(session_id)
+        messages = self.message_dao.get_all_by_session_id(session_id)
         return [
             {"role": msg.role, "content": msg.content}
             for msg in messages
@@ -227,7 +227,7 @@ class MessageService:
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
-            messages = self.message_dao.get_user_messages(user_id)
+            messages = self.message_dao.get_all_by_user_id(user_id)
             return [self._serialize_message(msg) for msg in messages]
         except Exception as e:
             raise ValueError(f"Failed to get messages for user {user_id}")
@@ -278,7 +278,7 @@ class MessageService:
         import json
         user_uuid = uuid.UUID(user_id) if not isinstance(
             user_id, uuid.UUID) else user_id
-        messages = self.message_dao.get_user_messages(user_uuid)
+        messages = self.message_dao.get_all_by_user_id(user_uuid)
         if not messages:
             return []
 
@@ -308,9 +308,9 @@ class MessageService:
         try:
             # 특정 사용자 또는 전체 메시지 조회
             if user_id:
-                messages = self.message_dao.get_user_messages(user_id)
+                messages = self.message_dao.get_all_by_user_id(user_id)
             else:
-                messages = self.message_dao.get_all_messages()
+                messages = self.message_dao.get_all()
 
             total = len(messages)
             updated = 0
