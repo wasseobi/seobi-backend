@@ -56,7 +56,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.message_dao.get_session_messages(session_id)
+        messages = self.message_dao.get_all_by_session_id(session_id)
         serialized = [self._serialize_message(msg) for msg in messages]
         return serialized
 
@@ -68,7 +68,7 @@ class MessageService:
         if session.finish_at:
             raise ValueError('Cannot get messages from finished session')
 
-        messages = self.message_dao.get_session_messages(session_id)
+        messages = self.message_dao.get_all_by_session_id(session_id)
         return [
             {"role": msg.role, "content": msg.content}
             for msg in messages
