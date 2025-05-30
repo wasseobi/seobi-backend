@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from app.dao.report_dao import ReportDAO
 from app.services.reports.generate_report_service import GenerateReportService
-from app.services.reports.generate_report_service import get_timezone
+from app.utils.time import TimeUtils
 
 class ReportService:
     def __init__(self):
@@ -34,7 +34,7 @@ class ReportService:
         return self.report_dao.delete(report_id)
 
     def generate_and_create_report(self, user_id, schedule_id, user_name, tz_str, report_type='daily', max_retries=2):
-        tz = get_timezone(tz_str)
+        tz = TimeUtils.get_timezone(tz_str)
         report_data = self.generator.generate_report(user_id, user_name, tz, report_type, max_retries)
         db_data = {
             "user_id": user_id,

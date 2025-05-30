@@ -1,6 +1,6 @@
 # Daily Report용 LLM 프롬프트 템플릿 모음
 
-SCHEDULES_MARKDOWN_PROMPT = """
+SCHEDULES_PROMPT = """
 아래는 {header} 리스트입니다. 반드시 아래와 같이 마크다운 형식으로 요약해서 응답해 주세요.
 형식 예시:
 ## {header} (총 {count}건)
@@ -27,7 +27,7 @@ SCHEDULES_MARKDOWN_PROMPT = """
 - 예시와 동일한 마크다운 구조로만 응답하세요.
 """
 
-SESSIONS_MARKDOWN_PROMPT = """
+SESSIONS_PROMPT = """
 아래는 오늘의 대화 세션 리스트입니다. 반드시 아래와 같이 마크다운 형식으로 요약해서 응답해 주세요.
 형식 예시:
 ## 대화 세션 요약 (총 {count}건)
@@ -45,7 +45,7 @@ SESSIONS_MARKDOWN_PROMPT = """
 - 예시와 동일한 마크다운 구조로만 응답하세요.
 """
 
-ARTICLES_MARKDOWN_PROMPT = """
+ARTICLES_PROMPT = """
 아래는 오늘의 아티클 리스트입니다. 반드시 아래와 같이 마크다운 형식으로 요약해서 응답해 주세요.
 형식 예시:
 ## 오늘의 아티클 (총 {count}건)

@@ -1,30 +1,21 @@
-import uuid
 from datetime import datetime, timedelta, timezone
 from app.services.reports.summarize_report_service import SummarizeReportService
 from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.time import TimeUtils
 from app.utils.prompt.reports.daily_report_prompts import (
     DAILY_REPORT_PROMPT,
     REPORT_BRIEFING_PROMPT,
 )
-from zoneinfo import ZoneInfo
-
-def get_timezone(tz_str):
-    try:
-        return ZoneInfo(tz_str)
-    except Exception as e:
-        print(f"[WARNING] get_timezone fallback to UTC: {e}")
-        return timezone.utc
 
 class GenerateReportService:
     def __init__(self):
         self.summarizer = SummarizeReportService()
 
     def generate_daily_report(self, user_id, user_name, tz, max_retries=2):
-        from datetime import datetime
         today = datetime.now(tz).strftime("%Y-%m-%d")
-        done = self.summarizer.summarize_schedules_done(user_id, tz, max_retries)
-        undone = self.summarizer.summarize_schedules_undone(user_id, tz, max_retries)
-        tomorrow = self.summarizer.summarize_tomorrow_schedules(user_id, tz, max_retries)
+        done = self.summarizer.summarize_schedules(user_id, tz, when='today', status='done', max_retries=max_retries)
+        undone = self.summarizer.summarize_schedules(user_id, tz, when='today', status='undone', max_retries=max_retries)
+        tomorrow = self.summarizer.summarize_schedules(user_id, tz, when='tomorrow', status=None, max_retries=max_retries)
         sessions = self.summarizer.summarize_sessions(user_id, tz, max_retries)
         articles = self.summarizer.summarize_today_articles(user_id, tz, max_retries)
         sections = f"{done}\n\n{undone}\n\n{tomorrow}\n\n{sessions}\n\n{articles}"
@@ -48,9 +39,8 @@ class GenerateReportService:
         return response
 
     def generate_briefing_script(self, user_id, user_name, markdown=None, tz=None, max_retries=2):
-        from datetime import datetime
         if tz is None:
-            tz = get_timezone("UTC")
+            tz = TimeUtils.get_timezone("UTC")
         if markdown is None:
             markdown = self.generate_daily_report(user_id, user_name, tz, max_retries)
         now = datetime.now(tz)
@@ -75,9 +65,9 @@ class GenerateReportService:
             return f"Daily Report 브리핑 스크립트 생성이 실패했습니다. 다음 안내가 필요하시면 말씀해주세요."
         return response
 
-    def generate_report(self, user_id, user_name, tz=None, report_type='daily', max_retries=2):
+    def format_report_content(self, user_id, user_name, tz=None, report_type='daily', max_retries=2):
         if tz is None:
-            tz = get_timezone("UTC")
+            tz = TimeUtils.get_timezone("UTC")
         if report_type == 'daily':
             markdown = self.generate_daily_report(user_id, user_name, tz, max_retries)
             script = self.generate_briefing_script(user_id, user_name, markdown, tz, max_retries)
