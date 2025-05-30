@@ -37,7 +37,7 @@ class Config:
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True
-    DB_NAME = "seobi_test"
+    DB_NAME = os.getenv("TESTDATABASE")
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
         f"?sslmode=require&sslrootcert={Config.SSL_CERT}"
