@@ -43,7 +43,7 @@ class MessageService:
 
     def get_message(self, message_id: uuid.UUID) -> Dict:
         """Get a message by ID"""
-        message = self.message_dao.get_message_by_id(message_id)
+        message = self.message_dao.get_by_id(message_id)
         if not message:
             raise ValueError('Message not found')
         return self._serialize_message(message)
