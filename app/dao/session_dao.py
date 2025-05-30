@@ -11,7 +11,7 @@ class SessionDAO(BaseDAO[Session]):
     def __init__(self):
         super().__init__(Session)
     
-    def get_session_by_id(self, session_id: uuid.UUID) -> Optional[Session]:
+    def get_by_id(self, session_id: uuid.UUID) -> Optional[Session]:
         return self.get(str(session_id))
        
     def get_user_sessions(self, user_id: uuid.UUID) -> List[Session]:
