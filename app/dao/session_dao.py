@@ -10,10 +10,6 @@ class SessionDAO(BaseDAO[Session]):
     
     def __init__(self):
         super().__init__(Session)
-
-    def get_all_sessions(self) -> List[Session]:
-        """Get all sessions ordered by start time"""
-        return self.query().order_by(Session.start_at.desc()).all()
     
     def get_session_by_id(self, session_id: uuid.UUID) -> Optional[Session]:
         return self.get(str(session_id))
