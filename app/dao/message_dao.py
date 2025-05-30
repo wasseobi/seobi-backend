@@ -14,7 +14,7 @@ class MessageDAO(BaseDAO[Message]):
         """Get all messages ordered by timestamp"""
         return self.query().order_by(Message.timestamp.asc()).all()
 
-    def get_message_by_id(self, message_id: uuid.UUID) -> Optional[Message]:
+    def get_by_id(self, message_id: uuid.UUID) -> Optional[Message]:
         return self.get(str(message_id))
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Message]:
