@@ -6,6 +6,7 @@ from typing import Dict, Union, Any, List
 import os
 import json
 from flask import request, g
+from app.services.schedule_service import ScheduleService
 
 @tool
 def search_web(query: str) -> str:
@@ -129,10 +130,59 @@ def run_insight_graph(user_id: str) -> dict:
     return result
 
 
+schedule_service = ScheduleService()
+
+@tool
+def create_schedule_by_natural_language(user_id: str, text: str) -> dict:
+    """
+    자연어로 일정을 생성하는 도구입니다. user_id와 자연어 text를 입력하면 일정을 생성하고, 생성된 일정 정보를 반환합니다.
+    """
+    schedule = schedule_service.create_llm(user_id, text)
+    # SQLAlchemy 객체를 dict로 변환
+    result = {
+        'id': str(schedule.id),
+        'user_id': str(schedule.user_id),
+        'title': schedule.title,
+        'repeat': schedule.repeat,
+        'start_at': schedule.start_at.isoformat() if schedule.start_at else None,
+        'finish_at': schedule.finish_at.isoformat() if schedule.finish_at else None,
+        'location': schedule.location,
+        'status': schedule.status,
+        'memo': schedule.memo,
+        'linked_service': schedule.linked_service,
+        'timestamp': schedule.timestamp.isoformat() if schedule.timestamp else None
+    }
+    return result
+
+@tool
+def get_user_schedules(user_id: str) -> list:
+    """
+    특정 사용자의 모든 일정을 조회하는 도구입니다. user_id를 입력하면 일정 리스트를 반환합니다.
+    """
+    schedules = schedule_service.get_user_schedule(user_id)
+    result = []
+    for schedule in schedules:
+        result.append({
+            'id': str(schedule.id),
+            'user_id': str(schedule.user_id),
+            'title': schedule.title,
+            'repeat': schedule.repeat,
+            'start_at': schedule.start_at.isoformat() if schedule.start_at else None,
+            'finish_at': schedule.finish_at.isoformat() if schedule.finish_at else None,
+            'location': schedule.location,
+            'status': schedule.status,
+            'memo': schedule.memo,
+            'linked_service': schedule.linked_service,
+            'timestamp': schedule.timestamp.isoformat() if schedule.timestamp else None
+        })
+    return result
+
 agent_tools = [
     search_web,
     calculator,
     search_similar_messages,
     google_search,
-    run_insight_graph
+    run_insight_graph,
+    create_schedule_by_natural_language,
+    get_user_schedules
 ]
