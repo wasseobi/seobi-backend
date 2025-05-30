@@ -1,12 +1,11 @@
 """메시지 기록 관련 라우트를 정의하는 모듈입니다."""
-from flask import request
+from flask import request, current_app
 from flask_restx import Resource, Namespace, fields
 from app.services.message_service import MessageService
 from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 import json
-from config import Config
 
 # Create namespace
 ns = Namespace('m', description='메시지 기록 조회')
@@ -37,12 +36,12 @@ message_service = MessageService()
 class UserMessages(Resource):
     @ns.doc('사용자 전체 메시지',
             description='특정 사용자의 모든 메시지 기록을 가져옵니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not current_app.config['DEV_MODE'] else None,
             params={
                 'Authorization': {
                     'description': 'Bearer <jwt>', 
                     'in': 'header', 
-                    'required': not Config.DEV_MODE
+                    'required': not current_app.config['DEV_MODE']
                 }
             })
     @ns.response(200, '메시지 목록 조회 성공', [message_response])

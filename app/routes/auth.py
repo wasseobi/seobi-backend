@@ -1,5 +1,5 @@
 """인증 관련 라우트를 정의하는 모듈입니다."""
-from flask import request
+from flask import request, current_app
 from flask_restx import Resource, Namespace, fields
 from flask_jwt_extended import create_access_token, jwt_required
 import google.auth.transport.requests
@@ -7,7 +7,6 @@ import google.oauth2.id_token
 from app.models.db import db
 from app.models.user import User
 from app.services.user_service import UserService
-from config import Config
 
 # Create namespace
 ns = Namespace('auth', description='사용자 인증 작업')
@@ -52,7 +51,7 @@ class SignIn(Resource):
             # Verify Google token
             request_adapter = google.auth.transport.requests.Request()
             id_info = google.oauth2.id_token.verify_oauth2_token(
-                id_token, request_adapter, Config.GOOGLE_CLIENT_ID)
+                id_token, request_adapter, current_app.config['GOOGLE_CLIENT_ID'])
             
             # Get user info
             email = id_info.get('email')
@@ -78,13 +77,13 @@ class SignIn(Resource):
 class TokenVerify(Resource):
     @ns.doc('토큰 검증',
             description='JWT 토큰의 유효성을 검증합니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not current_app.config['DEV_MODE'] else None,
             params={
                 'Content-Type': {'description': 'application/json', 'in': 'header'},
                 'Authorization': {
                     'description': 'Bearer <jwt>', 
                     'in': 'header', 
-                    'required': not Config.DEV_MODE
+                    'required': not current_app.config['DEV_MODE']
                 }
             })
     @ns.response(200, '토큰 검증 성공', verify_response)

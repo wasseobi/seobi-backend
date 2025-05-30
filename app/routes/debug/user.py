@@ -9,9 +9,8 @@ from app.models.user import User
 from app.services.user_service import UserService
 from app.schemas.user_schema import register_models
 from app.utils.auth_middleware import require_auth
-from config import Config
 
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_restx import Resource, Namespace, fields
 from flask_jwt_extended import (
     create_access_token, 
@@ -148,7 +147,7 @@ class TokenVerification(Resource):
             dict: 토큰의 유효성 여부
         """
         # DEV_MODE 체크
-        if Config.DEV_MODE:
+        if current_app.config['DEV_MODE']:
             return {'valid': True}
             
         auth_header = request.headers.get('Authorization', '')
