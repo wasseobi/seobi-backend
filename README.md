@@ -166,6 +166,14 @@ flask db upgrade
 python main.py
 ```
 
+### 패키지 관리
+
+- 개발하면서 추가된 패키지가 있다면 아래 명령어로 패키지 정리 진행 필수
+
+```bash
+uv export -o requirements.txt
+```
+
 ### flask 개발 모드 관련
 
 `DEV_MODE=True`
