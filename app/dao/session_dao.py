@@ -33,10 +33,6 @@ class SessionDAO(BaseDAO[Session]):
     def update_finish_time(self, session_id: uuid.UUID, finish_time: datetime) -> Optional[Session]:
         """Update session finish time"""
         return self.update_session(session_id, finish_at=finish_time)
-    
-    def delete(self, session_id: uuid.UUID) -> bool:
-        """Delete a session"""
-        return super().delete(str(session_id))
 
     def get_user_id_by_session_id(self, session_id: uuid.UUID) -> Optional[uuid.UUID]:
         """Get user_id by session_id"""
