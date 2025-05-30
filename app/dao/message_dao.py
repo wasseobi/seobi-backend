@@ -15,7 +15,6 @@ class MessageDAO(BaseDAO[Message]):
         return self.query().order_by(Message.timestamp.asc()).all()
 
     def get_message_by_id(self, message_id: uuid.UUID) -> Optional[Message]:
-        """Get a message by ID"""
         return self.get(str(message_id))
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Message]:
@@ -39,5 +38,4 @@ class MessageDAO(BaseDAO[Message]):
         )
 
     def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
-        """Update a message"""
         return super().update(str(message_id), **kwargs)
