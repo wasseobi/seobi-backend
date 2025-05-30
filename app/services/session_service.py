@@ -174,7 +174,7 @@ class SessionService:
             ValueError: If user_id is invalid
         """
         try:
-            sessions = self.session_dao.get_user_sessions(user_id)
+            sessions = self.session_dao.get_all_by_user_id(user_id)
             return [{
                 'id': str(session.id),
                 'user_id': str(session.user_id),
