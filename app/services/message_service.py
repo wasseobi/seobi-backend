@@ -38,7 +38,7 @@ class MessageService:
 
     def get_all_messages(self) -> List[Dict]:
         """Get all messages"""
-        messages = self.message_dao.get_all_messages()
+        messages = self.message_dao.get_all()
         return [self._serialize_message(msg) for msg in messages]
 
     def get_message(self, message_id: uuid.UUID) -> Dict:
@@ -310,7 +310,7 @@ class MessageService:
             if user_id:
                 messages = self.message_dao.get_user_messages(user_id)
             else:
-                messages = self.message_dao.get_all_messages()
+                messages = self.message_dao.get_all()
 
             total = len(messages)
             updated = 0

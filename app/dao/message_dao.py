@@ -10,7 +10,7 @@ class MessageDAO(BaseDAO[Message]):
     def __init__(self):
         super().__init__(Message)
 
-    def get_all_messages(self) -> List[Message]:
+    def get_all(self) -> List[Message]:
         """Get all messages ordered by timestamp"""
         return self.query().order_by(Message.timestamp.asc()).all()
 
