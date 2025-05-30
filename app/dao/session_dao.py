@@ -14,7 +14,7 @@ class SessionDAO(BaseDAO[Session]):
     def get_by_id(self, session_id: uuid.UUID) -> Optional[Session]:
         return self.get(str(session_id))
        
-    def get_user_sessions(self, user_id: uuid.UUID) -> List[Session]:
+    def get_all_by_user_id(self, user_id: uuid.UUID) -> List[Session]:
         """Get all sessions for a user ordered by creation time"""
         return self.query().filter_by(user_id=user_id).order_by(Session.start_at.desc()).all()
  
