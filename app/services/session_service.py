@@ -66,7 +66,7 @@ class SessionService:
         if finish_at is not None:
             update_data['finish_at'] = finish_at
 
-        session = self.session_dao.update_session(session_id, **update_data)
+        session = self.session_dao.update(session_id, **update_data)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -146,13 +146,13 @@ class SessionService:
                     title = (description or response)[:20]
                 if not description:
                     description = response[:100]
-                self.session_dao.update_session(
+                self.session_dao.update(
                     session_id,
                     title=title,
                     description=description
                 )
             except json.JSONDecodeError:
-                self.session_dao.update_session(
+                self.session_dao.update(
                     session_id,
                     description=response[:100]
                 )
@@ -223,13 +223,13 @@ class SessionService:
                 title = (description or response)[:20]
             if not description:
                 description = response[:100]
-            self.session_dao.update_session(
+            self.session_dao.update(
                 session_id,
                 title=title,
                 description=description
             )
         except Exception as e:
-            self.session_dao.update_session(
+            self.session_dao.update(
                 session_id,
                 description=response[:100]
             )
