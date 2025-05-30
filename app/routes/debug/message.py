@@ -1,6 +1,6 @@
 """Message 관련 라우트를 정의하는 모듈입니다."""
 from flask import request, Response, stream_with_context
-from flask_restx import Resource, Namespace
+from flask_restx import Resource, Namespace, fields
 from app.services.message_service import MessageService
 from app.schemas.message_schema import register_models
 from app.utils.auth_middleware import require_auth
@@ -67,14 +67,18 @@ class SessionMessageList(Resource):
 class MessageLangGraphCompletion(Resource):
     @ns.doc('create_langgraph_completion',
             description='Send a message to the AI via LangGraph and get a response with streaming support.')
-    @ns.expect(completion_input)
+    @ns.expect(ns.model('LangGraphCompletionInput', {
+        'content': fields.String(required=True, description='User message content', example='내일 오전 10시에 회의 잡아줘'),
+        'user_id': fields.String(required=True, description='User UUID', example='03823edc-9d2e-4040-b104-1d958bcf8013')
+    }))
     @ns.marshal_with(completion_response, code=200)
     @require_auth
     def post(self, session_id):
         """Create a completion using LangGraph"""
         try:
             data = request.json
-            if not data or 'content' not in data or 'user_id' not in data:
+            user_id = data.get('user_id')
+            if not data or 'content' not in data or not user_id:
                 ns.abort(400, 'Message content and user_id are required')
 
             # SSE 요청인지 확인
@@ -82,7 +86,7 @@ class MessageLangGraphCompletion(Resource):
                 def generate():
                     for chunk in message_service.create_langgraph_completion(
                         session_id=session_id,
-                        user_id=data['user_id'],
+                        user_id=user_id,
                         content=data['content']
                     ):
                         print("[SSE CHUNK]", json.dumps(chunk, ensure_ascii=False, indent=2))
@@ -99,7 +103,7 @@ class MessageLangGraphCompletion(Resource):
                 # Swagger/curl 등 일반 JSON 요청: 모든 chunk를 리스트로 반환
                 chunks = list(message_service.create_langgraph_completion(
                     session_id=session_id,
-                    user_id=data['user_id'],
+                    user_id=user_id,
                     content=data['content']
                 ))
                 # 모든 chunk의 content를 합쳐서 answer로 반환
