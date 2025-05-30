@@ -12,6 +12,7 @@ class BaseDAO(Generic[ModelType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
+    # Public CRUD methods
     def get(self, id: str) -> Optional[ModelType]:
         return self.model.query.get(id)
 
@@ -41,6 +42,7 @@ class BaseDAO(Generic[ModelType]):
             return True
         return False
 
+    # Utility method
     def query(self) -> Query:
         """Get query object for custom queries"""
         return self.model.query 

@@ -24,5 +24,6 @@ class SessionDAO(BaseDAO[Session]):
     def update_session(self, session_id: uuid.UUID, **kwargs) -> Optional[Session]:
         return self.update(str(session_id), **kwargs)
 
+    # NOTE(GideokKim): `update` method를 써도 되지만 타입 안전성, 명확성, 유지보수성 등을 위해 사용함.
     def update_finish_time(self, session_id: uuid.UUID, finish_time: datetime) -> Optional[Session]:
         return self.update_session(session_id, finish_at=finish_time)
