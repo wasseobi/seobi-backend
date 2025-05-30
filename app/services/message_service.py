@@ -227,7 +227,7 @@ class MessageService:
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
-            messages = self.message_dao.get_user_messages(user_id)
+            messages = self.message_dao.get_all_by_user_id(user_id)
             return [self._serialize_message(msg) for msg in messages]
         except Exception as e:
             raise ValueError(f"Failed to get messages for user {user_id}")
@@ -278,7 +278,7 @@ class MessageService:
         import json
         user_uuid = uuid.UUID(user_id) if not isinstance(
             user_id, uuid.UUID) else user_id
-        messages = self.message_dao.get_user_messages(user_uuid)
+        messages = self.message_dao.get_all_by_user_id(user_uuid)
         if not messages:
             return []
 
@@ -308,7 +308,7 @@ class MessageService:
         try:
             # 특정 사용자 또는 전체 메시지 조회
             if user_id:
-                messages = self.message_dao.get_user_messages(user_id)
+                messages = self.message_dao.get_all_by_user_id(user_id)
             else:
                 messages = self.message_dao.get_all()
 
