@@ -40,7 +40,3 @@ class MessageDAO(BaseDAO[Message]):
     def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
         """Update a message"""
         return super().update(str(message_id), **kwargs)
-
-    def delete(self, message_id: uuid.UUID) -> bool:
-        """Delete a message"""
-        return super().delete(str(message_id))
