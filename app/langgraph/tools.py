@@ -110,35 +110,14 @@ def google_news(query: str, num_results: int = 5, tbs: str = None) -> list:
 
 
 @tool
-def run_insight_graph(user_id: str) -> dict:
-    """인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다."""
-    from app.services.insight_article_service import InsightArticleService
-    service = InsightArticleService()
-    article = service.create_article(user_id, type="chat")
-    # article이 SQLAlchemy 모델 객체라면 dict로 변환
-    result = {
-        "id": str(article.id),
-        "title": article.title,
-        "content": article.content,
-        "tags": article.tags,
-        "source": article.source,
-        "type": article.type,
-        "created_at": article.created_at.isoformat() if article.created_at else None,
-        "keywords": article.keywords,
-        "interest_ids": article.interest_ids
-    }
-    return result
-
-
-schedule_service = ScheduleService()
-
-@tool
-def create_schedule_by_natural_language(user_id: str, text: str) -> dict:
+def create_schedule_by_natural_language(text: str) -> dict:
     """
-    자연어로 일정을 생성하는 도구입니다. user_id와 자연어 text를 입력하면 일정을 생성하고, 생성된 일정 정보를 반환합니다.
+    자연어로 일정을 생성하는 도구입니다. text만 입력하면, 백엔드에서 user_id를 자동으로 추출해 일정을 생성하고, 생성된 일정 정보를 반환합니다.
     """
+    user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
+    if not user_id:
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     schedule = schedule_service.create_llm(user_id, text)
-    # SQLAlchemy 객체를 dict로 변환
     result = {
         'id': str(schedule.id),
         'user_id': str(schedule.user_id),
@@ -155,10 +134,13 @@ def create_schedule_by_natural_language(user_id: str, text: str) -> dict:
     return result
 
 @tool
-def get_user_schedules(user_id: str) -> list:
+def get_user_schedules() -> list:
     """
-    특정 사용자의 모든 일정을 조회하는 도구입니다. user_id를 입력하면 일정 리스트를 반환합니다.
+    현재 인증된 사용자의 모든 일정을 조회하는 도구입니다. user_id는 백엔드에서 자동 추출합니다.
     """
+    user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
+    if not user_id:
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     schedules = schedule_service.get_user_schedule(user_id)
     result = []
     for schedule in schedules:
@@ -176,6 +158,32 @@ def get_user_schedules(user_id: str) -> list:
             'timestamp': schedule.timestamp.isoformat() if schedule.timestamp else None
         })
     return result
+
+@tool
+def run_insight_graph() -> dict:
+    """
+    인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다. user_id는 백엔드에서 자동 추출합니다.
+    """
+    user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
+    if not user_id:
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
+    from app.services.insight_article_service import InsightArticleService
+    service = InsightArticleService()
+    article = service.create_article(user_id, type="chat")
+    result = {
+        "id": str(article.id),
+        "title": article.title,
+        "content": article.content,
+        "tags": article.tags,
+        "source": article.source,
+        "type": article.type,
+        "created_at": article.created_at.isoformat() if article.created_at else None,
+        "keywords": article.keywords,
+        "interest_ids": article.interest_ids
+    }
+    return result
+
+schedule_service = ScheduleService()
 
 agent_tools = [
     search_web,
