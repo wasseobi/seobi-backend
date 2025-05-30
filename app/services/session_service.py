@@ -42,7 +42,7 @@ class SessionService:
 
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
         """Get a session by ID"""
-        session = self.session_dao.get_session_by_id(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         return self._serialize_session(session)
@@ -78,7 +78,7 @@ class SessionService:
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
         """Finish a session with validation and run cleanup graph"""
-        session = self.session_dao.get_session_by_id(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
