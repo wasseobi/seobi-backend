@@ -33,8 +33,8 @@ class InterestService:
         self.message_service = MessageService()
         messages = self.message_service.get_session_messages(session_id)
 
-        # 1-1. session_id로 user_id 조회
-        user_id = self.session_dao.get_user_id_by_session_id(session_id)
+        # 1-1. session_id로 session 조회
+        session = self.session_dao.get_by_id(session_id)
 
         # 메시지 포맷: [{'id': '...', 'content': '...'}, ...]
         message_list = [
@@ -42,7 +42,7 @@ class InterestService:
         ]
 
         # 기존 키워드 리스트 추출
-        interests = self.interest_dao.get_interests_by_user(user_id)
+        interests = self.interest_dao.get_interests_by_user(session.user_id)
         user_keywords = [interest.content for interest in interests]
 
         # 2. 프롬프트 생성 (기존 키워드 리스트 포함)
