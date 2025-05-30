@@ -1,7 +1,7 @@
-from app.models.interest import Interest
-from app.models.db import db
-from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
+
+from app.models.db import db
+from app.models.interest import Interest
 
 class InterestDAO:
     def create(self, user_id, content, source_message, importance=0.5):

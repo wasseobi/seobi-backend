@@ -1,8 +1,9 @@
-from app.dao.base import BaseDAO
-from app.models import db, Session
-from datetime import datetime, timezone, timedelta
-from typing import List, Optional
 import uuid
+from datetime import datetime
+from typing import List, Optional
+
+from app.models import Session
+from app.dao.base import BaseDAO
 
 class SessionDAO(BaseDAO[Session]):
     """Data Access Object for Session model"""
