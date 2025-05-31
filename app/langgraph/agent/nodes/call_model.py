@@ -40,16 +40,9 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
 def call_model(state: Dict) -> Dict:
     """LLM을 호출하고 응답을 생성하는 노드."""
     try:
-        # 기본 state 구조 확인 및 초기화
-        if "messages" not in state:
-            state["messages"] = []
-        if "current_input" not in state:
-            state["current_input"] = ""
-            
         # 현재 입력을 메시지로 변환
         if state["current_input"]:
             current_msg = HumanMessage(content=state["current_input"])
-            # 현재 입력 메시지를 messages에 바로 추가
             state["messages"].append(current_msg)
             
         # LLM에 전달할 메시지 포맷팅
