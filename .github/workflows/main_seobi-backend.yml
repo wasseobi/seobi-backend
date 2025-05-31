@@ -38,22 +38,17 @@ jobs:
 
       - name: Add GitHub Runner IP to PostgreSQL firewall
         run: |
-          # 현재 IP 주소 가져오기
-          RUNNER_IP=$(curl -s https://api.ipify.org)
-          echo "GitHub Runner IP: $RUNNER_IP"
-          
-          # PostgreSQL 서버 이름과 리소스 그룹 가져오기 (호스트명에서 추출)
-          PGHOST=${{ secrets.TEST_PGHOST }}
-          SERVER_NAME=$(echo $PGHOST | cut -d'.' -f1)
-          RESOURCE_GROUP=$(az postgres flexible-server list --query "[?fullyQualifiedDomainName=='$PGHOST'].resourceGroup" -o tsv)
-          
-          if [ -z "$RESOURCE_GROUP" ]; then
-            echo "Error: Could not find resource group for PostgreSQL server"
-            exit 1
-          fi
+          # PostgreSQL 서버 정보 가져오기
+          SEOBI_DATABASE_ENDPOINT=${{ secrets.SEOBI_DATABASE_ENDPOINT }}
+          SERVER_NAME=$(echo $SEOBI_DATABASE_ENDPOINT | cut -d'.' -f1)
+          RESOURCE_GROUP=${{ secrets.SEOBI_DATABASE_RESOURCE_GROUP }}
           
           echo "PostgreSQL Server: $SERVER_NAME"
           echo "Resource Group: $RESOURCE_GROUP"
+          
+          # 현재 IP 주소 가져오기
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "GitHub Runner IP: $RUNNER_IP"
           
           # 방화벽 규칙 이름 생성 (GitHub Actions Runner IP)
           RULE_NAME="github-actions-runner-$(date +%Y%m%d%H%M%S)"
