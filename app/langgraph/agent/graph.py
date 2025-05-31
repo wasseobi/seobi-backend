@@ -4,6 +4,7 @@ from langgraph.graph import Graph, END
 from langgraph.prebuilt import ToolNode
 
 from .nodes.model_node import model_node
+from .nodes.summarize_node import summarize_node
 from ..tools import agent_tools
 
 
@@ -15,6 +16,7 @@ def build_graph():
     tool_node = ToolNode(agent_tools, handle_tool_errors=True)    # Add nodes
     workflow.add_node("agent", model_node)
     workflow.add_node("tool", tool_node)
+    workflow.add_node("summarize", summarize_node)
     
     # Set entry point
     workflow.set_entry_point("agent")
@@ -24,11 +26,8 @@ def build_graph():
         return state.get("next_step", "end")
     
     # Add conditional edges
-    workflow.add_conditional_edges(
-        source="agent",
-        path=state_conditional,
-        path_map={"tool": "tool", "model": "agent", "end": END}
-    )
+    workflow.add_edge("agent", "summarize")
+    workflow.add_edge("summarize", "tool")
     workflow.add_edge("tool", "agent")
 
         
