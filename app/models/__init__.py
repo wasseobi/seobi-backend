@@ -8,5 +8,3 @@ from .schedule import Schedule
 from .report import Report
 from .insight_article import InsightArticle
 from .interest import Interest
-from .auto_task import AutoTask
-from .briefing import Briefing

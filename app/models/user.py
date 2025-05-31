@@ -17,5 +17,3 @@ class User(db.Model):
     reports = db.relationship('Report', back_populates='user', lazy=True)
     insight_articles = db.relationship('InsightArticle', back_populates='user', lazy=True)
     interests = db.relationship('Interest', back_populates='user', lazy=True)
-    auto_tasks = db.relationship('AutoTask', back_populates='user', lazy=True)
-    briefings = db.relationship('Briefing', back_populates='user', lazy=True)
