@@ -1,22 +1,40 @@
+from app.dao.base import BaseDAO
 from app.models import Schedule, db
+from typing import List, Optional
+import uuid
 
-class ScheduleDAO:
-    def get_by_user(self, user_id):
-        return Schedule.query.filter_by(user_id=user_id).all()
 
-    def get(self, schedule_id):
-        return Schedule.query.get(schedule_id)
+class ScheduleDAO(BaseDAO[Schedule]):
+    """Data Access Object for Schedule model"""
+    def __init__(self):
+        super().__init__(Schedule)
 
-    def create(self, **kwargs):
-        schedule = Schedule(**kwargs)
-        db.session.add(schedule)
-        db.session.commit()
-        return schedule
+    def get_all_schedules(self) -> List[Schedule]:
+        """Get all schedules ordered by timestamp asc"""
+        return self.query().order_by(Schedule.timestamp.asc()).all()
 
-    def delete(self, schedule_id):
-        schedule = self.get(schedule_id)
-        if schedule:
-            db.session.delete(schedule)
-            db.session.commit()
-            return True
-        return False
+    def get_schedule_by_id(self, schedule_id: uuid.UUID) -> Optional[Schedule]:
+        """Get a schedule by ID"""
+        return self.get(str(schedule_id))
+
+    def get_user_schedules(self, user_id: uuid.UUID) -> List[Schedule]:
+        """Get all schedules for a user ordered by timestamp asc"""
+        return self.query().filter_by(user_id=user_id).order_by(Schedule.timestamp.asc()).all()
+
+    def get_user_schedules_in_range(self, user_id: uuid.UUID, start, end, status=None) -> List[Schedule]:
+        """Get all schedules for a user in a given datetime range, optionally filtered by status."""
+        query = self.query().filter_by(user_id=user_id)
+        query = query.filter(self.model.start_at >= start, self.model.start_at < end)
+        if status:
+            query = query.filter_by(status=status)
+        return query.order_by(self.model.timestamp.asc()).all()
+
+    def create(self, user_id: uuid.UUID, **kwargs) -> Schedule:
+        return super().create(user_id=user_id, **kwargs)
+
+    def update_schedule(self, schedule_id: uuid.UUID, **kwargs) -> Optional[Schedule]:
+        return self.update(str(schedule_id), **kwargs)
+
+    def delete(self, schedule_id: uuid.UUID) -> bool:
+        return super().delete(str(schedule_id))
+
