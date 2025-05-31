@@ -20,4 +20,3 @@ class Schedule(db.Model):
 
     # 관계 설정 (User와 연결)
     user = db.relationship('User', back_populates='schedules')
-    reports = db.relationship('Report', back_populates='schedule')
