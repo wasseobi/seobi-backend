@@ -17,7 +17,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     environment:
-      name: 'Test'
+      name: 'Production'  # Azure 인증을 위한 환경
     permissions:
       id-token: write  # Azure 로그인을 위한 OIDC 토큰 권한
       contents: read   # 코드 체크아웃을 위한 권한
