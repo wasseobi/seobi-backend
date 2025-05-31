@@ -38,11 +38,11 @@ class InsightArticleService:
         return self.insight_article_dao.create(**data)
 
     def get_user_articles_by_date(self, user_id):
-        articles = self.insight_article_dao.get_by_user(user_id)
+        articles = self.insight_article_dao.get_user_articles(user_id)
         return sorted(articles, key=lambda a: a.created_at, reverse=True)
 
     def get_article(self, article_id):
-        article = self.insight_article_dao.get_by_id(article_id)
+        article = self.insight_article_dao.get_article_by_id(article_id)
         def safe_load(val):
             if isinstance(val, str):
                 try:
