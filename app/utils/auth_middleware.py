@@ -3,7 +3,7 @@ import os
 import jwt
 from functools import wraps
 from flask import request, jsonify
-from config import Config
+from app.utils.app_config import is_dev_mode, get_auth_config
 
 
 def require_auth(f):
@@ -11,7 +11,7 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         # 개발 모드 체크
-        if Config.DEV_MODE:
+        if is_dev_mode():
             return f(*args, **kwargs)
 
         # 토큰 확인
@@ -29,7 +29,7 @@ def require_auth(f):
             token = parts[1]
             payload = jwt.decode(
                 token,
-                Config.JWT_SECRET_KEY,
+                get_auth_config()['jwt_secret_key'],
                 algorithms=['HS256']
             )
 

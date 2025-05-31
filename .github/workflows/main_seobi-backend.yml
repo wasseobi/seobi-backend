@@ -17,6 +17,8 @@ jobs:
       FLASK_APP: app
       FLASK_ENV: testing
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # 테스트용 데이터베이스 접속 정보
+      PGPASSWORD: ${{ secrets.TEST_PGPASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
