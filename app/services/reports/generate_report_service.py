@@ -72,7 +72,7 @@ class GenerateReportService:
                 print(f"[WARNING] 브리핑 스크립트 LLM 호출 실패 (attempt {attempt+1}):", e)
         if not response:
             print("[WARNING] Daily Report 브리핑 스크립트 생성 실패. 빈 스크립트 반환.")
-            return f"Daily Report 브리핑 스크립트 생성이 실패했습니다다. 다음 안내가 필요하시면 말씀해주세요."
+            return f"Daily Report 브리핑 스크립트 생성이 실패했습니다. 다음 안내가 필요하시면 말씀해주세요."
         return response
 
     def generate_report(self, user_id, user_name, tz=None, report_type='daily', max_retries=2):
