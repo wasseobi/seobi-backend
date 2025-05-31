@@ -8,49 +8,52 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  # test:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     FLASK_APP: app
-  #     FLASK_ENV: testing
-  #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  #     # 테스트용 데이터베이스 접속 정보
-  #     PGPASSWORD: ${{ secrets.TEST_PGPASSWORD }}
+  test:
+    runs-on: ubuntu-latest
+    env:
+      FLASK_APP: app
+      FLASK_ENV: testing
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # 테스트용 데이터베이스 접속 정보
+      PGPASSWORD: ${{ secrets.TEST_PGPASSWORD }}
 
-  #   steps:
-  #     - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - name: Set up Python version
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.12'
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-  #     - name: Install uv
-  #       run: |
-  #         curl -LsSf https://astral.sh/uv/install.sh | sh
-  #         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-  #     - name: Create and start virtual environment
-  #       run: |
-  #         uv venv
-  #         source .venv/bin/activate
+      - name: Create and start virtual environment
+        run: |
+          uv venv
+          source .venv/bin/activate
       
-  #     - name: Install dependencies
-  #       run: |
-  #         source .venv/bin/activate
-  #         uv add -r requirements.txt
-  #         uv add pytest pytest-cov
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          uv add -r requirements.txt
+          uv add pytest pytest-cov
 
-  #     - name: Run tests
-  #       run: |
-  #         source .venv/bin/activate
-  #         pytest tests/ -v --cov=app
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v --cov=app
 
   build:
-    # needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
