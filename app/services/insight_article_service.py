@@ -1,5 +1,4 @@
 from app.dao.insight_article_dao import InsightArticleDAO
-from app.dao.base import BaseDAO
 from app.services.interest_service import InterestService
 from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.service_prompts import INSIGHT_ARTICLE_SYSTEM_PROMPT
@@ -10,7 +9,6 @@ import json
 
 class InsightArticleService:
     def __init__(self):
-        self.base_dao = BaseDAO
         self.insight_article_dao = InsightArticleDAO()
         self.interest_service = InterestService()
 
@@ -60,5 +58,4 @@ class InsightArticleService:
         return article
 
     def delete_article(self, article_id):
-        # NOTE: insight_article_dao에서 delete 삭제하고 (BaseDAO delete 사용하기로 함)
-        return self.base_dao.delete(article_id)
+        return self.insight_article_dao.delete(article_id)
