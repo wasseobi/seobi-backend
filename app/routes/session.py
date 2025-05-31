@@ -5,7 +5,7 @@ from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
 from app.utils.auth_middleware import require_auth
-from config import Config
+from app.utils.app_config import is_dev_mode
 import uuid
 import json
 from datetime import datetime
@@ -68,13 +68,13 @@ interest_service = InterestService()
 class SessionOpen(Resource):
     @ns.doc('세션 열기',
             description='새로운 채팅 세션을 생성합니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Content-Type': {'description': 'application/json', 'in': 'header'},
                 'Authorization': {
                     'description': 'Bearer <jwt>',
                     'in': 'header',
-                    'required': not Config.DEV_MODE
+                    'required': not is_dev_mode()
                 },
                 'user-id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
             })
@@ -103,12 +103,12 @@ class SessionOpen(Resource):
 class SessionClose(Resource):
     @ns.doc('세션 닫기',
             description='채팅 세션을 종료하고 요약 정보를 생성합니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Authorization': {
                     'description': 'Bearer <jwt>',
                     'in': 'header',
-                    'required': not Config.DEV_MODE
+                    'required': not is_dev_mode()
                 }
             })
     @ns.response(200, '세션이 종료됨', session_close_response)
@@ -146,12 +146,12 @@ class SessionClose(Resource):
 class MessageSend(Resource):
     @ns.doc('메시지 전송',
             description='사용자 메시지를 전송하고 AI의 응답을 스트리밍으로 받습니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Authorization': {
                         'description': 'Bearer <jwt>',
                         'in': 'header',
-                        'required': not Config.DEV_MODE
+                        'required': not is_dev_mode()
                 },
                 'Accept': {
                     'description': 'text/event-stream',
@@ -242,12 +242,12 @@ class MessageSend(Resource):
 class UserSessions(Resource):
     @ns.doc('사용자 세션 목록',
             description='특정 사용자의 모든 채팅 세션 목록을 가져옵니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Authorization': {
                     'description': 'Bearer <jwt>',
                     'in': 'header',
-                    'required': not Config.DEV_MODE
+                    'required': not is_dev_mode()
                 }
             })
     @ns.response(200, '세션 목록 조회 성공', [session_close_response])
@@ -274,12 +274,12 @@ class UserSessions(Resource):
 class SessionMessages(Resource):
     @ns.doc('세션 메시지 목록',
             description='특정 세션의 모든 메시지 기록을 가져옵니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Authorization': {
                     'description': 'Bearer <jwt>',
                     'in': 'header',
-                    'required': not Config.DEV_MODE
+                    'required': not is_dev_mode()
                 }
             })
     @ns.response(200, '메시지 목록 조회 성공', [session_message_response])

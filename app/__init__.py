@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask_restx import Api
 from app.models.db import db
 from flask_jwt_extended import JWTManager
+from app.utils.app_config import init_config
 
 migrate = Migrate()
 
@@ -47,6 +48,7 @@ def create_app(config_name=None):
     CORS(app)
     api.init_app(app)
     JWTManager(app)  # JWT 매니저 등록
+    init_config(app)
 
     # Import models after db initialization
     from app.models.user import User

@@ -7,7 +7,7 @@ import google.oauth2.id_token
 from app.models.db import db
 from app.models.user import User
 from app.services.user_service import UserService
-from config import Config
+from app.utils.app_config import get_auth_config, is_dev_mode
 
 # Create namespace
 ns = Namespace('auth', description='사용자 인증 작업')
@@ -52,7 +52,7 @@ class SignIn(Resource):
             # Verify Google token
             request_adapter = google.auth.transport.requests.Request()
             id_info = google.oauth2.id_token.verify_oauth2_token(
-                id_token, request_adapter, Config.GOOGLE_CLIENT_ID)
+                id_token, request_adapter, get_auth_config()['google_client_id'])
             
             # Get user info
             email = id_info.get('email')
@@ -78,13 +78,13 @@ class SignIn(Resource):
 class TokenVerify(Resource):
     @ns.doc('토큰 검증',
             description='JWT 토큰의 유효성을 검증합니다.',
-            security='Bearer' if not Config.DEV_MODE else None,
+            security='Bearer' if not is_dev_mode() else None,
             params={
                 'Content-Type': {'description': 'application/json', 'in': 'header'},
                 'Authorization': {
                     'description': 'Bearer <jwt>', 
                     'in': 'header', 
-                    'required': not Config.DEV_MODE
+                    'required': not is_dev_mode()
                 }
             })
     @ns.response(200, '토큰 검증 성공', verify_response)
