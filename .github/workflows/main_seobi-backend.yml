@@ -74,10 +74,61 @@ jobs:
           uv add -r requirements.txt
           uv add pytest pytest-cov
 
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Add GitHub Runner IP to PostgreSQL firewall
+        run: |
+          # Azure에 로그인
+          az login --service-principal \
+            --username ${{ secrets.AZUREAPPSERVICE_CLIENTID_BBAB0F361FDA43C1B4376933ED75D1C5 }} \
+            --password ${{ secrets.AZUREAPPSERVICE_CLIENTID_SECRET }} \
+            --tenant ${{ secrets.AZUREAPPSERVICE_TENANTID_FB9EAA41DABA41D29AD25B07B6C83945 }}
+          
+          # 현재 IP 주소 가져오기
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "GitHub Runner IP: $RUNNER_IP"
+          
+          # PostgreSQL 서버 이름과 리소스 그룹 가져오기 (호스트명에서 추출)
+          PGHOST=${{ secrets.TEST_PGHOST }}
+          SERVER_NAME=$(echo $PGHOST | cut -d'.' -f1)
+          RESOURCE_GROUP=$(az postgres flexible-server list --query "[?fullyQualifiedDomainName=='$PGHOST'].resourceGroup" -o tsv)
+          
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Error: Could not find resource group for PostgreSQL server"
+            exit 1
+          fi
+          
+          echo "PostgreSQL Server: $SERVER_NAME"
+          echo "Resource Group: $RESOURCE_GROUP"
+          
+          # 방화벽 규칙 이름 생성 (GitHub Actions Runner IP)
+          RULE_NAME="github-actions-runner-$(date +%Y%m%d%H%M%S)"
+          
+          # 방화벽 규칙 추가
+          echo "Adding firewall rule: $RULE_NAME for IP: $RUNNER_IP"
+          az postgres flexible-server firewall-rule create \
+            --resource-group $RESOURCE_GROUP \
+            --name $SERVER_NAME \
+            --rule-name $RULE_NAME \
+            --start-ip-address $RUNNER_IP \
+            --end-ip-address $RUNNER_IP
+          
+          # 방화벽 규칙이 추가될 때까지 잠시 대기
+          echo "Waiting for firewall rule to take effect..."
+          sleep 10
+          
+          # 방화벽 규칙 목록 출력
+          echo "Current firewall rules:"
+          az postgres flexible-server firewall-rule list \
+            --resource-group $RESOURCE_GROUP \
+            --name $SERVER_NAME
+
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest tests/ -v --cov=app
+          pytest --durations=0 --tb=short --timeout=300 -s
 
   build:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
