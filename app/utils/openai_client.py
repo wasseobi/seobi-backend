@@ -34,6 +34,8 @@ def get_openai_client():
     )
     return client
 
+# TODO get_openai_client 어차피 계속 호출되므로, get_openai_client()를 호출하는 대신
+# get_completion()이랑 get_embedding()에서 client를 인자로 받도록 변경하는 게 나아보임.
 def get_completion(client, messages, max_completion_tokens=2000):
     """Generate chat completion using Azure OpenAI."""
     try:
