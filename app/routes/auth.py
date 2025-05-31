@@ -52,7 +52,7 @@ class SignIn(Resource):
             # Verify Google token
             request_adapter = google.auth.transport.requests.Request()
             id_info = google.oauth2.id_token.verify_oauth2_token(
-                id_token, request_adapter, get_auth_config()['google_client_id'])
+                id_token, request_adapter, get_auth_config()['google_web_client_id'])
             
             # Get user info
             email = id_info.get('email')

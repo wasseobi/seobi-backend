@@ -19,7 +19,7 @@ def init_config(app):
     global _config
     _config.update({
         'DEV_MODE': app.config.get('DEV_MODE', False),
-        'GOOGLE_CLIENT_ID': app.config.get('GOOGLE_CLIENT_ID'),
+        'GOOGLE_WEB_CLIENT_ID': app.config.get('GOOGLE_WEB_CLIENT_ID'),
         'JWT_SECRET_KEY': app.config.get('JWT_SECRET_KEY'),
         'JWT_ACCESS_TOKEN_EXPIRES': app.config.get('JWT_ACCESS_TOKEN_EXPIRES'),
         'AZURE_OPENAI_DEPLOYMENT_NAME': app.config.get('AZURE_OPENAI_DEPLOYMENT_NAME'),
@@ -52,7 +52,7 @@ def get_openai_config():
 def get_auth_config():
     """인증 관련 설정을 반환합니다."""
     return {
-        'google_client_id': _config['GOOGLE_CLIENT_ID'],
+        'google_web_client_id': _config['GOOGLE_WEB_CLIENT_ID'],
         'jwt_secret_key': _config['JWT_SECRET_KEY'],
         'jwt_access_token_expires': _config['JWT_ACCESS_TOKEN_EXPIRES']
     }

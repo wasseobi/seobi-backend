@@ -30,7 +30,7 @@ def require_auth(f):
             payload = jwt.decode(
                 token,
                 get_auth_config()['jwt_secret_key'],
-                algorithms=['HS256']
+                algorithms=['GS256'],
             )
 
             # 사용자 ID를 request에 저장
