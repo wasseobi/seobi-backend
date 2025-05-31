@@ -6,6 +6,8 @@ from app.utils.openai_client import get_openai_client, get_embedding
 from app.utils.message.processor import MessageProcessor
 from app.langgraph.agent.executor import create_agent_executor
 from app.langgraph.agent.graph import build_graph
+from app.utils.agent_state_store import AgentStateStore
+from app.langgraph.agent.agent_state import AgentState
 
 from langchain.schema import HumanMessage, AIMessage
 from langchain_core.messages import BaseMessage, ToolMessage
@@ -111,17 +113,17 @@ class MessageService:
         context = self._get_or_create_context(str(session_id), str(user_id))
         final_response = []
 
+        # 1. AgentState 불러오기
+        agent_state = AgentStateStore.get(str(user_id))
+        if not agent_state:
+            yield {'type': 'error', 'error': '세션이 존재하지 않거나 만료되었습니다.'}
+            return
+
         try:
-            context.add_user_message(
-                content if content is not None else messages[-1]['content'])
-            yield {
-                'type': 'start',
-                'user_message': {'content': content}
-            }
-            messages = [HumanMessage(
-                content=content if content is not None else messages[-1]['content'])]
-            initial_state = {"messages": messages}
-            for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
+            # 2. 사용자 메시지 추가
+            agent_state['current_input'] = content if content is not None else messages[-1]['content']
+            # LangGraph 워크플로우 실행 (state를 직접 주고받음)
+            for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
@@ -212,6 +214,8 @@ class MessageService:
                     continue
             context.finalize_assistant_response()
             self._save_context_messages(context)
+            # 3. 변경된 AgentState 저장
+            AgentStateStore.set(str(user_id), agent_state)
             if final_response:
                 pass
             yield {
