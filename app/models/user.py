@@ -1,6 +1,6 @@
 from app.models.db import db
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
 class User(db.Model):
@@ -8,6 +8,7 @@ class User(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = db.Column(db.String(30), nullable=False, unique=True)
     email = db.Column(db.String(255), nullable=False, unique=True)
+    user_memory = db.Column(JSONB, nullable=True)
 
     # Relationships
     sessions = db.relationship('Session', back_populates='user', lazy=True)
