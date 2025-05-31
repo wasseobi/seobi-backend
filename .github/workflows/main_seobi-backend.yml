@@ -19,9 +19,24 @@ jobs:
     env:
       FLASK_APP: app
       FLASK_ENV: testing
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # 테스트용 데이터베이스 접속 정보
+      PGUSER: ${{ secrets.TEST_PGUSER }}
       PGPASSWORD: ${{ secrets.TEST_PGPASSWORD }}
+      PGHOST: ${{ secrets.TEST_PGHOST }}
+      PGPORT: ${{ secrets.TEST_PGPORT }}
+      PGDATABASE: ${{ secrets.TEST_PGDATABASE }}
+      PGSSLROOTCERT: ${{ secrets.TEST_PGSSLROOTCERT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.TEST_AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ secrets.TEST_AZURE_OPENAI_API_VERSION }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.TEST_AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.TEST_AZURE_OPENAI_DEPLOYMENT_NAME }}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME: ${{ secrets.TEST_AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME }}
+      GOOGLE_API_KEY: ${{ secrets.TEST_GOOGLE_API_KEY }}
+      GOOGLE_CSE_ID: ${{ secrets.TEST_GOOGLE_CSE_ID }}
+      JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
+      JWT_ACCESS_TOKEN_EXPIRES: ${{ secrets.TEST_JWT_ACCESS_TOKEN_EXPIRES }}
+      GOOGLE_CLIENT_ID: ${{ secrets.TEST_GOOGLE_CLIENT_ID }}
 
     steps:
       - uses: actions/checkout@v4
