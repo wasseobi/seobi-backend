@@ -7,6 +7,7 @@ from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
 from app.services.user_service import UserService
 from app.services.auto_task_service import AutoTaskService
+from app.services.user_service import UserService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
 from app.utils.app_config import is_dev_mode
@@ -74,6 +75,7 @@ interest_service = InterestService()
 user_service = UserService()
 cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
+user_service = UserService()
 
 @ns.route('/open')
 class SessionOpen(Resource):
@@ -105,6 +107,9 @@ class SessionOpen(Resource):
 
         try:
             session = session_service.create_session(uuid.UUID(user_id))
+            agent_state = user_service.initialize_agent_state(user_id)
+            AgentStateStore.set(user_id, agent_state)
+            return {"session_id": str(session["id"])} , 201
             agent_state = user_service.initialize_agent_state(user_id)
             AgentStateStore.set(user_id, agent_state)
             return {"session_id": str(session["id"])} , 201
