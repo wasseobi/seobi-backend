@@ -33,6 +33,9 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_jwt_secret_key")
     SECRET_KEY = os.getenv("SECRET_KEY", "dev_flask_secret_key")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES"))
+
+    # Redis Configuration
+    AGENT_STATE_REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
 class TestConfig(Config):
     """Test configuration."""
@@ -42,4 +45,3 @@ class TestConfig(Config):
         f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
         f"?sslmode=require&sslrootcert={Config.SSL_CERT}"
     )
-    
