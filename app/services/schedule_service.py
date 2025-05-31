@@ -10,7 +10,7 @@ class ScheduleService:
         return self.schedule_dao.get_user_schedules(user_id)
 
     def get_schedule(self, schedule_id):
-        return self.schedule_dao.get(schedule_id)
+        return self.schedule_dao.get_schedule_by_id(schedule_id)
 
     def create(self, data):
         return self.schedule_dao.create(**data)

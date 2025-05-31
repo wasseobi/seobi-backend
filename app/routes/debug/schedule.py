@@ -42,7 +42,7 @@ class ScheduleList(Resource):
     @require_auth
     def get(self, user_id):
         """특정 사용자의 모든 일정 조회"""
-        return service.get_user_schedule(user_id)
+        return service.get_user_schedules(user_id)
 
     @ns.expect(create_schedule_model)
     @ns.marshal_with(schedule_model)
