@@ -85,7 +85,9 @@ class SessionService:
             raise ValueError('Session is already finished')
 
         # Get conversation history
-        conversation_history = self.session_dao.get_session_messages(session_id)
+        from app.services.message_service import MessageService
+        message_service = MessageService()
+        conversation_history = message_service.get_session_messages(session_id)
 
         current_time = datetime.now(timezone.utc)
         updated_session = self.session_dao.update_finish_time(session_id, current_time)

@@ -65,12 +65,6 @@ jobs:
           # 방화벽 규칙이 추가될 때까지 잠시 대기
           echo "Waiting for firewall rule to take effect..."
           sleep 10
-          
-          # 방화벽 규칙 목록 출력
-          echo "Current firewall rules:"
-          az postgres flexible-server firewall-rule list \
-            --resource-group $RESOURCE_GROUP \
-            --name $SERVER_NAME
 
   run-tests:
     if: github.event_name == 'pull_request'
