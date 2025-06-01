@@ -39,9 +39,10 @@ class Config:
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True
-    DB_NAME = os.getenv("TESTDATABASE")
+    
+    # Override database URI for testing to disable SSL
     SQLALCHEMY_DATABASE_URI = (
-        f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
-        f"?sslmode=require&sslrootcert={Config.SSL_CERT}"
+        f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
+        f"?sslmode=disable"
     )
     
