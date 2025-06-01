@@ -36,16 +36,16 @@ class AutoTaskService:
             raise ValueError(f"No auto_tasks found for user {user_id}")
         return [self._serialize_auto_task(auto_task) for auto_task in auto_tasks]
     
-    def get_user_auto_tasks_in_range(self, user_id, start, end, status=None) -> List[Dict]:
+    def get_all_by_user_id_in_range(self, user_id, start, end, status=None) -> List[Dict]:
         """
         주어진 기간(start~end)과 상태(status)에 해당하는 사용자의 AutoTask 목록을 반환
         """
-        auto_tasks = self.auto_task_dao.get_user_auto_tasks_in_range(user_id, start, end, status)
+        auto_tasks = self.auto_task_dao.get_all_by_user_id_in_range(user_id, start, end, status)
         if not auto_tasks:
             raise ValueError('No auto_tasks found in range')
         return [self._serialize_auto_task(auto_task) for auto_task in auto_tasks]
 
-    def create(self, user_id, data) -> Dict:
+    def create(self, user_id, **data) -> Dict:
         auto_task = self.auto_task_dao.create(user_id=user_id, **data)
         return self._serialize_auto_task(auto_task)
 
@@ -55,12 +55,14 @@ class AutoTaskService:
             raise ValueError('auto_task not found')
         return self._serialize_auto_task(auto_task)
 
+    # NOTE(juaa): `update` method를 써도 되지만 타입 안전성, 명확성, 유지보수성 등을 위해 사용
     def update_finish_time(self, auto_task_id, finish_time) -> Dict:
         auto_task = self.auto_task_dao.update_finish_time(auto_task_id, finish_time)
         if not auto_task:
             raise ValueError('auto_task not found')
         return self._serialize_auto_task(auto_task)
 
+    # NOTE(juaa): `update` method를 써도 되지만 타입 안전성, 명확성, 유지보수성 등을 위해 사용
     def update_status(self, auto_task_id, status) -> Dict:
         auto_task = self.auto_task_dao.update_status(auto_task_id, status)
         if not auto_task:
