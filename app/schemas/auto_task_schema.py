@@ -12,7 +12,7 @@ def register_models(ns):
         'start_at': api_fields.DateTime(required=False, description='AutoTask start time'),
         'finish_at': api_fields.DateTime(required=False, description='AutoTask finish time'),
         'tool': api_fields.String(required=True, description='AutoTask tool'),
-        'ststus': api_fields.String(required=True, description='AutoTask ststus(undone/done)', enum=['undone', 'done']),
+        'status': api_fields.String(required=True, description='AutoTask ststus(undone/done)', enum=['undone', 'done']),
         'linked_service': api_fields.String(required=False, description='AutoTask linked_service')
     })
     create_auto_task_model = ns.model('AutoTaskCreate', {
@@ -21,9 +21,8 @@ def register_models(ns):
         'start_at': api_fields.DateTime(required=False, description='AutoTask start time'),
         'finish_at': api_fields.DateTime(required=False, description='AutoTask finish time'),
         'tool': api_fields.String(required=True, description='AutoTask tool'),
-        'status': api_fields.String(required=True, description='AutoTask ststus(undone/done)', enum=['undone', 'done']),
+        'status': api_fields.String(required=True, description='AutoTask status(undone/done)', enum=['undone', 'done']),
         'linked_service': api_fields.String(required=False, description='AutoTask linked_service')
     })
     
-
     return auto_task_model, create_auto_task_model
