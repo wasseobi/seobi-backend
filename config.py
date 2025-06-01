@@ -35,8 +35,10 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES"))
     GOOGLE_WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID")
     # Redis Configuration
-    AGENT_STATE_REDIS_URL = os.getenv("REDIS_URL")
-
+    REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_KEY = os.getenv("REDIS_KEY")
+    REDIS_PORT = int(os.getenv("REDIS_PORT"))
+    
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True
@@ -46,3 +48,4 @@ class TestConfig(Config):
         f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
         f"?sslmode=disable"
     )
+    

@@ -2,7 +2,9 @@ from config import Config
 import redis
 import pickle
 
-_redis = redis.Redis.from_url(Config.AGENT_STATE_REDIS_URL)
+_redis = redis.Redis(host=Config.REDIS_URL, port=Config.REDIS_PORT,
+                     db=0, password=Config.REDIS_KEY, ssl=True)
+
 
 class AgentStateStore:
     @staticmethod
