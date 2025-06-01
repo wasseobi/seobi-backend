@@ -22,23 +22,31 @@ def convert_to_openai_messages(messages: List[BaseMessage]) -> List[Dict[str, An
         
         # 역할 설정
         msg_dict["role"] = _get_role(message)
-        
-        # ToolMessage 특수 처리
+          # ToolMessage 특수 처리
         if isinstance(message, ToolMessage):
-            # 이전 assistant 메시지가 있고 tool_calls가 있는지 확인
-            if last_assistant_message and "tool_calls" in last_assistant_message.get("additional_kwargs", {}):
+            msg_dict["role"] = "tool"  # 항상 tool role 유지
+            
+            # tool_call_id 처리
+            tool_call_id = None
+            if hasattr(message, "tool_call_id"):
+                tool_call_id = message.tool_call_id
+            elif last_assistant_message and "tool_calls" in last_assistant_message.get("additional_kwargs", {}):
                 tool_call = last_assistant_message["additional_kwargs"]["tool_calls"][0]
-                msg_dict.update({
-                    "tool_call_id": tool_call.get("id", message.tool_call_id),
-                    "name": tool_call.get("function", {}).get("name", "tool")
-                })
+                tool_call_id = tool_call.get("id")
+            
+            if tool_call_id:
+                msg_dict["tool_call_id"] = tool_call_id
                 
-                # 아티팩트가 있는 경우 처리
-                if hasattr(message, "artifact") and message.artifact:
-                    msg_dict["metadata"] = {"artifacts": [message.artifact]}
-            else:
-                # tool 메시지를 assistant 메시지로 변환
-                msg_dict["role"] = "assistant"
+            # function name 처리
+            if hasattr(message, "name"):
+                msg_dict["name"] = message.name
+            elif last_assistant_message and "tool_calls" in last_assistant_message.get("additional_kwargs", {}):
+                tool_call = last_assistant_message["additional_kwargs"]["tool_calls"][0]
+                msg_dict["name"] = tool_call.get("function", {}).get("name", "tool")
+                
+            # 아티팩트가 있는 경우 처리
+            if hasattr(message, "artifact") and message.artifact:
+                msg_dict["metadata"] = {"artifacts": [message.artifact]}
         
         # AIMessage 추가 속성 처리
         if isinstance(message, AIMessage):

@@ -1,9 +1,9 @@
-from typing import Dict, List, Optional, Sequence, TypedDict, Union
+from typing import Dict, List, Optional, Union
 from langchain_core.messages import BaseMessage
+from langgraph.graph import MessagesState
 
-class AgentState(TypedDict):
+class AgentState(MessagesState):
     """Tool Calling Agent의 상태를 나타내는 타입"""
-    messages: List[BaseMessage]  # 대화 히스토리
     summary: Optional[str]  # 대화 요약
     user_id: Optional[str]  # 사용자 식별자
     current_input: str  # 현재 입력값
