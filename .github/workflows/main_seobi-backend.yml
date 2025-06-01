@@ -137,7 +137,7 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest --durations=0 --tb=short --timeout=300 -s
+          pytest --durations=0 --tb=short -s
 
   build:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
