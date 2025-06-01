@@ -84,6 +84,7 @@ class UserService:
         # 최근 메시지 3개만 추출
         important_msgs = [m.content for m in messages if hasattr(m, "content") and m.content]
         recent_msgs = "\n".join(important_msgs[-3:]) if important_msgs else ""
+        # TODO: 이거 prompt 별도 분리할 예정.
         prompt = (
         "당신은 사용자의 장기기억을 생성 및 관리하는 AI입니다.\n\n"
         "아래는 세 가지 정보입니다:\n"
