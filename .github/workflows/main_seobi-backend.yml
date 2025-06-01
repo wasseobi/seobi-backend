@@ -8,20 +8,104 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  test:
+  setup-test-env:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    environment:
+      name: 'Production'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BBAB0F361FDA43C1B4376933ED75D1C5 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_FB9EAA41DABA41D29AD25B07B6C83945 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C0861A7203604D68AB663E67494A9D9F }}
+
+      - name: Add GitHub Runner IP to PostgreSQL firewall
+        run: |
+          # PostgreSQL 서버 정보 가져오기
+          SEOBI_DATABASE_ENDPOINT=${{ secrets.SEOBI_DATABASE_ENDPOINT }}
+          SERVER_NAME=$(echo $SEOBI_DATABASE_ENDPOINT | cut -d'.' -f1)
+          RESOURCE_GROUP=${{ secrets.SEOBI_DATABASE_RESOURCE_GROUP }}
+          
+          echo "PostgreSQL Server: $SERVER_NAME"
+          echo "Resource Group: $RESOURCE_GROUP"
+          
+          # 현재 IP 주소 가져오기
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "GitHub Runner IP: $RUNNER_IP"
+          
+          # 방화벽 규칙 이름 생성 (GitHub Actions Runner IP)
+          RULE_NAME="github-actions-runner-$(date +%Y%m%d%H%M%S)"
+          
+          # 방화벽 규칙 추가
+          echo "Adding firewall rule: $RULE_NAME for IP: $RUNNER_IP"
+          az postgres flexible-server firewall-rule create \
+            --resource-group $RESOURCE_GROUP \
+            --name $SERVER_NAME \
+            --rule-name $RULE_NAME \
+            --start-ip-address $RUNNER_IP \
+            --end-ip-address $RUNNER_IP
+          
+          # 방화벽 규칙이 추가될 때까지 잠시 대기
+          echo "Waiting for firewall rule to take effect..."
+          sleep 10
+
+  run-tests:
+    if: github.event_name == 'pull_request'
+    needs: setup-test-env
+    runs-on: ubuntu-latest
+    environment:
+      name: 'Test'
     env:
       FLASK_APP: app
       FLASK_ENV: testing
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # 테스트용 데이터베이스 접속 정보
+      PGUSER: ${{ secrets.TEST_PGUSER }}
       PGPASSWORD: ${{ secrets.TEST_PGPASSWORD }}
+      PGHOST: ${{ secrets.TEST_PGHOST }}
+      PGPORT: ${{ secrets.TEST_PGPORT }}
+      PGDATABASE: ${{ secrets.TEST_PGDATABASE }}
+      PGSSLROOTCERT: ${{ secrets.TEST_PGSSLROOTCERT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.TEST_AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ secrets.TEST_AZURE_OPENAI_API_VERSION }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.TEST_AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.TEST_AZURE_OPENAI_DEPLOYMENT_NAME }}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME: ${{ secrets.TEST_AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME }}
+      GOOGLE_API_KEY: ${{ secrets.TEST_GOOGLE_API_KEY }}
+      GOOGLE_CSE_ID: ${{ secrets.TEST_GOOGLE_CSE_ID }}
+      JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
+      JWT_ACCESS_TOKEN_EXPIRES: ${{ secrets.TEST_JWT_ACCESS_TOKEN_EXPIRES }}
+      GOOGLE_CLIENT_ID: ${{ secrets.TEST_GOOGLE_CLIENT_ID }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create SSL certificate directory
+        run: mkdir -p certs
+
+      - name: Generate self-signed SSL certificate
+        run: |
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout certs/certificate.key \
+            -out certs/certificate.pem \
+            -subj "/C=KR/ST=Seoul/L=Seoul/O=Seobi/CN=localhost"
 
       - name: Set up Python version
         uses: actions/setup-python@v5
@@ -47,16 +131,13 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          pytest tests/ -v --cov=app
+          pytest --durations=0 --tb=short -s
 
   build:
-    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -111,7 +192,6 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
 
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:

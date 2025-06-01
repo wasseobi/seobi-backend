@@ -33,13 +33,16 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_jwt_secret_key")
     SECRET_KEY = os.getenv("SECRET_KEY", "dev_flask_secret_key")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES"))
-    
+    GOOGLE_WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID")
+
+
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True
-    DB_NAME = os.getenv("TESTDATABASE")
+    
+    # Override database URI for testing to disable SSL
     SQLALCHEMY_DATABASE_URI = (
-        f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
-        f"?sslmode=require&sslrootcert={Config.SSL_CERT}"
+        f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
+        f"?sslmode=disable"
     )
     
