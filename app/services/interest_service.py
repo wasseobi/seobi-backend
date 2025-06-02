@@ -69,7 +69,7 @@ class InterestService:
                 keyword = item["keyword"]
                 importance = item.get("importance", 0.5)
                 self.interest_dao.create(
-                    user_id=user_id,
+                    user_id=session.user_id,
                     content=keyword,
                     source_message=item["message_ids"],
                     importance=importance
