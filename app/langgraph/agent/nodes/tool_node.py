@@ -55,7 +55,7 @@ def _validate_tool_responses(messages: List[BaseMessage]) -> Set[str]:
 def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
     """도구를 호출하고 결과를 처리하는 노드."""
     log.info("[ToolNode] Starting tool execution")
-    log.info(f"[ToolNode] Initial state: {state}")
+    log.info(f"[ToolNode] Initial state: {state.to_dict() if hasattr(state, 'to_dict') else state}")
     
     try:
         # 마지막 AI 메시지에서 도구 호출 정보 추출
@@ -66,9 +66,6 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
         last_message = state["messages"][-1]
         log.info(f"[ToolNode] Last message: {last_message}")
         
-        if hasattr(last_message, "additional_kwargs"):
-            log.info(f"[ToolNode] Additional kwargs found: {last_message.additional_kwargs}")
-            
         # tool_calls 정보 추출 및 검증
         tool_calls = []
         if hasattr(last_message, "additional_kwargs"):
@@ -76,7 +73,7 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
             log.info(f"[ToolNode] Extracted tool_calls: {tool_calls}")
             
         if not tool_calls:
-            print("No tool_calls found, returning to model")
+            log.info("[ToolNode] No tool_calls found, returning to model")
             state["next_step"] = "model"
             return state
             
@@ -84,7 +81,7 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
         for tool_call in tool_calls:
             try:
                 if not isinstance(tool_call, dict) or "function" not in tool_call:
-                    print("Invalid tool call format")
+                    log.warning("[ToolNode] Invalid tool call format")
                     continue
                     
                 # 도구 호출 정보 추출
@@ -107,48 +104,23 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
                     result = tool.invoke(arguments)
                     log.info(f"[ToolNode] Tool execution result: {result}")
                     
-                    # FunctionMessage 생성 시 필요한 메타데이터 포함
-                    function_message = FunctionMessage(
-                        name=function_name,
-                        content=str(result),
-                        additional_kwargs={
-                            "tool_call_id": call_id,
-                            "role": "tool",
-                            "name": function_name
-                        }
-                    )
-                    log.info(f"[ToolNode] Created FunctionMessage: {function_message}")
-                    
-                    # 메시지 및 scratchpad 업데이트
-                    state["messages"].append(function_message)
-                    if "scratchpad" in state:
-                        state["scratchpad"].append(function_message)
-                    log.info("[ToolNode] Added function message to state")
+                    # 도구 실행 결과를 state에 저장
+                    state["tool_results"] = result
+                    state["current_tool_call_id"] = call_id
+                    state["current_tool_name"] = function_name
+                    log.info(f"[ToolNode] Set tool results in state - ID: {call_id}, Name: {function_name}")
                     
             except Exception as e:
                 log.error(f"[ToolNode] Error processing tool call {function_name}: {str(e)}")
-                # 오류 메시지를 tool 응답으로 추가
-                error_message = FunctionMessage(
-                    name=function_name,
-                    content=f"Error: {str(e)}",
-                    additional_kwargs={
-                        "tool_call_id": call_id,
-                        "role": "tool",
-                        "name": function_name
-                    }
-                )
-                state["messages"].append(error_message)
-
-        # 메시지 순서 및 응답 완전성 검증
-        missing_responses = _validate_tool_responses(state["messages"])
-        if missing_responses:
-            error_msg = f"Missing tool responses for calls: {', '.join(missing_responses)}"
-            log.error(f"[ToolNode] {error_msg}")
-            raise ValueError(error_msg)
+                # 오류 메시지를 tool 결과로 설정
+                error_result = f"Error executing {function_name}: {str(e)}"
+                state["tool_results"] = error_result
+                state["current_tool_call_id"] = call_id
+                state["current_tool_name"] = function_name
 
         # 다음 단계를 model로 설정하여 결과 처리
         state["next_step"] = "model"
-        log.info(f"[ToolNode] Final state before return: {state}")
+        log.info(f"[ToolNode] Final state before return: {state.to_dict() if hasattr(state, 'to_dict') else state}")
         return state
         
     except Exception as e:
