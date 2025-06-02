@@ -6,6 +6,7 @@ from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
 from app.services.user_service import UserService
+from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
 from app.utils.app_config import is_dev_mode
@@ -72,6 +73,7 @@ message_service = MessageService()
 interest_service = InterestService()
 user_service = UserService()
 cleanup_service = CleanupService()
+auto_task_service = AutoTaskService()
 
 @ns.route('/open')
 class SessionOpen(Resource):
@@ -136,7 +138,16 @@ class SessionClose(Resource):
             interest_service.extract_interests_keywords(session_id)
             
             # 1-3. 세션 cleanup 실행
-            cleanup_service.cleanup_session(session_id)
+            cleanup_result = cleanup_service.cleanup_session(session_id)
+            
+            # 1-4. cleanup 결과로부터 auto task 생성
+            if not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
+                session = session_service.get_session(session_id)
+                if session:
+                    auto_task_service.create_from_cleanup_result(
+                        user_id=session["user_id"],
+                        cleanup_result=cleanup_result
+                    )
             
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)

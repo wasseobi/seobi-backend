@@ -22,15 +22,6 @@ class CleanupService:
 
             # Run cleanup using executor
             cleanup_result = self.cleanup_executor(session_id, conversation_history)
-            
-            # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
-            if cleanup_result.get("error"):
-                print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
-            else:
-                print(f"Cleanup completed for session {session_id}")
-                print(f"Analysis: {cleanup_result.get('analysis_result')}")
-                print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
-            
             return cleanup_result
         except Exception as e:
             print(f"Error during cleanup: {str(e)}")
