@@ -29,11 +29,6 @@ create_schedule_model = ns.model('ScheduleCreate', {
     'linked_service': fields.String(required=True),
 })
 
-parse_schedule_model = ns.model('ParseSchedule', {
-    'user_id': fields.String(required=True, description='유저 UUID'),
-    'text': fields.String(required=True, description='자연어 일정 설명'),
-})
-
 service = ScheduleService()
 
 @ns.route('/<uuid:user_id>')
@@ -53,7 +48,7 @@ class ScheduleList(Resource):
         data = request.json
         data['user_id'] = str(user_id)
         data.pop('id', None)  # 혹시라도 id가 들어오면 제거
-        return service.create(data), 201
+        return service.create_schedule(data), 201
 
 @ns.route('/detail/<uuid:schedule_id>')
 class ScheduleDetail(Resource):
@@ -70,22 +65,7 @@ class ScheduleDetail(Resource):
     @require_auth
     def delete(self, schedule_id):
         """일정 삭제"""
-        result = service.delete(schedule_id)
+        result = service.delete_schedule(schedule_id)
         if result:
             return {'result': 'deleted'}
         return {'error': 'not found'}, 404
-
-@ns.route('/parse')
-class ScheduleParse(Resource):
-    @ns.expect(parse_schedule_model)
-    @ns.marshal_with(schedule_model)
-    @require_auth
-    def post(self):
-        """자연어로부터 일정 생성"""
-        from flask import request
-        data = request.json
-        user_id = data.get('user_id')
-        text = data.get('text')
-        if not user_id or not text:
-            ns.abort(400, 'user_id와 text는 필수입니다.')
-        return service.create_llm(user_id, text), 201
