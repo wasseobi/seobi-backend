@@ -27,7 +27,7 @@ def validate(input_data):
         print('[DEBUG][validate] 불만족')  # TODO: 나중에 삭제
         return {**input_data, 'validation': '불만족', 'satisfied': False}
 
-# 그래프 연결 예시 (실제 langgraph 등으로 연결 필요)
+
 def parsing_agent(input_data, max_retry=5):
     data = start(input_data)
     retry_count = 0
