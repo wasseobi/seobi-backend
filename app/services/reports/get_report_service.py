@@ -30,7 +30,7 @@ class GetReportService:
         else:
             raise ValueError("status는 'done', 'undone', None만 지원합니다.")
 
-        schedules = self.schedule_service.schedule_dao.get_user_schedules_in_range(user_id, start, end, status=status_filter)
+        schedules = self.schedule_service.schedule_dao.get_all_by_user_id_in_range(user_id, start, end, status=status_filter)
         return [
             {
                 "id": str(schedule.id),
@@ -62,7 +62,7 @@ class GetReportService:
 
     def get_today_articles(self, user_id: uuid.UUID, tz):
         start, end = TimeUtils.get_today_range(tz)
-        articles = [article for article in self.article_service.insight_article_dao.get_user_articles(user_id)
+        articles = [article for article in self.article_service.insight_article_dao.get_all_by_user_id(user_id)
                     if article.created_at >= start and article.created_at < end]
         return [
             {

@@ -13,6 +13,11 @@ on:
       - main
   workflow_dispatch:
 
+# 테스트 job들의 동시 실행 제어를 위한 concurrency 설정
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup-test-env:
     if: github.event_name == 'pull_request'
