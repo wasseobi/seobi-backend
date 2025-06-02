@@ -76,6 +76,7 @@ user_service = UserService()
 cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
 user_service = UserService()
+cleanup_service = CleanupService()
 
 @ns.route('/open')
 class SessionOpen(Resource):
