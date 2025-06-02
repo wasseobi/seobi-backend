@@ -84,17 +84,12 @@ class SessionService:
         if session.finish_at:
             raise ValueError('Session is already finished')
 
-        # Get conversation history
-        from app.services.message_service import MessageService
-        message_service = MessageService()
-        conversation_history = message_service.get_session_messages(session_id)
-
-        current_time = datetime.now(timezone.utc)
-        updated_session = self.session_dao.update_finish_time(session_id, current_time)
-        if not updated_session:
-            raise ValueError('Failed to update session finish time')
-
         try:
+            # Get conversation history
+            from app.services.message_service import MessageService
+            message_service = MessageService()
+            conversation_history = message_service.get_session_messages(session_id)
+
             # Run cleanup using executor
             cleanup_result = self.cleanup_executor(session_id, conversation_history)
             
@@ -108,6 +103,11 @@ class SessionService:
         except Exception as e:
             print(f"Error during cleanup: {str(e)}")
             # Cleanup 실패는 세션 종료를 막지 않음
+
+        current_time = datetime.now(timezone.utc)
+        updated_session = self.session_dao.update_finish_time(session_id, current_time)
+        if not updated_session:
+            raise ValueError('Failed to update session finish time')
         
         return self._serialize_session(updated_session)
 
