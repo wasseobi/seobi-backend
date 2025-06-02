@@ -24,7 +24,7 @@ def model_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     if isinstance(state, AgentState):
         state.step_count = step_count
     else:
-        state.step_count = step_count
+        state['step_count'] = step_count
     
     log.info(f"[Graph] [model_node] Current step count: {step_count}")
 
@@ -32,7 +32,7 @@ def model_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         if isinstance(state, AgentState):
             state.next_step = 'end'
         else:
-            state.next_step = 'end'
+            state['next_step'] = 'end'
         log.info("[Graph] [model_node] step_count limit reached")
         return state
 

@@ -48,6 +48,10 @@ def summarize_node(state: AgentState) -> AgentState:
         log.info(
             f"[Summarize] Cleaned messages, remaining count: {len(state.messages)}")
 
+        # step_count 초기화
+        state.step_count = 0
+        log.info("[Summarize] Reset step_count to 0")
+
         # 다음 단계 설정
         state.next_step = "end"
 

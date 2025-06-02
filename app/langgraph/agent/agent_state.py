@@ -1,7 +1,7 @@
 """Agent state management."""
 from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass, field
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from app.utils.agent_state_store import AgentStateStore
 import logging
 
@@ -136,3 +136,38 @@ class AgentState:
         self.current_tool_name = None
         self.current_tool_calls = None
         log.info("[AgentState] Cleared tool state")
+
+    def validate_messages(self) -> bool:
+        """메시지 순서와 패턴이 올바른지 검증
+        - user와 assistant 메시지가 번갈아가며 있어야 함
+        - tool 메시지는 assistant의 tool_calls 이후에만 올 수 있음
+        """
+        if not self.messages:
+            return True
+
+        for i in range(len(self.messages) - 1):
+            curr = self.messages[i]
+            next_msg = self.messages[i + 1]
+            
+            # Human -> AI 또는 AI(tool_calls) -> Tool -> AI 패턴 검증
+            if isinstance(curr, HumanMessage):
+                if not isinstance(next_msg, AIMessage):
+                    log.warning(f"Invalid message pattern: Human message should be followed by AI message")
+                    return False
+            elif isinstance(curr, AIMessage):
+                if isinstance(next_msg, HumanMessage):
+                    continue
+                elif isinstance(next_msg, ToolMessage):
+                    # tool_calls가 있는 AI 메시지 다음에만 Tool 메시지 허용
+                    if not (hasattr(curr, "additional_kwargs") and "tool_calls" in curr.additional_kwargs):
+                        log.warning(f"Tool message without preceding AI tool_calls")
+                        return False
+                else:
+                    log.warning(f"Invalid message pattern after AI message")
+                    return False
+            elif isinstance(curr, ToolMessage):
+                if not isinstance(next_msg, AIMessage):
+                    log.warning(f"Tool message should be followed by AI message")
+                    return False
+
+        return True

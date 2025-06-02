@@ -1,5 +1,5 @@
 """LLM 호출 및 응답 생성 모듈."""
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
 import json
 import logging
@@ -83,51 +83,97 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
         formatted_output["stdout"] = f"Error formatting tool results: {str(e)}"
         return formatted_output
 
-def call_model(state: AgentState) -> AgentState:
+def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     """LLM을 호출하고 응답을 생성하는 노드."""
     try:
+        # state가 dict인지 AgentState인지 확인
+        is_dict = isinstance(state, dict)
+        
         # 기본 state 구조 확인 및 초기화
-        if not hasattr(state, "messages"):
-            state.messages = []
-        if not hasattr(state, "current_input"):
-            state.current_input = ""
+        if is_dict:
+            # dict 타입인 경우
+            if "messages" not in state:
+                state["messages"] = []
+                log.info("[CallModel] Initialized empty messages list")
+            if "current_input" not in state:
+                state["current_input"] = ""
+                log.info("[CallModel] Initialized empty current_input")
+                
+            messages = state["messages"]
+            current_input = state["current_input"]
+            input_processed = state.get("input_processed", False)
+        else:
+            # AgentState 타입인 경우
+            if not hasattr(state, "messages"):
+                state.messages = []
+                log.info("[CallModel] Initialized empty messages list")
+            if not hasattr(state, "current_input"):
+                state.current_input = ""
+                log.info("[CallModel] Initialized empty current_input")
+                
+            messages = state.messages
+            current_input = state.current_input
+            input_processed = getattr(state, "input_processed", False)
             
         # 현재 입력을 메시지로 변환 - 현재 사이클에서 처음 한 번만
-        if state.current_input and not getattr(state, "input_processed", False):
-            current_msg = HumanMessage(content=state.current_input)
-            state.messages.append(current_msg)
-            state.input_processed = True
-            log.info(f"[CallModel] Added HumanMessage: {state.current_input}")
+        log.info(f"[CallModel] Checking current_input - value: '{current_input}', processed: {input_processed}")
+        if current_input and not input_processed:
+            log.info(f"[CallModel] Current messages before adding input: {[type(m).__name__ for m in messages]}")
+            current_msg = HumanMessage(content=current_input)
+            messages.append(current_msg)
             
+            if is_dict:
+                state["input_processed"] = True
+            else:
+                state.input_processed = True
+                
+            log.info(f"[CallModel] Added HumanMessage: {current_input}")
+            log.info(f"[CallModel] Current messages after adding input: {[type(m).__name__ for m in messages]}")
+            
+            # 메시지 유효성 검사 (AgentState인 경우에만)
+            if not is_dict and not state.validate_messages():
+                log.error("[CallModel] Invalid message pattern after adding user message")
+                state.next_step = "end"
+                return state
+
         # 이전 도구 실행 결과 처리
-        log.info(f"[CallModel] Checking tool results state - has_attr: {hasattr(state, 'tool_results')}, tool_results: {getattr(state, 'tool_results', None)}")
-        if hasattr(state, "tool_results") and state.tool_results:
-            tool_output = format_tool_results(state.tool_results)
+        tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
+        log.info(f"[CallModel] Checking tool results state - tool_results: {tool_results}")
+        
+        if tool_results:
+            tool_output = format_tool_results(tool_results)
             log.info(f"[CallModel] Processing tool output: {tool_output}")
             
             if tool_output:
-                log.info(f"[CallModel] Current tool state - ID: {getattr(state, 'current_tool_call_id', None)}, Name: {getattr(state, 'current_tool_name', None)}")
-                if state.current_tool_call_id and state.current_tool_name:
+                current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
+                current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
+                
+                log.info(f"[CallModel] Current tool state - ID: {current_tool_call_id}, Name: {current_tool_name}")
+                if current_tool_call_id and current_tool_name:
                     tool_message = ToolMessage(
                         content=tool_output["stdout"],
-                        tool_call_id=state.current_tool_call_id,
-                        name=state.current_tool_name
+                        tool_call_id=current_tool_call_id,
+                        name=current_tool_name
                     )
-                    state.messages.append(tool_message)
-                    log.info(f"[CallModel] Successfully added ToolMessage - ID: {state.current_tool_call_id}, Name: {state.current_tool_name}")
-                    log.info(f"[CallModel] Current messages count: {len(state.messages)}, Last message type: {type(state.messages[-1])}")
+                    messages.append(tool_message)
+                    log.info(f"[CallModel] Successfully added ToolMessage - ID: {current_tool_call_id}, Name: {current_tool_name}")
+                    log.info(f"[CallModel] Current messages count: {len(messages)}, Last message type: {type(messages[-1])}")
                 else:
                     log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
             else:
                 log.warning("[CallModel] Tool output is empty or invalid")
-            
-            # 도구 관련 상태 초기화
-            state.clear_tool_state()
+              # 도구 관련 상태 초기화
+            if is_dict:
+                state["tool_results"] = None
+                state["current_tool_call_id"] = None
+                state["current_tool_name"] = None
+            else:
+                state.clear_tool_state()
             log.info("[CallModel] Cleared tool state")
             
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
-            messages=state.messages
+            messages=messages
         )
         
         # OpenAI 형식으로 메시지 변환
@@ -151,27 +197,60 @@ def call_model(state: AgentState) -> AgentState:
             if has_tool_calls:
                 tool_calls = response.additional_kwargs["tool_calls"]
                 log.info(f"[CallModel] Found tool_calls in response: {tool_calls}")
-                state.next_step = "tool"
-                # tool 정보 설정
-                state.set_tool_info(tool_calls)
+                
+                if is_dict:
+                    state["next_step"] = "tool"
+                    # tool 정보 설정
+                    state["current_tool_call_id"] = tool_calls[0]["id"]
+                    state["current_tool_name"] = tool_calls[0]["function"]["name"]
+                    state["current_tool_args"] = tool_calls[0]["function"]["arguments"]
+                else:
+                    state.next_step = "tool"
+                    # tool 정보 설정
+                    state.set_tool_info(tool_calls)
             else:
-                state.next_step = "end"
+                if is_dict:
+                    state["next_step"] = "end"
+                else:
+                    state.next_step = "end"
             
             # AI 응답을 messages에 추가
-            state.messages.append(response)
-            state.step_count += 1
-            log.info(f"[CallModel] Added AI response, current message count: {len(state.messages)}")
+            messages.append(response)
+            
+            if is_dict:
+                state["step_count"] = state.get("step_count", 0) + 1
+            else:
+                state.step_count += 1
+                
+            log.info(f"[CallModel] Added AI response, current message count: {len(messages)}")
+            
+            # 메시지 유효성 검사 (AgentState인 경우에만)
+            if not is_dict and not state.validate_messages():
+                log.error("[CallModel] Invalid message pattern after adding AI response")
+                state.next_step = "end"
+                return state
             
         except Exception as e:
             log.error(f"[CallModel] Exception in LLM/tool: {e}", exc_info=True)
             error_msg = AIMessage(content=f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}")
-            state.messages.append(error_msg)
-            state.next_step = "end"
+            messages.append(error_msg)
+            
+            if is_dict:
+                state["next_step"] = "end"
+            else:
+                state.next_step = "end"
             return state
             
     except Exception as e:
         log.error(f"[CallModel] Outer exception:", exc_info=True)
-        state.error = str(e)
-        state.next_step = "end"
+        
+        # state 타입 다시 확인
+        is_dict = isinstance(state, dict)
+        if is_dict:
+            state["error"] = str(e)
+            state["next_step"] = "end"
+        else:
+            state.error = str(e)
+            state.next_step = "end"
         
     return state
