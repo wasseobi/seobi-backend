@@ -8,6 +8,7 @@ from app.services.interest_service import InterestService
 from app.services.user_service import UserService
 from app.services.auto_task_service import AutoTaskService
 from app.services.user_service import UserService
+from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
 from app.utils.app_config import is_dev_mode
@@ -77,6 +78,7 @@ cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
 user_service = UserService()
 cleanup_service = CleanupService()
+auto_task_service = AutoTaskService()
 
 @ns.route('/open')
 class SessionOpen(Resource):
