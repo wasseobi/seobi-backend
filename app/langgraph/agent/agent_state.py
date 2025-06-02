@@ -1,12 +1,138 @@
-from typing import Dict, List, Optional, Union
+"""Agent state management."""
+from typing import Dict, List, Optional, Union, Any
+from dataclasses import dataclass, field
 from langchain_core.messages import BaseMessage
-from langgraph.graph import MessagesState
+from app.utils.agent_state_store import AgentStateStore
+import logging
 
-class AgentState(MessagesState):
+# 로거 설정
+log = logging.getLogger("langgraph_debug")
+
+@dataclass
+class AgentState:
     """Tool Calling Agent의 상태를 나타내는 타입"""
-    summary: Optional[str]  # 대화 요약
-    user_id: Optional[str]  # 사용자 식별자
-    current_input: str  # 현재 입력값
-    scratchpad: List[BaseMessage]  # Agent의 작업 메모
-    next_step: Union[str, None]  # 다음 단계 (계속/종료)
-    user_memory: Optional[str]  # 장기 기억(사용자별)
+    messages: List[BaseMessage] = field(default_factory=list)
+    summary: Optional[str] = None  # 대화 요약
+    user_id: Optional[str] = None  # 사용자 식별자
+    current_input: str = ""  # 현재 입력값
+    scratchpad: List[BaseMessage] = field(default_factory=list)  # Agent의 작업 메모
+    next_step: Union[str, None] = None  # 다음 단계 (계속/종료)
+    user_memory: Optional[str] = None  # 장기 기억(사용자별)
+    step_count: int = 0  # 스텝 카운터
+    input_processed: bool = False  # 현재 사이클에서 입력이 처리되었는지 여부
+    tool_results: Optional[Any] = None  # 도구 실행 결과
+    current_tool_call_id: Optional[str] = None  # 현재 실행 중인 도구의 ID
+    current_tool_name: Optional[str] = None  # 현재 실행 중인 도구의 이름
+    current_tool_calls: Optional[List[Dict]] = None  # 현재 tool_calls 목록
+
+    def __post_init__(self):
+        """dataclass 초기화 이후 호출되는 메서드"""
+        log.info(f"[AgentState] Initialized with {len(self.messages)} messages for user {self.user_id}")
+        if self.user_id:
+            self.restore_state()
+
+    def restore_state(self):
+        """저장된 상태 복원"""
+        try:
+            saved_state = AgentStateStore.get(self.user_id)
+            if saved_state:
+                if "messages" in saved_state:
+                    # 메시지 타입 검증
+                    for msg in saved_state["messages"]:
+                        if not isinstance(msg, BaseMessage):
+                            log.error(f"[AgentState] Invalid message type in saved state: {type(msg)}")
+                            raise TypeError("저장된 메시지가 BaseMessage 타입이 아닙니다")
+                    self.messages = saved_state["messages"]
+                    log.info(f"[AgentState] Restored {len(self.messages)} messages for user {self.user_id}")
+                if "summary" in saved_state:
+                    self.summary = saved_state["summary"]
+                    log.info(f"[AgentState] Restored summary for user {self.user_id}")
+        except Exception as e:
+            log.error(f"[AgentState] Error restoring state: {str(e)}")
+            raise
+
+    def save_state(self):
+        """현재 상태 저장"""
+        try:
+            if not self.user_id:
+                log.warning("[AgentState] Attempted to save state without user_id")
+                return
+
+            # 메시지 타입 검증
+            for msg in self.messages:
+                if not isinstance(msg, BaseMessage):
+                    log.error(f"[AgentState] Invalid message type: {type(msg)}")
+                    raise TypeError("메시지가 BaseMessage 타입이 아닙니다")
+                    
+            # 전체 상태를 저장
+            state_data = self.to_dict()
+            AgentStateStore.set(self.user_id, state_data)
+            log.info(f"[AgentState] Saved state for user {self.user_id} with {len(self.messages)} messages")
+        except Exception as e:
+            log.error(f"[AgentState] Error saving state: {str(e)}")
+            raise
+
+    def to_dict(self) -> Dict:
+        """상태를 dict로 변환"""
+        result = {
+            "messages": self.messages,
+            "summary": self.summary,
+            "user_id": self.user_id,
+            "current_input": self.current_input,
+            "scratchpad": self.scratchpad,
+            "next_step": self.next_step,
+            "user_memory": self.user_memory,
+            "step_count": self.step_count,
+            "input_processed": self.input_processed,
+            "tool_results": self.tool_results,
+            "current_tool_call_id": self.current_tool_call_id,
+            "current_tool_name": self.current_tool_name,
+            "current_tool_calls": self.current_tool_calls
+        }
+        log.info(f"[AgentState] Converting to dict: {result}")
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "AgentState":
+        """dict에서 새로운 AgentState 인스턴스 생성"""
+        return cls(**data)
+
+    def __getitem__(self, key: str) -> Any:
+        """Dict-like 접근 지원"""
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Dict-like 설정 지원"""
+        setattr(self, key, value)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like get 메서드 지원"""
+        try:
+            return getattr(self, key, default)
+        except AttributeError:
+            return default
+
+    def set_tool_info(self, tool_calls: List[Dict]) -> None:
+        """도구 실행 정보 설정"""
+        self.current_tool_calls = tool_calls
+        if tool_calls and len(tool_calls) > 0:
+            first_tool = tool_calls[0]
+            self.current_tool_call_id = first_tool.get("id")
+            self.current_tool_name = first_tool.get("function", {}).get("name")
+            log.info(f"[AgentState] Set tool info - Name: {self.current_tool_name}, ID: {self.current_tool_call_id}")
+
+    def set_tool_results(self, results: Any) -> None:
+        """도구 실행 결과 설정"""
+        self.tool_results = results
+        log.info(f"[AgentState] Set tool results: {results}")
+
+    def clear_tool_state(self) -> None:
+        """도구 관련 상태 초기화"""
+        self.tool_results = None
+        self.current_tool_call_id = None
+        self.current_tool_name = None
+        self.current_tool_calls = None
+        log.info("[AgentState] Cleared tool state")
