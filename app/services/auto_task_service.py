@@ -11,6 +11,8 @@ class AutoTaskService:
             'id': str(auto_task.id),
             'user_id': str(auto_task.user_id),
             'title': auto_task.title,
+            'description': auto_task.description,
+            'task_list': auto_task.task_list,
             'repeat': auto_task.repeat,
             'created_at': auto_task.created_at.isoformat() if auto_task.created_at else None,
             'start_at': auto_task.start_at.isoformat() if auto_task.start_at else None,
@@ -74,4 +76,23 @@ class AutoTaskService:
         if not result:
             raise ValueError('auto_task not found')
         return result
+
+    def create_from_cleanup_result(self, user_id: str, cleanup_result: Dict[str, Any]) -> List[Dict]:
+        """Create auto tasks from cleanup result"""
+        created_tasks = []
+        tasks = cleanup_result.get('generated_tasks', [])
+        
+        for task in tasks:
+            auto_task_data = {
+                'user_id': user_id,
+                'title': task['title'],
+                'description': task['description'],
+                'task_list': task['dependencies'],  # dependencies를 task_list로 저장
+                'tool': 'cleanup',  # TODO(GideokKim): 나중에 적절한 MCP 도구로 변경해야 함.
+                'status': 'undone',
+            }
+            created_task = self.create(**auto_task_data)
+            created_tasks.append(created_task)
+            
+        return created_tasks
 
