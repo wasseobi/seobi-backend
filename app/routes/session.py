@@ -1,6 +1,7 @@
 """세션 관련 라우트를 정의하는 모듈입니다."""
 from flask import request, Response, stream_with_context
 from flask_restx import Resource, Namespace, fields
+from app.services.cleanup_service import CleanupService
 from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
@@ -70,7 +71,7 @@ session_service = SessionService()
 message_service = MessageService()
 interest_service = InterestService()
 user_service = UserService()
-
+cleanup_service = CleanupService()
 
 @ns.route('/open')
 class SessionOpen(Resource):
@@ -133,6 +134,9 @@ class SessionClose(Resource):
 
             # 1-2. 관심사 추출
             interest_service.extract_interests_keywords(session_id)
+            
+            # 1-3. 세션 cleanup 실행
+            cleanup_service.cleanup_session(session_id)
             
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)
