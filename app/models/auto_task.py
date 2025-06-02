@@ -8,6 +8,7 @@ class AutoTask(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.Text, nullable=False)
+    task_list = db.Column(db.JSON, nullable=True)
     repeat = db.Column(db.Text, nullable=True)  # cron 표현식 등 반복 일정 관리
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     start_at = db.Column(db.DateTime(timezone=True), nullable=True)
