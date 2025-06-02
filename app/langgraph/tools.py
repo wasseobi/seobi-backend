@@ -7,6 +7,7 @@ import os
 import json
 from flask import request, g
 from app.services.schedule_service import ScheduleService
+import re
 
 @tool
 def search_web(query: str) -> str:
@@ -40,7 +41,7 @@ def calculator(expression: str) -> Union[float, str]:
 @tool
 def search_similar_messages(query: str, top_k: int = 5) -> str:
     """
-    현재 세션의 user_id로 해당 사용자의 모든 메시지 벡터 중 쿼리와 가장 유사한 메시지 top-N을 반환합니다.
+    현재 세션의 user_id로 해당 사용자의 모든 메시지 벡터 중 쿼리와 가장 유사한 메시지 top-N을 반환합니다. (pgvector 연산자 사용)
     Args:
         query (str): 검색 쿼리(자연어)
         top_k (int): 반환할 메시지 개수(기본 5)
@@ -62,7 +63,7 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
     from app.services.message_service import MessageService
     message_service = MessageService()
-    results = message_service.search_similar_messages(user_id, query, top_k)
+    results = message_service.search_similar_messages_pgvector(user_id, query, top_k)
     return json.dumps(results, ensure_ascii=False)
 
 
@@ -109,6 +110,12 @@ def google_news(query: str, num_results: int = 5, tbs: str = None) -> list:
     return results
 
 
+def clean_text(value):
+    if not isinstance(value, str):
+        return value
+    # 앞뒤의 다양한 특수문자 및 공백 제거
+    return re.sub(r"^[\s'\"`\\-.,·*!?]+|[\s'\"`\\-.,·*!?]+$", "", value)
+
 @tool
 def create_schedule_llm(text: str) -> dict:
     """
@@ -127,13 +134,13 @@ def create_schedule_llm(text: str) -> dict:
     result = {
         'id': str(schedule.id),
         'user_id': str(schedule.user_id),
-        'title': schedule.title,
+        'title': clean_text(schedule.title),
         'repeat': schedule.repeat,
         'start_at': schedule.start_at.isoformat() if schedule.start_at else None,
         'finish_at': schedule.finish_at.isoformat() if schedule.finish_at else None,
-        'location': schedule.location,
+        'location': clean_text(schedule.location),
         'status': schedule.status,
-        'memo': schedule.memo,
+        'memo': clean_text(schedule.memo),
         'linked_service': schedule.linked_service,
         'timestamp': schedule.timestamp.isoformat() if hasattr(schedule, 'timestamp') and schedule.timestamp else None,
     }
@@ -157,13 +164,13 @@ def get_user_schedules() -> list:
         {
             'id': str(s.id),
             'user_id': str(s.user_id),
-            'title': s.title,
+            'title': clean_text(s.title),
             'repeat': s.repeat,
             'start_at': s.start_at.isoformat() if s.start_at else None,
             'finish_at': s.finish_at.isoformat() if s.finish_at else None,
-            'location': s.location,
+            'location': clean_text(s.location),
             'status': s.status,
-            'memo': s.memo,
+            'memo': clean_text(s.memo),
             'linked_service': s.linked_service,
             'timestamp': s.timestamp.isoformat() if hasattr(s, 'timestamp') and s.timestamp else None,
         }
@@ -205,3 +212,4 @@ agent_tools = [
     create_schedule_llm,
     get_user_schedules
 ]
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
