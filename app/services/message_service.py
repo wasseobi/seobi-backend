@@ -106,58 +106,34 @@ class MessageService:
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
                                     content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
-        """LangGraph를 통한 응답 생성. (자연어 쿼리 → 벡터검색 → 요약/답변)"""
-        # 1. 벡터 검색 (user_id, content 기준 top3)
-        similar_msgs = self.search_similar_messages_pgvector(user_id, content, 3)
-        if not similar_msgs:
-            # 2. fallback 답변
-            yield {
-                'type': 'chunk',
-                'content': '그런 내용이 있었나요오? 기억이 안나요오 ㅜ',
-                'metadata': {'fallback': True}
-            }
-            yield {
-                'type': 'end',
-                'context_saved': False
-            }
-            return
-        # 3. 메시지 요약 프롬프트 생성
-        summary_prompt = """아래는 사용자의 과거 대화 내용입니다. 이 중에서 현재 질문과 관련된 핵심 내용을 요약해서 자연어로 설명해 주세요.\n\n"""
-        for i, msg in enumerate(similar_msgs, 1):
-            summary_prompt += f"[{i}] {msg['content']}\n"
-        summary_prompt += f"\n위 내용을 바탕으로, 사용자가 '{content}'라고 물었을 때 자연스럽게 답변해 주세요."
-        # 4. LLM 호출 (LangGraph 기존 플로우 활용)
-        processor = MessageProcessor(str(session_id), str(user_id))
-        context = self._get_or_create_context(str(session_id), str(user_id))
-        context.add_user_message(content)
-        yield {
-            'type': 'start',
-            'user_message': {'content': content}
+        """
+        LangGraph 에이전트 기반 응답 생성 (모든 tool 사용 가능)
+        - 사용자의 입력(content)과 기존 세션 메시지로 초기화
+        - LLM이 자연어 명령을 해석해 적절한 도구를 선택/호출
+        - 오직 사용자의 입력(content)에 대해서만 답변
+        - 기존 세션 히스토리는 LLM에 전달하지 않음
+        - 각 chunk(AI/ToolMessage)를 yield
+        """
+        # 1. 기존 세션 히스토리 전달하지 않음
+        initial_state = {
+            "messages": [],
+            "current_input": content
         }
-        # summary_prompt를 첫 메시지로 사용
-        messages = [HumanMessage(content=summary_prompt)]
-        initial_state = {"messages": messages}
+        yield {"type": "start", "user_message": {"content": content}}
         for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
             try:
                 chunk_data = None
-                if isinstance(msg_chunk, AIMessage):
+                if isinstance(msg_chunk, (AIMessage, ToolMessage)):
                     if msg_chunk.content:
-                        context.append_assistant_content(msg_chunk.content)
                         chunk_data = {
                             'type': 'chunk',
                             'content': msg_chunk.content,
                             'metadata': metadata
                         }
-                        if chunk_data and chunk_data.get('content'):
-                            yield chunk_data
+                        yield chunk_data
             except Exception:
                 continue
-        context.finalize_assistant_response()
-        self._save_context_messages(context)
-        yield {
-            'type': 'end',
-            'context_saved': True
-        }
+        yield {"type": "end", "context_saved": True}
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:

@@ -41,9 +41,11 @@ def calculator(expression: str) -> Union[float, str]:
 @tool
 def search_similar_messages(query: str, top_k: int = 5) -> str:
     """
-    현재 세션의 user_id로 해당 사용자의 모든 메시지 벡터 중 쿼리와 가장 유사한 메시지 top-N을 반환합니다. (pgvector 연산자 사용)
+    사용자의 과거 대화(메시지) 중 현재 질문과 관련된 내용을 벡터로 검색합니다.
+    - 반드시 "전에 ~라고 했던 거 기억나?", "과거에 ~에 대해 얘기했었지?" 등 과거 대화/기억을 찾을 때만 사용하세요.
+    - 일정 추가/조회에는 절대 사용하지 마세요.
     Args:
-        query (str): 검색 쿼리(자연어)
+        query (str): 검색할 내용(자연어)
         top_k (int): 반환할 메시지 개수(기본 5)
     Returns:
         str: 유사 메시지 리스트(JSON 문자열)
@@ -113,14 +115,19 @@ def google_news(query: str, num_results: int = 5, tbs: str = None) -> list:
 def clean_text(value):
     if not isinstance(value, str):
         return value
-    # 앞뒤의 다양한 특수문자 및 공백 제거
-    return re.sub(r"^[\s'\"`\\-.,·*!?]+|[\s'\"`\\-.,·*!?]+$", "", value)
+    # 앞뒤의 다양한 특수문자 및 공백 제거 (정규표현식에서 -를 맨 앞/뒤로 이동, 괄호 닫힘 오류 수정)
+    return re.sub(r"^[\s'\"`.,*!?\\-]+|[\s'\"`.,*!?\\-]+$", "", value)
 
 @tool
 def create_schedule_llm(text: str) -> dict:
     """
-    자연어로 일정을 생성하는 도구입니다. text만 입력하면, 백엔드에서 user_id를 자동으로 추출해 일정을 생성하고, 생성된 일정 정보를 반환합니다.
-    Swagger 등에서는 body에 user_id를 포함하면 됩니다.
+    새로운 일정을 추가하는 도구입니다.
+    - "일정 추가", "회의 잡아줘", "스케줄 등록" 등 일정/스케줄 관련 명령에만 사용하세요.
+    - 과거 대화/기억 검색에는 사용하지 마세요.
+    Args:
+        text (str): 일정 내용(자연어)
+    Returns:
+        dict: 생성된 일정 정보 및 안내 메시지
     """
     user_id = request.json.get('user_id')
     if not user_id:
@@ -131,7 +138,10 @@ def create_schedule_llm(text: str) -> dict:
     except Exception:
         raise ValueError("user_id는 반드시 UUID 형식이어야 합니다.")
     schedule = schedule_service.create_llm(user_id, text)
+    # 안내 메시지를 최상단에 배치
+    message = f"'{clean_text(schedule.title)}' 일정이 등록되었습니다! 필요시 준비물: {clean_text(schedule.memo) if schedule.memo else '없음'}"
     result = {
+        'message': message,
         'id': str(schedule.id),
         'user_id': str(schedule.user_id),
         'title': clean_text(schedule.title),
@@ -149,7 +159,11 @@ def create_schedule_llm(text: str) -> dict:
 @tool
 def get_user_schedules() -> list:
     """
-    현재 인증된 사용자의 모든 일정을 조회하는 도구입니다. user_id는 body에 포함하면 됩니다.
+    사용자의 모든 일정을 조회하는 도구입니다.
+    - "내 일정 보여줘", "이번주 스케줄 알려줘" 등 일정 조회 명령에만 사용하세요.
+    - 과거 대화/기억 검색에는 사용하지 마세요.
+    Returns:
+        list: 일정 정보 리스트
     """
     user_id = request.json.get('user_id')
     if not user_id:

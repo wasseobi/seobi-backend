@@ -19,6 +19,13 @@ message_model, message_input, message_update, completion_input, completion_respo
 
 message_service = MessageService()
 
+vector_search_time_model = ns.model('VectorSearchByTimeInput', {
+    'user_id': fields.String(required=True, description='User ID', example='03823edc-9d2e-4040-b104-1d958bcf8013'),
+    'query': fields.String(required=True, description='검색 쿼리', example='로건이'),
+    'top_k': fields.Integer(required=False, description='Top K', example=5, default=5),
+    'start_timestamp': fields.String(required=False, description='검색 시작 시각(ISO8601)', example='2024-05-01T00:00:00+00:00'),
+    'end_timestamp': fields.String(required=False, description='검색 종료 시각(ISO8601)', example='2024-05-31T23:59:59+00:00')
+})
 
 @ns.route('/session/<uuid:session_id>')
 @ns.param('session_id', 'The session identifier')
@@ -151,6 +158,34 @@ class MessageVectorUpdate(Resource):
             result = message_service.update_message_vectors(user_id)
             return result, 200
             
+        except Exception as e:
+            return {'error': str(e)}, 500
+
+
+@ns.route('/vectors/search-by-time')
+class MessageVectorSearchByTime(Resource):
+    @ns.doc('search_similar_messages_pgvector_by_time',
+            description='특정 기간 내(pgvector 기반) 유사 메시지(top-k) 검색')
+    @ns.expect(vector_search_time_model, validate=True)
+    def post(self):
+        """특정 기간 내(pgvector 기반) 유사 메시지(top-k) 검색 (POST JSON body)"""
+        data = request.json
+        user_id = data.get('user_id')
+        query = data.get('query')
+        top_k = data.get('top_k', 5)
+        start_timestamp = data.get('start_timestamp')
+        end_timestamp = data.get('end_timestamp')
+        try:
+            top_k = int(top_k)
+        except Exception:
+            top_k = 5
+        if not user_id or not query:
+            return {'error': 'user_id와 query는 필수입니다.'}, 400
+        try:
+            message_service = MessageService()
+            results = message_service.search_similar_messages_pgvector_by_time(
+                user_id, query, top_k, start_timestamp, end_timestamp)
+            return results, 200
         except Exception as e:
             return {'error': str(e)}, 500
 
