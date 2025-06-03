@@ -139,6 +139,15 @@ class MessageService:
         # 메세지 컨텍스트에 사용자 메시지 추가
         context.add_user_message(content=content)
 
+        # 사용자 메시지 먼저 전송
+        yield {
+            'type': 'user',
+            'content': content,
+            'session_id': str(session_id),
+            'user_id': str(user_id),
+            'metadata': {'timestamp': datetime.now(timezone.utc).isoformat()}
+        }
+
         try:
             print(f"[LangGraph] stream start: session_id={session_id}, user_id={user_id}, content={content}")
             for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
