@@ -31,14 +31,17 @@ class SessionService:
         return [self._serialize_session(session) for session in sessions]
 
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
+        # TODO(GideokKim): 나중에 `get`으로 통일할지 아니면 `get_by_id`로 통일할지 결정해야 함.
         session = self.session_dao.get_by_id(session_id)
         if not session:
+            # TODO(GideokKim): 찾지 못했을 때 raise할지 return None할지 결정해야 함.
             raise ValueError('Session not found')
         return self._serialize_session(session)
 
     def create_session(self, user_id: uuid.UUID) -> Dict:
         session = self.session_dao.create(user_id)
         if not session:
+            # TODO(GideokKim): 생성 실패했을 때 raise할지 return None할지 결정해야 함.
             raise ValueError('Failed to create session')
         return self._serialize_session(session)
 
@@ -54,6 +57,7 @@ class SessionService:
 
         session = self.session_dao.update(session_id, **update_data)
         if not session:
+            # TODO(GideokKim): 업데이트 실패했을 때 raise할지 return None할지 결정해야 함.
             raise ValueError('Session not found')
         return self._serialize_session(session)
 
@@ -72,6 +76,7 @@ class SessionService:
         current_time = datetime.now(timezone.utc)
         updated_session = self.session_dao.update_finish_time(session_id, current_time)
         if not updated_session:
+            # TODO(GideokKim): 업데이트 실패했을 때 raise할지 return None할지 결정해야 함.
             raise ValueError('Failed to update session finish time')
         
         return self._serialize_session(updated_session)
