@@ -16,7 +16,10 @@ import uuid
 from datetime import datetime, timezone
 import json
 import numpy as np
+import logging
 
+# cleanup 로거 설정
+log = logging.getLogger("langgraph_debug")
 
 class MessageService:
     def __init__(self):
@@ -107,44 +110,54 @@ class MessageService:
         return self.message_dao.delete(message_id)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                                    content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
+                                    content: str) -> Generator[Dict, None, None]:
         """LangGraph를 통한 응답 생성."""
         processor = MessageProcessor(str(session_id), str(user_id))
         context = self._get_or_create_context(str(session_id), str(user_id))
-        final_response = []
 
         # 1. AgentState 불러오기
         agent_state = AgentStateStore.get(str(user_id))
         if not agent_state:
-            yield {'type': 'error', 'error': '세션이 존재하지 않거나 만료되었습니다.'}
-            return
+            agent_state = {
+                "messages": [],
+                "summary": "",
+                "user_id": str(user_id),
+                "current_input": content,
+                "scratchpad": [],
+                "step_count": 0,
+                "next_step": "agent"
+            }
+        else:
+            agent_state["step_count"] = agent_state.get("step_count", 0)
+            agent_state["next_step"] = "agent"
+            agent_state["summary"] = agent_state.get("summary", "")
+
+        agent_state["user_id"] = str(user_id)
+        agent_state["current_input"] = content
+        agent_state["messages"].append(HumanMessage(content=content))                
+
+        # 메세지 컨텍스트에 사용자 메시지 추가
+        context.add_user_message(content=content)
 
         try:
-            # 2. 사용자 메시지 추가
-            agent_state['current_input'] = content if content is not None else messages[-1]['content']
             print(f"[LangGraph] stream start: session_id={session_id}, user_id={user_id}, content={content}")
-            # LangGraph 워크플로우 실행 (state를 직접 주고받음)
             for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
-                    print(f"[LangGraph] chunk: {msg_chunk}")
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
-                        print(f"[Debug] ToolMessage: {msg_chunk}")
-                        processed_list = list(
-                            processor.process_ai_or_tool_message(msg_chunk))
+                        # 도구 메시지 처리
+                        processed_list = list(processor.process_ai_or_tool_message(msg_chunk))
                         for processed in processed_list:
-                            print(f"[Debug] ToolMessage processed: {processed}")
                             if isinstance(processed, str):
                                 try:
                                     if processed.startswith("data: "):
-                                        processed = processed[len("data: ") :]
+                                        processed = processed[len("data: "):]
                                     processed = json.loads(processed)
                                 except Exception:
                                     continue
                             context.add_tool_result(
-                                tool_name=processed.get("metadata", {}).get(
-                                    "tool_name", "unknown"),
-                                result=processed.get("content", "")
+                                tool_name=processed.get("metadata", {}).get("tool_name", "unknown"),
+                                result=processed
                             )
                             chunk_data = {
                                 'type': 'toolmessage',
@@ -154,27 +167,22 @@ class MessageService:
                                     "tool_response": True
                                 }
                             }
-                            print(f"[Debug] toolmessage chunk_data: {chunk_data}")
-                            if chunk_data is not None:
-                                if chunk_data.get('type') == 'toolmessage':
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
-                                elif chunk_data.get('content'):
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
+                            if chunk_data.get('content'):
+                                yield chunk_data
+                                
                     elif isinstance(msg_chunk, AIMessage):
-                        print(f"[Debug] AIMessage: {msg_chunk}")
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
-                            tool_calls = msg_chunk.additional_kwargs["tool_calls"]
-                            context.add_tool_call_chunk(tool_calls[0])
-                            chunk_data = {
-                                'type': 'tool_calls',
-                                'tool_calls': tool_calls
-                            }
-                            print(f"[Debug] tool_calls chunk_data: {chunk_data}")
-                            yield chunk_data
+                            # 도구 호출 처리
+                            for tool_call in msg_chunk.additional_kwargs["tool_calls"]:
+                                context.add_tool_call_chunk(tool_call)
+                                chunk_data = {
+                                    'type': 'tool_calls',
+                                    'tool_calls': [tool_call],
+                                    'metadata': {
+                                        'tool_call_id': tool_call.get('id', '')
+                                    }
+                                }
+                                yield chunk_data
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
                             chunk_data = {
@@ -182,63 +190,54 @@ class MessageService:
                                 'content': msg_chunk.content,
                                 'metadata': metadata
                             }
-                            print(f"[Debug] AI chunk_data: {chunk_data}")
-                            if chunk_data and chunk_data.get('content'):
-                                final_response.append(
-                                    chunk_data.get('content'))
+                            if chunk_data.get('content'):
                                 yield chunk_data
                     elif isinstance(msg_chunk, dict):
-                        print(f"[Debug] dict chunk: {msg_chunk}")
                         if "agent" in msg_chunk:
-                            messages_to_process = msg_chunk["agent"].get(
-                                "formatted_messages", [])
+                            # 에이전트 메시지 처리
+                            messages_to_process = msg_chunk["agent"].get("formatted_messages", [])
                             for processed in processor.process_agent_messages(messages_to_process):
-                                print(f"[Debug] agent processed: {processed}")
+                                if isinstance(processed, str) and processed.startswith("data: "):
+                                    processed = json.loads(processed[len("data: "):])
+                                    
                                 if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
+                                    context.append_assistant_content(processed["content"])
                                     chunk_data = {
                                         'type': 'chunk',
                                         'content': processed["content"],
                                         'metadata': processed.get("metadata", {})
                                     }
-                                    print(f"[Debug] agent chunk_data: {chunk_data}")
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
+                                    yield chunk_data
+                                    
                         elif "content" in msg_chunk or "metadata" in msg_chunk:
                             for processed in processor.process_dict_message(msg_chunk):
-                                print(f"[Debug] dict processed: {processed}")
+                                if isinstance(processed, str) and processed.startswith("data: "):
+                                    processed = json.loads(processed[len("data: "):])
+                                    
                                 if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
+                                    context.append_assistant_content(processed["content"])
                                     chunk_data = {
                                         'type': 'chunk',
                                         'content': processed["content"],
                                         'metadata': processed.get("metadata", metadata)
                                     }
-                                    print(f"[Debug] dict chunk_data: {chunk_data}")
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
+                                    yield chunk_data
+                                    
                 except Exception as e:
                     print(f"[LangGraph] Exception in chunk: {e}")
                     continue
-            print(f"[LangGraph] context.final_content: {context.final_content}")
             context.finalize_assistant_response()
-            print(f"[LangGraph] context.messages for DB: {context.messages}")
             self._save_context_messages(context)
-            print(f"[LangGraph] context saved to DB.")
-            # 3. 변경된 AgentState 저장
             AgentStateStore.set(str(user_id), agent_state)
-            if final_response:
-                pass
+
+            # 컨텍스트 초기화
+            context.reset()
+
             yield {
                 'type': 'end',
                 'context_saved': True
             }
+            
         except Exception as e:
             yield {
                 'type': 'error',
@@ -269,28 +268,21 @@ class MessageService:
             session_id = uuid.UUID(context.session_id)
             user_id = uuid.UUID(context.user_id)
             messages = context.get_messages_for_storage()
-            for message in messages:
-                try:
-                    # timestamp는 메타데이터에서 DB 필드로 이동
-                    if "timestamp" in message:
-                        timestamp = message.pop("timestamp")
-                    else:
-                        timestamp = datetime.now(timezone.utc).isoformat()
-                    metadata = message.get("metadata", {})
-                    if isinstance(metadata, dict) and "timestamp" in metadata:
-                        del metadata["timestamp"]
-                    self.create_message(
-                        session_id=session_id,
-                        user_id=user_id,
-                        content=message["content"],
-                        role=message["role"],
-                        metadata=metadata
-                    )
-                except Exception:
-                    raise
-            self.active_contexts.pop(context.session_id, None)
+            for msg in messages:
+                content = msg["content"]
+                role = msg["role"]
+                metadata = msg.get("metadata")
+                
+                self.create_message(
+                    session_id=session_id,
+                    user_id=user_id,
+                    content=content,
+                    role=role,
+                    metadata=metadata
+                )
         except Exception as e:
-            raise
+            print(f"[Error] Failed to save context messages: {e}")
+            raise ValueError(f"Failed to save messages: {str(e)}")
 
     def search_similar_messages(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
         """

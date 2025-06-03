@@ -13,12 +13,12 @@ def model_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     log.info("[Graph] [model_node] State before processing:")
     
     # 메시지 로깅
-    messages = state.messages if isinstance(state, AgentState) else state.get('messages', [])
+    messages = state["messages"] if isinstance(state, AgentState) else state.get('messages', [])
     for i, msg in enumerate(messages):
         log.info(f"  Message [{i}]: {type(msg).__name__} - {getattr(msg, 'content', '')[:100]}...")
 
     # step_count 처리
-    step_count = state.step_count if isinstance(state, AgentState) else state.get('step_count', 0)
+    step_count = state["step_count"] if isinstance(state, AgentState) else state.get('step_count', 0)
     step_count += 1
     
     if isinstance(state, AgentState):

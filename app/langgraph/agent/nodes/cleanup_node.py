@@ -88,6 +88,8 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         msg_type = type(msg).__name__
         msg_content = getattr(msg, 'content', '')
         log.info(f"  [{i}] {msg_type}: {msg_content[:100]}...")
+
+    state["step_count"] = 0
     
     # summarize 체크
     if len(cleaned_messages) > 5:

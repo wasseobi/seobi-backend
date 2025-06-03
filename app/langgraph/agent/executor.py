@@ -38,7 +38,7 @@ def create_agent_executor() -> Callable:
         except Exception as e:
             import traceback
             traceback.print_exc()
-            state.messages = [AIMessage(content="죄송합니다. 처리 중 오류가 발생했습니다.")]
+            state["messages"] = [AIMessage(content="죄송합니다. 처리 중 오류가 발생했습니다.")]
             return state
     
     return invoke

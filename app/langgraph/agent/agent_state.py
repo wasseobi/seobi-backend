@@ -19,7 +19,6 @@ class AgentState:
     next_step: Union[str, None] = None  # 다음 단계 (계속/종료)
     user_memory: Optional[str] = None  # 장기 기억(사용자별)
     step_count: int = 0  # 스텝 카운터
-    input_processed: bool = False  # 현재 사이클에서 입력이 처리되었는지 여부
     tool_results: Optional[Any] = None  # 도구 실행 결과
     current_tool_call_id: Optional[str] = None  # 현재 실행 중인 도구의 ID
     current_tool_name: Optional[str] = None  # 현재 실행 중인 도구의 이름
@@ -83,7 +82,6 @@ class AgentState:
             "next_step": self.next_step,
             "user_memory": self.user_memory,
             "step_count": self.step_count,
-            "input_processed": self.input_processed,
             "tool_results": self.tool_results,
             "current_tool_call_id": self.current_tool_call_id,
             "current_tool_name": self.current_tool_name,

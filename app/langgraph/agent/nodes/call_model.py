@@ -91,50 +91,9 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         
         # 기본 state 구조 확인 및 초기화
         if is_dict:
-            # dict 타입인 경우
-            if "messages" not in state:
-                state["messages"] = []
-                log.info("[CallModel] Initialized empty messages list")
-            if "current_input" not in state:
-                state["current_input"] = ""
-                log.info("[CallModel] Initialized empty current_input")
-                
             messages = state["messages"]
-            current_input = state["current_input"]
-            input_processed = state.get("input_processed", False)
-        else:
-            # AgentState 타입인 경우
-            if not hasattr(state, "messages"):
-                state.messages = []
-                log.info("[CallModel] Initialized empty messages list")
-            if not hasattr(state, "current_input"):
-                state.current_input = ""
-                log.info("[CallModel] Initialized empty current_input")
-                
-            messages = state.messages
-            current_input = state.current_input
-            input_processed = getattr(state, "input_processed", False)
-            
-        # 현재 입력을 메시지로 변환 - 현재 사이클에서 처음 한 번만
-        log.info(f"[CallModel] Checking current_input - value: '{current_input}', processed: {input_processed}")
-        if current_input and not input_processed:
-            log.info(f"[CallModel] Current messages before adding input: {[type(m).__name__ for m in messages]}")
-            current_msg = HumanMessage(content=current_input)
-            messages.append(current_msg)
-            
-            if is_dict:
-                state["input_processed"] = True
-            else:
-                state.input_processed = True
-                
-            log.info(f"[CallModel] Added HumanMessage: {current_input}")
-            log.info(f"[CallModel] Current messages after adding input: {[type(m).__name__ for m in messages]}")
-            
-            # 메시지 유효성 검사 (AgentState인 경우에만)
-            if not is_dict and not state.validate_messages():
-                log.error("[CallModel] Invalid message pattern after adding user message")
-                state.next_step = "end"
-                return state
+        else:               
+            messages = state.messages        
 
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
