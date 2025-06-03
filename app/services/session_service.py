@@ -1,10 +1,10 @@
 import json
-import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
+from app.utils.json_utils import extract_json_string
 from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
@@ -84,19 +84,6 @@ class SessionService:
     def update_summary_conversation(self, session_id: uuid.UUID,
                                     user_message: str, assistant_message: str) -> None:
         """Update session title and description based on conversation"""
-        def extract_json_string(s):
-            s = s.strip()
-            if s.startswith("```json"):
-                s = s[len("```json"):].strip()
-            if s.startswith("```"):
-                s = s[len("```"):].strip()
-            if s.startswith("json"):
-                s = s[4:].strip()
-            match = re.search(r'({.*})', s, re.DOTALL)
-            if match:
-                return match.group(1)
-            return s
-
         try:
             context_messages = [
                 {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
@@ -143,18 +130,6 @@ class SessionService:
         dialogue = "\n".join(
             f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
         )
-        def extract_json_string(s):
-            s = s.strip()
-            if s.startswith("```json"):
-                s = s[len("```json"):].strip()
-            if s.startswith("```"):
-                s = s[len("```"):].strip()
-            if s.startswith("json"):
-                s = s[4:].strip()
-            match = re.search(r'({.*})', s, re.DOTALL)
-            if match:
-                return match.group(1)
-            return s
         context_messages = [
             {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
             {"role": "user", "content": dialogue}
