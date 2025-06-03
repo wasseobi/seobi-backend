@@ -146,7 +146,7 @@ class SessionClose(Resource):
                 {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
                 {"role": "user", "content": dialogue}
             ]
-            session_service.summarize_session(session_id, context_messages)
+            session_service.update_session_summary(session_id, context_messages)
 
             # 1-2. 관심사 추출
             interest_service.extract_interests_keywords(session_id)
@@ -280,7 +280,7 @@ class MessageSend(Resource):
                                  f"user: {user_msg}\n"
                                  f"assistant: {assistant_msg}"}
                             ]
-                            session_service.update_summary_conversation(
+                            session_service.update_session_summary(
                                 session_id,
                                 context_messages
                             )

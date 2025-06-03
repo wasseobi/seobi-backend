@@ -77,49 +77,20 @@ class SessionService:
         
         return self._serialize_session(updated_session)
 
-    def update_summary_conversation(self, session_id: uuid.UUID,
+    def update_session_summary(self, session_id: uuid.UUID,
                                     context_messages: List[Dict[str, str]]) -> None:
-        """Update session title and description based on conversation"""
-        try:
-            client = get_openai_client()
-            response = get_completion(client, context_messages)
+        self.get_session(session_id)
 
-            try:
-                json_str = extract_json_string(response)
-                result = json.loads(json_str)
-                title = result.get('title')
-                description = result.get('description')
-                # fallback: title/description이 None이거나 빈 문자열이면 일부라도 채워넣기
-                if not title:
-                    title = (description or response)[:20]
-                if not description:
-                    description = response[:100]
-                self.session_dao.update(
-                    session_id,
-                    title=title,
-                    description=description
-                )
-            except json.JSONDecodeError:
-                self.session_dao.update(
-                    session_id,
-                    description=response[:100]
-                )
-        except Exception as e:
-            print(f"Failed to update session title/description: {str(e)}")
-            # Don't raise the exception to prevent blocking the main flow
-            # Just log the error and continue
-
-    def summarize_session(self, session_id: uuid.UUID, context_messages: List[Dict[str, str]]) -> None:
-        """
-        세션의 모든 메시지를 기반으로 title/description 요약을 생성하고 세션에 저장
-        """
+        # TODO(GideokKim): OpenAI API 호출과 응답을 받을 위치를 고민해볼 필요 있음.
         client = get_openai_client()
         response = get_completion(client, context_messages)
+
         try:
             json_str = extract_json_string(response)
             result = json.loads(json_str)
             title = result.get('title')
             description = result.get('description')
+            
             if not title:
                 title = (description or response)[:20]
             if not description:
@@ -130,9 +101,13 @@ class SessionService:
                 description=description
             )
         except Exception as e:
+            # NOTE(GideokKim): 예외 발생 시에도 title과 description 모두 설정
+            fallback_title = response[:20] if response else "대화 요약"
+            fallback_description = response[:100] if response else "요약을 생성하는 중 오류가 발생했습니다."
             self.session_dao.update(
                 session_id,
-                description=response[:100]
+                title=fallback_title,
+                description=fallback_description
             )
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
