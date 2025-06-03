@@ -30,6 +30,20 @@ class SessionService:
         sessions = self.session_dao.get_all()
         return [self._serialize_session(session) for session in sessions]
 
+    def get_user_sessions(self, user_id: uuid.UUID) -> List[Dict]:
+        try:
+            sessions = self.session_dao.get_all_by_user_id(user_id)
+            return [{
+                'id': str(session.id),
+                'user_id': str(session.user_id),
+                'title': session.title,
+                'description': session.description,
+                'start_at': session.start_at.isoformat() if session.start_at else None,
+                'finish_at': session.finish_at.isoformat() if session.finish_at else None
+            } for session in sessions]
+        except Exception as e:
+            raise ValueError(f"Failed to get sessions for user {user_id}")
+
     def get_session(self, session_id: uuid.UUID) -> Optional[Dict]:
         # TODO(GideokKim): 나중에 `get`으로 통일할지 아니면 `get_by_id`로 통일할지 결정해야 함.
         session = self.session_dao.get_by_id(session_id)
@@ -60,10 +74,6 @@ class SessionService:
             # TODO(GideokKim): 업데이트 실패했을 때 raise할지 return None할지 결정해야 함.
             raise ValueError('Session not found')
         return self._serialize_session(session)
-
-    def delete_session(self, session_id: uuid.UUID) -> None:
-        if not self.session_dao.delete(session_id):
-            raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
         """Finish a session with validation"""
@@ -133,20 +143,6 @@ class SessionService:
             # Don't raise the exception to prevent blocking the main flow
             # Just log the error and continue
 
-    def get_user_sessions(self, user_id: uuid.UUID) -> List[Dict]:
-        try:
-            sessions = self.session_dao.get_all_by_user_id(user_id)
-            return [{
-                'id': str(session.id),
-                'user_id': str(session.user_id),
-                'title': session.title,
-                'description': session.description,
-                'start_at': session.start_at.isoformat() if session.start_at else None,
-                'finish_at': session.finish_at.isoformat() if session.finish_at else None
-            } for session in sessions]
-        except Exception as e:
-            raise ValueError(f"Failed to get sessions for user {user_id}")
-
     def summarize_session(self, session_id: uuid.UUID) -> None:
         """
         세션의 모든 메시지를 기반으로 title/description 요약을 생성하고 세션에 저장
@@ -194,3 +190,7 @@ class SessionService:
                 session_id,
                 description=response[:100]
             )
+
+    def delete_session(self, session_id: uuid.UUID) -> None:
+        if not self.session_dao.delete(session_id):
+            raise ValueError('Session not found')
