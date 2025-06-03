@@ -15,14 +15,6 @@ class SessionService:
     def __init__(self):
         self.session_dao = SessionDAO()
 
-    @property
-    def cleanup_executor(self):
-        """Lazy initialization of cleanup executor."""
-        if self._cleanup_executor is None:
-            from app.langgraph.cleanup.executor import create_cleanup_executor
-            self._cleanup_executor = create_cleanup_executor()
-        return self._cleanup_executor
-
     def _serialize_session(self, session: Any) -> Dict[str, Any]:
         """Serialize session data for API response"""
         return {
