@@ -12,6 +12,10 @@ from config import Config
 import uuid
 import json
 from datetime import datetime
+import logging
+
+# cleanup 로거 설정
+log = logging.getLogger("langgraph_debug")
 
 # Create namespace
 ns = Namespace('s', description='채팅 세션 및 메시지 작업')
@@ -132,12 +136,22 @@ class SessionClose(Resource):
             
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)
-            # 세션 종료 시 AgentState에서 user_memory 업데이트
+
             user_id = str(session["user_id"])
-            agent_state = AgentStateStore.get(user_id)
-            if agent_state:
-                user_service.save_user_memory_from_state(user_id, agent_state)
-                AgentStateStore.delete(user_id)
+
+            # 세션 종료 시 AgentState에서 user_memory 업데이트
+            # AgentState 처리 개선
+            try:
+                agent_state = AgentStateStore.get(user_id)
+                if agent_state:
+                    user_service.save_user_memory_from_state(user_id, agent_state)
+                    AgentStateStore.delete(user_id)
+                else:
+                    log.warning(f"AgentState not found for user {user_id} during session close")
+            except Exception as mem_error:
+                log.error(f"Failed to save user memory: {str(mem_error)}")
+                # 주요 기능은 계속 진행
+
             return {
                 'id': str(session["id"]),
                 'user_id': str(session["user_id"]),
@@ -146,6 +160,7 @@ class SessionClose(Resource):
                 'title': session["title"],
                 'description': session["description"]
             }
+        
         except Exception as e:
             ns.abort(400, f"Failed to close session: {str(e)}")
 
