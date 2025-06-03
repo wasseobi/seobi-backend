@@ -6,10 +6,6 @@ from typing import List, Optional, Dict, Any
 from app.dao.session_dao import SessionDAO
 from app.utils.json_utils import extract_json_string
 from app.utils.openai_client import get_openai_client, get_completion
-from app.utils.prompt.service_prompts import (
-    SESSION_SUMMARY_SYSTEM_PROMPT,
-    SESSION_SUMMARY_USER_PROMPT
-)
 
 class SessionService:
     def __init__(self):
@@ -82,16 +78,9 @@ class SessionService:
         return self._serialize_session(updated_session)
 
     def update_summary_conversation(self, session_id: uuid.UUID,
-                                    user_message: str, assistant_message: str) -> None:
+                                    context_messages: List[Dict[str, str]]) -> None:
         """Update session title and description based on conversation"""
         try:
-            context_messages = [
-                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
-                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT +
-                 f"user: {user_message}\n"
-                 f"assistant: {assistant_message}"}
-            ]
-
             client = get_openai_client()
             response = get_completion(client, context_messages)
 
@@ -120,20 +109,10 @@ class SessionService:
             # Don't raise the exception to prevent blocking the main flow
             # Just log the error and continue
 
-    def summarize_session(self, session_id: uuid.UUID) -> None:
+    def summarize_session(self, session_id: uuid.UUID, context_messages: List[Dict[str, str]]) -> None:
         """
         세션의 모든 메시지를 기반으로 title/description 요약을 생성하고 세션에 저장
         """
-        from app.services.message_service import MessageService
-        message_service = MessageService()
-        messages = message_service.get_session_messages(session_id)
-        dialogue = "\n".join(
-            f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
-        )
-        context_messages = [
-            {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
-            {"role": "user", "content": dialogue}
-        ]
         client = get_openai_client()
         response = get_completion(client, context_messages)
         try:
