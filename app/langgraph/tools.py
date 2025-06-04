@@ -228,7 +228,7 @@ def run_insight_graph() -> dict:
     return result
 
 schedule_service = ScheduleService()
-
+ 
 agent_tools = [
     search_web,
     calculator,
