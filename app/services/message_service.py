@@ -214,16 +214,6 @@ class MessageService:
                                         "tool_response": True
                                     }
                                 })
-                            # chunk_data = {
-                            #     'type': 'toolmessage',
-                            #     'content': processed.get('content', ""),
-                            #     'metadata': {
-                            #         **processed.get('metadata', {}),
-                            #         "tool_response": True
-                            #     }
-                            # }
-                            # if chunk_data.get('content'):
-                            #     yield chunk_data
 
                     elif isinstance(msg_chunk, AIMessage):
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
@@ -237,14 +227,7 @@ class MessageService:
                                         'tool_call_id': tool_call.get('id', '')
                                     }
                                 })
-                                # chunk_data = {
-                                #     'type': 'tool_calls',
-                                #     'tool_calls': [tool_call],
-                                #     'metadata': {
-                                #         'tool_call_id': tool_call.get('id', '')
-                                #     }
-                                # }
-                                # yield chunk_data
+
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
                             final_response_buffer.append({
@@ -252,13 +235,7 @@ class MessageService:
                                 'content': msg_chunk.content,
                                 'metadata': metadata
                             })
-                            # chunk_data = {
-                            #     'type': 'chunk',
-                            #     'content': msg_chunk.content,
-                            #     'metadata': metadata
-                            # }
-                            # if chunk_data.get('content'):
-                            #     yield chunk_data
+
                     elif isinstance(msg_chunk, dict):
                         if "agent" in msg_chunk:
                             # 에이전트 메시지 처리
