@@ -3,19 +3,19 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 import json
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def datetime_to_str(obj: Any) -> Any:
-    """datetime 객체를 ISO 형식 문자열로 변환합니다.
-    timezone 정보를 포함한 형식: YYYY-MM-DD HH:MM:SS.mmmmmm+HH:MM
-    """
+    """datetime 객체를 ISO 형식 문자열로 변환합니다."""
     if isinstance(obj, datetime):
         try:
-            # timezone 정보를 포함한 형식으로 변환
-            return obj.strftime('%Y-%m-%d %H:%M:%S.%f%z')
-        except Exception as e:
-            # fallback: 기본 ISO 형식
             return obj.isoformat()
+        except Exception as e:
+            log.error(f"Error converting datetime to string: {e}")
+            return str(obj)
     elif isinstance(obj, dict):
         return {k: datetime_to_str(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -31,16 +31,26 @@ class MessageContext:
     user_id: str
     messages: List[Dict[str, Any]] = field(default_factory=list)
     final_content: str = ""
-    current_tool_call_chunks: List[Dict[str, Any]] = field(
-        default_factory=list)
+    current_tool_call_chunks: List[Dict[str, Any]] = field(default_factory=list)
+    tool_call_ids: set[str] = field(default_factory=set)  # 도구 호출 ID 추적을 위한 세트
 
-    def add_user_message(self, content: str) -> None:
-        """사용자 메시지를 추가합니다."""
+    def _create_message(self, role: str, content: str, metadata: Optional[Dict] = None) -> Dict[str, Any]:
+        """메시지 객체를 생성합니다."""
         message = {
-            "role": "user",
+            "role": role,
             "content": content,
             "timestamp": datetime.now(timezone.utc)
         }
+        if metadata:
+            message["metadata"] = metadata
+            if "timestamp" not in metadata:
+                message["metadata"]["timestamp"] = message["timestamp"]
+        return message
+    
+    def add_user_message(self, content: str) -> None:
+        """사용자 메시지를 추가합니다."""
+        message = self._create_message(role="user", content=content)
+        log.debug(f"Adding user message: {message}")
         self.messages.append(message)
 
     def combine_tool_call_chunks(self) -> Optional[Dict[str, Any]]:
@@ -65,11 +75,12 @@ class MessageContext:
 
     def add_tool_call_chunk(self, chunk: Dict[str, Any]) -> None:
         """도구 호출 청크를 추가합니다."""
-        # 새로운 도구 호출의 시작
         if chunk.get("id"):
-            self.flush_tool_call_chunks()  # 이전 청크들 처리
+            self.flush_tool_call_chunks()
+            log.debug(f"Starting new tool call with chunk: {chunk}")
             self.current_tool_call_chunks = [chunk]
         else:
+            log.debug(f"Appending tool call chunk: {chunk}")
             self.current_tool_call_chunks.append(chunk)
 
     def flush_tool_call_chunks(self) -> None:
@@ -79,38 +90,51 @@ class MessageContext:
 
         combined_tool_call = self.combine_tool_call_chunks()
         if combined_tool_call:
-            message = {
-                "role": "assistant",
-                "content": "",
-                "metadata": {
-                    "tool_calls": [combined_tool_call],
-                    "timestamp": datetime.now(timezone.utc)
-                }
-            }
+            message = self._create_message(
+                role="assistant",
+                content="",
+                metadata={"tool_calls": [combined_tool_call]}
+            )
+            log.debug(f"Adding combined tool call message: {message}")
             self.messages.append(message)
 
         self.current_tool_call_chunks = []
 
     def add_tool_result(self, tool_name: str, result: Any) -> None:
         """도구 실행 결과를 추가합니다."""
-        message = {
-            "role": "tool",
-            "content": str(result),
-            "metadata": {
+        # 도구 호출 ID가 이미 처리되었는지 확인
+        tool_call_id = None
+        if isinstance(result, dict):
+            tool_call_id = str(result.get("metadata", {}).get("tool_call_id", ""))
+        
+        if tool_call_id and tool_call_id in self.tool_call_ids:
+            log.debug(f"Skipping duplicate tool result for call ID: {tool_call_id}")
+            return
+            
+        message = self._create_message(
+            role="tool",
+            content=str(result),
+            metadata={
                 "tool_name": tool_name,
                 "result": result,
-                "timestamp": datetime.now(timezone.utc)
+                "tool_call_id": tool_call_id
             }
-        }
+        )
+        
+        # 처리된 도구 호출 ID 기록
+        if tool_call_id:
+            self.tool_call_ids.add(tool_call_id)
+            
+        log.debug(f"Adding tool result message: {message}")
         self.messages.append(message)
 
     def append_assistant_content(self, content: str) -> None:
         """AI 응답 청크를 누적합니다."""
         self.final_content += content
+        log.debug(f"Appended content, current final_content length: {len(self.final_content)}")
 
     def finalize_assistant_response(self) -> None:
         """완성된 AI 응답을 메시지에 추가합니다."""
-        # 남아있는 도구 호출 청크 처리
         self.flush_tool_call_chunks()
 
         tools_used = [
@@ -119,16 +143,42 @@ class MessageContext:
             if msg["role"] == "assistant" and "tool_calls" in msg.get("metadata", {})
         ]
 
-        message = {
-            "role": "assistant",
-            "content": self.final_content,
-            "metadata": {
-                "tools_used": tools_used,
-                "timestamp": datetime.now(timezone.utc)
-            }
-        }
+        message = self._create_message(
+            role="assistant",
+            content=self.final_content,
+            metadata={"tools_used": tools_used}
+        )
+        log.debug(f"Adding final assistant response: {message}")
         self.messages.append(message)
 
     def get_messages_for_storage(self) -> List[Dict[str, Any]]:
-        """저장할 메시지 목록을 반환합니다. datetime 객체를 문자열로 변환합니다."""
-        return datetime_to_str(self.messages)
+        """저장할 메시지 목록을 반환합니다."""
+
+        seen_tool_calls = set()  # 중복 제거를 위한 도구 호출 ID 추적
+        formatted_messages = []
+        
+        for msg in self.messages:
+            # 도구 메시지의 경우 중복 체크
+            if msg.get("role") == "tool":
+                tool_call_id = msg.get("metadata", {}).get("tool_call_id")
+                if tool_call_id:
+                    if tool_call_id in seen_tool_calls:
+                        continue
+                    seen_tool_calls.add(tool_call_id)
+            
+            formatted_msg = msg.copy()
+            # timestamp가 메타데이터에도 있고 메시지 루트에도 있으면 중복 제거
+            if "timestamp" in formatted_msg and "metadata" in formatted_msg:
+                if "timestamp" in formatted_msg["metadata"]:
+                    del formatted_msg["metadata"]["timestamp"]
+            formatted_messages.append(formatted_msg)
+
+        return datetime_to_str(formatted_messages)
+
+    def reset(self) -> None:
+        """메시지 컨텍스트를 초기화합니다."""
+        self.messages.clear()
+        self.final_content = ""
+        self.current_tool_call_chunks.clear()
+        self.tool_call_ids.clear()
+        log.debug("Message context reset complete")

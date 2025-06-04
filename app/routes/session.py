@@ -5,12 +5,19 @@ from app.services.cleanup_service import CleanupService
 from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
+from app.services.user_service import UserService
 from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
+from app.utils.agent_state_store import AgentStateStore
 from app.utils.app_config import is_dev_mode
+from config import Config
 import uuid
 import json
 from datetime import datetime
+import logging
+
+# cleanup 로거 설정
+log = logging.getLogger("langgraph_debug")
 
 # Create namespace
 ns = Namespace('s', description='채팅 세션 및 메시지 작업')
@@ -64,6 +71,7 @@ session_message_response = ns.model('SessionMessage', {
 session_service = SessionService()
 message_service = MessageService()
 interest_service = InterestService()
+user_service = UserService()
 cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
 
@@ -98,7 +106,9 @@ class SessionOpen(Resource):
 
         try:
             session = session_service.create_session(uuid.UUID(user_id))
-            return {"session_id": str(session["id"])}, 201
+            agent_state = user_service.initialize_agent_state(user_id)
+            AgentStateStore.set(user_id, agent_state)
+            return {"session_id": str(session["id"])} , 201
         except Exception as e:
             return {'error': str(e)}, 400
 
@@ -142,6 +152,22 @@ class SessionClose(Resource):
             
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)
+
+            user_id = str(session["user_id"])
+
+            # 세션 종료 시 AgentState에서 user_memory 업데이트
+            # AgentState 처리 개선
+            try:
+                agent_state = AgentStateStore.get(user_id)
+                if agent_state:
+                    user_service.save_user_memory_from_state(user_id, agent_state)
+                    AgentStateStore.delete(user_id)
+                else:
+                    log.warning(f"AgentState not found for user {user_id} during session close")
+            except Exception as mem_error:
+                log.error(f"Failed to save user memory: {str(mem_error)}")
+                # 주요 기능은 계속 진행
+
             return {
                 'id': str(session["id"]),
                 'user_id': str(session["user_id"]),
@@ -150,6 +176,7 @@ class SessionClose(Resource):
                 'title': session["title"],
                 'description': session["description"]
             }
+        
         except Exception as e:
             ns.abort(400, f"Failed to close session: {str(e)}")
 

@@ -34,8 +34,11 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev_flask_secret_key")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES"))
     GOOGLE_WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID")
-
-
+    # Redis Configuration
+    REDIS_URL = os.getenv("REDIS_URL")
+    REDIS_KEY = os.getenv("REDIS_KEY")
+    REDIS_PORT = int(os.getenv("REDIS_PORT"))
+    
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True

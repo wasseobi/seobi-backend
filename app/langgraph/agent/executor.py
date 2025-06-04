@@ -1,6 +1,7 @@
 """Agent 실행기 생성."""
 from typing import Dict, List, Callable, Any
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from .agent_state import AgentState
 
 from .graph import build_graph
 
@@ -18,13 +19,13 @@ def create_agent_executor() -> Callable:
             chat_history = []
             
         # 초기 상태 설정 (사용자 입력을 한 번만 추가)
-        state = {
-            "messages": [],  # 빈 리스트로 시작
-            "current_input": input_text,  # 현재 입력만 저장
-            "scratchpad": [],
-            "step_count": 0,
-            "next_step": "agent"
-        }
+        state = AgentState(
+            messages=[],  # 빈 리스트로 시작
+            current_input=input_text,  # 현재 입력만 저장
+            scratchpad=[],
+            step_count=0,
+            next_step="agent"
+        )
         
         try:
             # 그래프 실행

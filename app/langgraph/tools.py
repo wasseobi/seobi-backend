@@ -232,10 +232,10 @@ schedule_service = ScheduleService()
 agent_tools = [
     search_web,
     calculator,
-    search_similar_messages,
     google_search,
     run_insight_graph,
     create_schedule_llm,
-    get_user_schedules
+    get_user_schedules,
+    search_similar_messages
 ]
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

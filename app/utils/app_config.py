@@ -11,8 +11,12 @@ _config = {
     'AZURE_OPENAI_ENDPOINT': None,
     'AZURE_OPENAI_API_KEY': None,
     'AZURE_OPENAI_API_VERSION': None,
-    'AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME': None
+    'AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME': None,
+    'REDIS_URL': None,
+    'REDIS_KEY': None,
+    'REDIS_PORT': None
 }
+
 
 def init_config(app):
     """애플리케이션 설정을 초기화합니다."""
@@ -29,6 +33,7 @@ def init_config(app):
         'AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME': app.config.get('AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME')
     })
 
+
 @lru_cache(maxsize=1)
 def get_security_config():
     """보안 설정을 반환합니다. 캐싱을 통해 성능을 최적화합니다."""
@@ -36,6 +41,7 @@ def get_security_config():
         'security': 'Bearer' if not _config['DEV_MODE'] else None,
         'auth_required': not _config['DEV_MODE']
     }
+
 
 @lru_cache(maxsize=1)
 def get_openai_config():
@@ -48,6 +54,7 @@ def get_openai_config():
         'embedding_deployment_name': _config['AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME']
     }
 
+
 @lru_cache(maxsize=1)
 def get_auth_config():
     """인증 관련 설정을 반환합니다."""
@@ -57,6 +64,17 @@ def get_auth_config():
         'jwt_access_token_expires': _config['JWT_ACCESS_TOKEN_EXPIRES']
     }
 
+
+@lru_cache(maxsize=1)
+def get_redis_config():
+    """Redis 관련 설정을 반환합니다."""
+    return {
+        'redis_url': _config['REDIS_URL'],
+        'redis_key': _config['REDIS_KEY'],
+        'redis_port': _config['REDIS_PORT']
+    }
+
+
 def is_dev_mode():
     """개발 모드 여부를 반환합니다."""
-    return _config['DEV_MODE'] 
+    return _config['DEV_MODE']
