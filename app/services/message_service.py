@@ -83,7 +83,7 @@ class MessageService:
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str, metadata) -> Dict:
-        """Create a new message (임베딩 벡터 및 키워드 벡터 포함)"""
+        """Create a new message (임베딩 벡터 및 키워드 벡터 포함)""" 
 
         session = Session.query.get(session_id)
         if not session:
