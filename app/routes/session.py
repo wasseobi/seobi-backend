@@ -301,14 +301,7 @@ class UserSessions(Resource):
         """특정 사용자의 모든 채팅 세션 목록을 가져옵니다."""
         try:
             sessions = session_service.get_user_sessions(user_id)
-            return [{
-                'id': str(session.id),
-                'user_id': str(session.user_id),
-                'start_at': session.start_at,
-                'finish_at': session.finish_at,
-                'title': session.title,
-                'description': session.description
-            } for session in sessions]
+            return sessions
         except Exception as e:
             ns.abort(400, f"Failed to get user sessions: {str(e)}")
 
