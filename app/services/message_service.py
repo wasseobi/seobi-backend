@@ -224,7 +224,7 @@ class MessageService:
                 'error': str(e)
             }
             raise
-
+ 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
             messages = self.message_dao.get_all_by_user_id(user_id)
