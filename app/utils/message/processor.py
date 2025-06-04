@@ -33,7 +33,11 @@ class MessageProcessor:
     def process_ai_or_tool_message(self, chunk: Union[AIMessage, ToolMessage]) -> Generator[str, None, None]:
         """AI 또는 Tool 메시지 처리."""
         formatted_msg = format_message_content(chunk, **self.session_info)
-        yield from self._save_and_yield_message(formatted_msg)
+        msg_key = self._get_message_key(formatted_msg)
+        
+        if msg_key not in self.seen_messages:
+            self.seen_messages.add(msg_key)
+            yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
 
     def process_dict_message(self, chunk: Dict) -> Generator[str, None, None]:
         """Dict 형태의 메시지 처리."""

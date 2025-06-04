@@ -132,7 +132,7 @@ def run_insight_graph(user_id: str) -> dict:
 agent_tools = [
     search_web,
     calculator,
-    search_similar_messages,
     google_search,
+    search_similar_messages,
     run_insight_graph
 ]

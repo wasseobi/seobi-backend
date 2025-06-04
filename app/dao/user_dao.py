@@ -21,3 +21,12 @@ class UserDAO(BaseDAO[User]):
 
     def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
         return super().update(str(user_id), username=username, email=email) 
+    
+    def get_user_memory(self, user_id: uuid.UUID) -> Optional[dict]:
+        user = self.get(str(user_id))
+        if user:
+            return user.user_memory
+        return None
+    
+    def update_user_memory(self, user_id: uuid.UUID, user_memory: dict) -> Optional[User]:
+        return super().update(str(user_id), user_memory=user_memory) 

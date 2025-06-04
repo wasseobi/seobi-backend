@@ -6,6 +6,8 @@ from app.utils.openai_client import get_openai_client, get_embedding
 from app.utils.message.processor import MessageProcessor
 from app.langgraph.agent.executor import create_agent_executor
 from app.langgraph.agent.graph import build_graph
+from app.utils.agent_state_store import AgentStateStore
+from app.langgraph.agent.agent_state import AgentState
 
 from langchain.schema import HumanMessage, AIMessage
 from langchain_core.messages import BaseMessage, ToolMessage
@@ -14,6 +16,10 @@ import uuid
 from datetime import datetime, timezone
 import json
 import numpy as np
+import logging
+
+# cleanup 로거 설정
+log = logging.getLogger("langgraph_debug")
 
 
 class MessageService:
@@ -105,26 +111,57 @@ class MessageService:
         return self.message_dao.delete(message_id)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                                    content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
+                                    content: str) -> Generator[Dict, None, None]:
         """LangGraph를 통한 응답 생성."""
         processor = MessageProcessor(str(session_id), str(user_id))
         context = self._get_or_create_context(str(session_id), str(user_id))
-        final_response = []
+
+        # 메시지 버퍼
+        tool_calls_buffer = []  # tool_calls가 있는 AI 메시지
+        tool_results_buffer = []  # toolMessage 결과
+        final_response_buffer = []  # 최종 AI 응답
+
+        # 1. AgentState 불러오기
+        agent_state = AgentStateStore.get(str(user_id))
+        if not agent_state:
+            agent_state = {
+                "messages": [],
+                "summary": "",
+                "user_id": str(user_id),
+                "current_input": content,
+                "scratchpad": [],
+                "step_count": 0,
+                "next_step": "agent"
+            }
+        else:
+            agent_state["step_count"] = agent_state.get("step_count", 0)
+            agent_state["next_step"] = "agent"
+            agent_state["summary"] = agent_state.get("summary", "")
+
+        agent_state["user_id"] = str(user_id)
+        agent_state["current_input"] = content
+        agent_state["messages"].append(HumanMessage(content=content))
+
+        # 메세지 컨텍스트에 사용자 메시지 추가
+        context.add_user_message(content=content)
+
+        # 사용자 메시지 먼저 전송
+        yield {
+            'type': 'user',
+            'content': content,
+            'session_id': str(session_id),
+            'user_id': str(user_id),
+            'metadata': {'timestamp': datetime.now(timezone.utc).isoformat()}
+        }
 
         try:
-            context.add_user_message(
-                content if content is not None else messages[-1]['content'])
-            yield {
-                'type': 'start',
-                'user_message': {'content': content}
-            }
-            messages = [HumanMessage(
-                content=content if content is not None else messages[-1]['content'])]
-            initial_state = {"messages": messages}
-            for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
+            print(
+                f"[LangGraph] stream start: session_id={session_id}, user_id={user_id}, content={content}")
+            for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
+                        # 도구 메시지 처리
                         processed_list = list(
                             processor.process_ai_or_tool_message(msg_chunk))
                         for processed in processed_list:
@@ -138,50 +175,72 @@ class MessageService:
                             context.add_tool_result(
                                 tool_name=processed.get("metadata", {}).get(
                                     "tool_name", "unknown"),
-                                result=processed.get("content", "")
+                                result=processed
                             )
-                            chunk_data = {
-                                'type': 'toolmessage',
-                                'content': processed.get("content", ""),
-                                'metadata': {
-                                    **processed.get("metadata", {}),
-                                    "tool_response": True
-                                }
-                            }
-                            if chunk_data is not None:
-                                if chunk_data.get('type') == 'toolmessage':
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
-                                elif chunk_data.get('content'):
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
+                            if processed.get('content'):
+                                tool_results_buffer.append({
+                                    'type': 'toolmessage',
+                                    'content': processed.get('content', ""),
+                                    'metadata': {
+                                        **processed.get('metadata', {}),
+                                        "tool_response": True
+                                    }
+                                })
+                            # chunk_data = {
+                            #     'type': 'toolmessage',
+                            #     'content': processed.get('content', ""),
+                            #     'metadata': {
+                            #         **processed.get('metadata', {}),
+                            #         "tool_response": True
+                            #     }
+                            # }
+                            # if chunk_data.get('content'):
+                            #     yield chunk_data
+
                     elif isinstance(msg_chunk, AIMessage):
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
-                            tool_calls = msg_chunk.additional_kwargs["tool_calls"]
-                            context.add_tool_call_chunk(tool_calls[0])
-                            chunk_data = {
-                                'type': 'tool_calls',
-                                'tool_calls': tool_calls
-                            }
-                            yield chunk_data
+                            # 도구 호출 처리
+                            for tool_call in msg_chunk.additional_kwargs["tool_calls"]:
+                                context.add_tool_call_chunk(tool_call)
+                                tool_calls_buffer.append({
+                                    'type': 'tool_calls',
+                                    'tool_calls': [tool_call],
+                                    'metadata': {
+                                        'tool_call_id': tool_call.get('id', '')
+                                    }
+                                })
+                                # chunk_data = {
+                                #     'type': 'tool_calls',
+                                #     'tool_calls': [tool_call],
+                                #     'metadata': {
+                                #         'tool_call_id': tool_call.get('id', '')
+                                #     }
+                                # }
+                                # yield chunk_data
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
-                            chunk_data = {
+                            final_response_buffer.append({
                                 'type': 'chunk',
                                 'content': msg_chunk.content,
                                 'metadata': metadata
-                            }
-                            if chunk_data and chunk_data.get('content'):
-                                final_response.append(
-                                    chunk_data.get('content'))
-                                yield chunk_data
+                            })
+                            # chunk_data = {
+                            #     'type': 'chunk',
+                            #     'content': msg_chunk.content,
+                            #     'metadata': metadata
+                            # }
+                            # if chunk_data.get('content'):
+                            #     yield chunk_data
                     elif isinstance(msg_chunk, dict):
                         if "agent" in msg_chunk:
+                            # 에이전트 메시지 처리
                             messages_to_process = msg_chunk["agent"].get(
                                 "formatted_messages", [])
                             for processed in processor.process_agent_messages(messages_to_process):
+                                if isinstance(processed, str) and processed.startswith("data: "):
+                                    processed = json.loads(
+                                        processed[len("data: "):])
+
                                 if processed.get("content"):
                                     context.append_assistant_content(
                                         processed["content"])
@@ -190,12 +249,14 @@ class MessageService:
                                         'content': processed["content"],
                                         'metadata': processed.get("metadata", {})
                                     }
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
+                                    yield chunk_data
+
                         elif "content" in msg_chunk or "metadata" in msg_chunk:
                             for processed in processor.process_dict_message(msg_chunk):
+                                if isinstance(processed, str) and processed.startswith("data: "):
+                                    processed = json.loads(
+                                        processed[len("data: "):])
+
                                 if processed.get("content"):
                                     context.append_assistant_content(
                                         processed["content"])
@@ -204,20 +265,40 @@ class MessageService:
                                         'content': processed["content"],
                                         'metadata': processed.get("metadata", metadata)
                                     }
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
-                except Exception:
+                                    yield chunk_data
+                except Exception as e:
+                    print(f"[LangGraph] Exception in chunk: {e}")
                     continue
+
+            # tool_calls가 있는 경우에만 순서대로 전송
+            if tool_calls_buffer:
+                # 2. tool_calls 전송
+                for chunk in tool_calls_buffer:
+                    yield chunk
+                tool_calls_buffer.clear()
+                
+                # 3. tool 결과 전송 (있는 경우)
+                if tool_results_buffer:
+                    yield tool_results_buffer
+                    tool_results_buffer.clear()
+
+            # 4. 마지막으로 AI 응답 전송
+            for chunk in final_response_buffer:
+                yield chunk
+                final_response_buffer.clear()
+
             context.finalize_assistant_response()
             self._save_context_messages(context)
-            if final_response:
-                pass
+            AgentStateStore.set(str(user_id), agent_state)
+
+            # 컨텍스트 초기화
+            context.reset()
+
             yield {
                 'type': 'end',
                 'context_saved': True
             }
+
         except Exception as e:
             yield {
                 'type': 'error',
@@ -248,28 +329,21 @@ class MessageService:
             session_id = uuid.UUID(context.session_id)
             user_id = uuid.UUID(context.user_id)
             messages = context.get_messages_for_storage()
-            for message in messages:
-                try:
-                    # timestamp는 메타데이터에서 DB 필드로 이동
-                    if "timestamp" in message:
-                        timestamp = message.pop("timestamp")
-                    else:
-                        timestamp = datetime.now(timezone.utc).isoformat()
-                    metadata = message.get("metadata", {})
-                    if isinstance(metadata, dict) and "timestamp" in metadata:
-                        del metadata["timestamp"]
-                    self.create_message(
-                        session_id=session_id,
-                        user_id=user_id,
-                        content=message["content"],
-                        role=message["role"],
-                        metadata=metadata
-                    )
-                except Exception:
-                    raise
-            self.active_contexts.pop(context.session_id, None)
+            for msg in messages:
+                content = msg["content"]
+                role = msg["role"]
+                metadata = msg.get("metadata")
+
+                self.create_message(
+                    session_id=session_id,
+                    user_id=user_id,
+                    content=content,
+                    role=role,
+                    metadata=metadata
+                )
         except Exception as e:
-            raise
+            print(f"[Error] Failed to save context messages: {e}")
+            raise ValueError(f"Failed to save messages: {str(e)}")
 
     def search_similar_messages(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
         """
