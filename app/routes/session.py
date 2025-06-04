@@ -15,6 +15,7 @@ import uuid
 import json
 from datetime import datetime
 import logging
+from threading import Thread
 
 # cleanup 로거 설정
 log = logging.getLogger("langgraph_debug")
@@ -142,13 +143,18 @@ class SessionClose(Resource):
             cleanup_result = cleanup_service.cleanup_session(session_id)
             
             # 1-4. cleanup 결과로부터 auto task 생성
+            # TODO(GideokKim): auto task table이 정상적으로 추가되면 비동기 방식 해제 필요
             if not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
                 session = session_service.get_session(session_id)
                 if session:
-                    auto_task_service.create_from_cleanup_result(
-                        user_id=session["user_id"],
-                        cleanup_result=cleanup_result
-                    )
+                    def create_auto_task_with_logging(user_id, cleanup_result):
+                        try:
+                            auto_task_service.create_from_cleanup_result(user_id, cleanup_result)
+                        except Exception as e:
+                            log.error(f"Failed to create auto task for user {user_id}: {str(e)}")
+                    
+                    Thread(target=create_auto_task_with_logging, 
+                          args=(session["user_id"], cleanup_result)).start()
             
             # 2. finish_at 저장
             session = session_service.finish_session(session_id)
