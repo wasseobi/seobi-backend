@@ -10,6 +10,10 @@ from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
 from app.utils.app_config import is_dev_mode
+from app.utils.prompt.service_prompts import (
+    SESSION_SUMMARY_SYSTEM_PROMPT,
+    SESSION_SUMMARY_USER_PROMPT
+)
 from config import Config
 import uuid
 import json
@@ -134,7 +138,15 @@ class SessionClose(Resource):
         """채팅 세션을 종료하고 요약 정보를 생성합니다."""
         try:
             # 1-1. 전체 메시지 기반 요약 생성
-            session_service.summarize_session(session_id)
+            messages = message_service.get_session_messages(session_id)
+            dialogue = "\n".join(
+                f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
+            )
+            context_messages = [
+                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": dialogue}
+            ]
+            session_service.update_session_summary(session_id, context_messages)
 
             # 1-2. 관심사 추출
             interest_service.extract_interests_keywords(session_id)
@@ -262,10 +274,15 @@ class MessageSend(Resource):
                             if not assistant_msg:
                                 assistant_msg = next((m['content'] for m in messages if m.get(
                                     'role') == 'assistant' and m.get('content')), '')
-                            session_service.update_summary_conversation(
+                            context_messages = [
+                                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
+                                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT + 
+                                 f"user: {user_msg}\n"
+                                 f"assistant: {assistant_msg}"}
+                            ]
+                            session_service.update_session_summary(
                                 session_id,
-                                user_msg,
-                                assistant_msg
+                                context_messages
                             )
                     except Exception:
                         pass
