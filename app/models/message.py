@@ -18,6 +18,8 @@ class Message(db.Model):
     timestamp = db.Column(db.DateTime(
         timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     vector = db.Column(Vector(1536), nullable=True)
+    keyword_text = db.Column(db.Text, nullable=True)
+    keyword_vector = db.Column(Vector(1536), nullable=True)
     message_metadata = db.Column(db.JSON, nullable=True)  # metadata 대신 message_metadata 사용
 
     # Relationships
