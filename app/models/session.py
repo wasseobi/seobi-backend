@@ -16,5 +16,5 @@ class Session(db.Model):
     description = db.Column(db.Text, nullable=True)
 
     # Relationships
-    messages = db.relationship('Message', back_populates='session', lazy=True, order_by='Message.timestamp')
+    messages = db.relationship('Message', back_populates='session', cascade='all, delete-orphan', lazy=True, order_by='Message.timestamp')
     user = db.relationship('User', back_populates='sessions')
