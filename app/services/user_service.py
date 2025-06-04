@@ -1,8 +1,10 @@
-from app.dao.user_dao import UserDAO
-from typing import List, Optional, Dict, Any
 import uuid
-from app.utils.openai_client import get_openai_client, get_completion
+from typing import List, Optional, Dict, Any
+
 from langchain_core.messages import BaseMessage
+
+from app.dao.user_dao import UserDAO
+from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.service_prompts import USER_MEMORY_SYSTEM_PROMPT
 
 class UserService:
