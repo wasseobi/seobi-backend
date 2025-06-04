@@ -5,11 +5,10 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from ..agent_state import AgentState
 
 # cleanup 로거 설정
-log = logging.getLogger("langgraph_debug")
+log = logging.getLogger(__name__)
 
 def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     """대화 종료 전 메시지 정리."""
-    log.info(f"[Cleanup] Input state type: {type(state)}")
     
     # state가 dict인지 AgentState인지 확인
     is_dict = isinstance(state, dict)
@@ -20,7 +19,6 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         return state
         
     # 현재 상태 요약 로깅
-    log.info("[Cleanup] Current state summary:")
     if is_dict:
         summary = state.get("summary")
         if summary:
@@ -33,8 +31,6 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         else:
             log.info("  No summary found in state")
         
-    # 정리 전 메시지 로깅
-    log.info("[Cleanup] Messages before cleanup:")
     for i, msg in enumerate(messages):
         msg_type = type(msg).__name__
         msg_content = getattr(msg, 'content', '')
@@ -46,9 +42,6 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
                 "tool_calls" in msg.additional_kwargs
             )
             
-        log.info(f"  [{i}] {msg_type}" + 
-                (f" (with tool_calls)" if has_tool_calls else "") +
-                f": {msg_content[:100]}...")
     cleaned_messages = []
     current_human_message = None
     current_ai_response = None
@@ -82,12 +75,9 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     else:
         state.messages = cleaned_messages
     
-    # 정리 후 메시지 로깅
-    log.info("[Cleanup] Messages after cleanup:")
     for i, msg in enumerate(cleaned_messages):
         msg_type = type(msg).__name__
         msg_content = getattr(msg, 'content', '')
-        log.info(f"  [{i}] {msg_type}: {msg_content[:100]}...")
 
     state["step_count"] = 0
     
@@ -97,12 +87,10 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             state["next_step"] = "summarize"
         else:
             state.next_step = "summarize"
-        log.info("[Cleanup] Messages count > 5, setting next_step to 'summarize'")
     else:
         if is_dict:
             state["next_step"] = "end"
         else:
             state.next_step = "end"
-        log.info(f"[Cleanup] Messages count = {len(cleaned_messages)}, setting next_step to 'end'")
     
     return state

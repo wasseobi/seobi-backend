@@ -5,8 +5,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMe
 from app.utils.agent_state_store import AgentStateStore
 import logging
 
-# 로거 설정
-log = logging.getLogger("langgraph_debug")
+log = logging.getLogger(__name__)
 
 @dataclass
 class AgentState:
@@ -26,7 +25,6 @@ class AgentState:
 
     def __post_init__(self):
         """dataclass 초기화 이후 호출되는 메서드"""
-        log.info(f"[AgentState] Initialized with {len(self.messages)} messages for user {self.user_id}")
         if self.user_id:
             self.restore_state()
 
@@ -39,13 +37,10 @@ class AgentState:
                     # 메시지 타입 검증
                     for msg in saved_state["messages"]:
                         if not isinstance(msg, BaseMessage):
-                            log.error(f"[AgentState] Invalid message type in saved state: {type(msg)}")
                             raise TypeError("저장된 메시지가 BaseMessage 타입이 아닙니다")
                     self.messages = saved_state["messages"]
-                    log.info(f"[AgentState] Restored {len(self.messages)} messages for user {self.user_id}")
                 if "summary" in saved_state:
                     self.summary = saved_state["summary"]
-                    log.info(f"[AgentState] Restored summary for user {self.user_id}")
         except Exception as e:
             log.error(f"[AgentState] Error restoring state: {str(e)}")
             raise
@@ -66,7 +61,6 @@ class AgentState:
             # 전체 상태를 저장
             state_data = self.to_dict()
             AgentStateStore.set(self.user_id, state_data)
-            log.info(f"[AgentState] Saved state for user {self.user_id} with {len(self.messages)} messages")
         except Exception as e:
             log.error(f"[AgentState] Error saving state: {str(e)}")
             raise
@@ -87,7 +81,6 @@ class AgentState:
             "current_tool_name": self.current_tool_name,
             "current_tool_calls": self.current_tool_calls
         }
-        log.info(f"[AgentState] Converting to dict: {result}")
         return result
 
     @classmethod
@@ -120,12 +113,10 @@ class AgentState:
             first_tool = tool_calls[0]
             self.current_tool_call_id = first_tool.get("id")
             self.current_tool_name = first_tool.get("function", {}).get("name")
-            log.info(f"[AgentState] Set tool info - Name: {self.current_tool_name}, ID: {self.current_tool_call_id}")
 
     def set_tool_results(self, results: Any) -> None:
         """도구 실행 결과 설정"""
         self.tool_results = results
-        log.info(f"[AgentState] Set tool results: {results}")
 
     def clear_tool_state(self) -> None:
         """도구 관련 상태 초기화"""
@@ -133,7 +124,6 @@ class AgentState:
         self.current_tool_call_id = None
         self.current_tool_name = None
         self.current_tool_calls = None
-        log.info("[AgentState] Cleared tool state")
 
     def validate_messages(self) -> bool:
         """메시지 순서와 패턴이 올바른지 검증

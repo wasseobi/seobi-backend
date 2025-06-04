@@ -54,8 +54,6 @@ def _validate_tool_responses(messages: List[BaseMessage]) -> Set[str]:
 
 def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
     """도구를 호출하고 결과를 처리하는 노드."""
-    log.info("[ToolNode] Starting tool execution")
-    log.info(f"[ToolNode] Initial state: {state.to_dict() if hasattr(state, 'to_dict') else state}")
     
     try:
         # 마지막 AI 메시지에서 도구 호출 정보 추출
@@ -64,16 +62,13 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
             raise ValueError("No messages in state")
             
         last_message = state["messages"][-1]
-        log.info(f"[ToolNode] Last message: {last_message}")
         
         # tool_calls 정보 추출 및 검증
         tool_calls = []
         if hasattr(last_message, "additional_kwargs"):
             tool_calls = last_message.additional_kwargs.get("tool_calls", [])
-            log.info(f"[ToolNode] Extracted tool_calls: {tool_calls}")
             
         if not tool_calls:
-            log.info("[ToolNode] No tool_calls found, returning to model")
             state["next_step"] = "model"
             return state
             
@@ -100,15 +95,12 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
                 # 도구 실행
                 tool = next((t for t in tools if t.name == function_name), None)
                 if tool:
-                    log.info(f"[ToolNode] Executing tool '{function_name}' with arguments: {arguments}")
                     result = tool.invoke(arguments)
-                    log.info(f"[ToolNode] Tool execution result: {result}")
                     
                     # 도구 실행 결과를 state에 저장
                     state["tool_results"] = result
                     state["current_tool_call_id"] = call_id
                     state["current_tool_name"] = function_name
-                    log.info(f"[ToolNode] Set tool results in state - ID: {call_id}, Name: {function_name}")
                     
             except Exception as e:
                 log.error(f"[ToolNode] Error processing tool call {function_name}: {str(e)}")
@@ -120,7 +112,6 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
 
         # 다음 단계를 model로 설정하여 결과 처리
         state["next_step"] = "model"
-        log.info(f"[ToolNode] Final state before return: {state.to_dict() if hasattr(state, 'to_dict') else state}")
         return state
         
     except Exception as e:

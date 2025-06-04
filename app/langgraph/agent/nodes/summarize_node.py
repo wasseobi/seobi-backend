@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Union
 
 # summarize 로거 설정
-log = logging.getLogger("langgraph_debug")
+log = logging.getLogger(__name__)
 
 
 def delete_message(state: Union[Dict, AgentState]) -> List[BaseMessage]:
@@ -24,8 +24,6 @@ def delete_message(state: Union[Dict, AgentState]) -> List[BaseMessage]:
 def summarize_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     """대화 내용을 요약하고 오래된 메시지를 정리하는 노드."""
     try:
-        log.info("[Summarize] Starting summarization...")
-
         # state 타입에 따른 처리
         is_dict = isinstance(state, dict)
 
@@ -53,7 +51,6 @@ def summarize_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
                 "content": f"{summary}\n\n{messages_content}" if summary else messages_content
             }
         ]
-        log.info(f"[Summarize] Summarize input: {summarize_messages}")
 
         # 요약 생성
         response = get_completion(get_openai_client(), summarize_messages)
@@ -70,11 +67,6 @@ def summarize_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             state.messages = delete_message(state)
             state.step_count = 0
             state.next_step = "end"
-
-        log.info(f"[Summarize] Generated summary: {new_summary}")
-        log.info(
-            f"[Summarize] Cleaned messages, remaining count: {len(state['messages'] if is_dict else state.messages)}")
-        log.info("[Summarize] Reset step_count to 0")
 
     except Exception as e:
         log.error(

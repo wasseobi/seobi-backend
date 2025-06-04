@@ -21,23 +21,7 @@ os.makedirs(LOG_DIR, exist_ok=True)  # logs 폴더가 없으면 생성
 LOG_PATH = os.path.join(LOG_DIR, 'langgraph_debug.log')
 
 # 로거 설정
-log = logging.getLogger("langgraph_debug")
-if not log.handlers:  # 핸들러가 없는 경우에만 추가
-    log.setLevel(logging.INFO)
-    
-    # 파일 핸들러 생성
-    file_handler = logging.FileHandler(LOG_PATH, mode='a', encoding='utf-8')
-    file_handler.setLevel(logging.INFO)
-    
-    # 포맷터 설정
-    formatter = logging.Formatter('[%(asctime)s] %(message)s')
-    file_handler.setFormatter(formatter)
-    
-    # 핸들러 추가
-    log.addHandler(file_handler)
-    
-    # 로그가 상위 로거로 전파되지 않도록 설정
-    log.propagate = False
+log = logging.getLogger(__name__)
 
 def format_tool_results(tool_results: List[Any]) -> Dict:
     """도구 실행 결과를 ToolMessage 형식으로 변환."""
@@ -57,24 +41,18 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
         # 결과가 단일 값인 경우 리스트로 변환
         if not isinstance(tool_results, list):
             tool_results = [tool_results]
-            log.info("[CallModel:format_tool_results] Converted single result to list")
 
         for result in tool_results:
-            log.info(f"[CallModel:format_tool_results] Processing result: {result}")
-            log.info(f"[CallModel:format_tool_results] Result type: {type(result)}")
             
             if isinstance(result, dict):
                 # 결과가 dict인 경우 artifact로 저장
                 formatted_output["artifacts"].append(result)
                 if "content" in result:
                     formatted_output["stdout"] += str(result["content"]) + "\n"
-                log.info(f"[CallModel:format_tool_results] Added dict result as artifact")
             else:
                 # 단순 문자열인 경우 stdout으로 처리
                 formatted_output["stdout"] += str(result) + "\n"
-                log.info(f"[CallModel:format_tool_results] Added string result to stdout")
                 
-        log.info(f"[CallModel:format_tool_results] Final formatted output: {formatted_output}")
         return formatted_output
             
     except Exception as e:
@@ -97,17 +75,14 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
 
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
-        log.info(f"[CallModel] Checking tool results state - tool_results: {tool_results}")
         
         if tool_results:
             tool_output = format_tool_results(tool_results)
-            log.info(f"[CallModel] Processing tool output: {tool_output}")
             
             if tool_output:
                 current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
                 current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
                 
-                log.info(f"[CallModel] Current tool state - ID: {current_tool_call_id}, Name: {current_tool_name}")
                 if current_tool_call_id and current_tool_name:
                     tool_message = ToolMessage(
                         content=tool_output["stdout"],
@@ -115,8 +90,6 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
                         name=current_tool_name
                     )
                     messages.append(tool_message)
-                    log.info(f"[CallModel] Successfully added ToolMessage - ID: {current_tool_call_id}, Name: {current_tool_name}")
-                    log.info(f"[CallModel] Current messages count: {len(messages)}, Last message type: {type(messages[-1])}")
                 else:
                     log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
             else:
@@ -128,7 +101,6 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
                 state["current_tool_name"] = None
             else:
                 state.clear_tool_state()
-            log.info("[CallModel] Cleared tool state")
             
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
@@ -137,13 +109,10 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         
         # OpenAI 형식으로 메시지 변환
         openai_messages = convert_to_openai_messages(formatted_messages)
-        log.info(f"[CallModel] Sending {len(openai_messages)} messages to LLM")
-        log.info(f"[CallModel] Messages to send: {openai_messages}")
         
         try:
             # LangChain 모델 호출
             response = model.invoke(openai_messages)
-            log.info(f"[CallModel] Received response: {response}")
             
             # tool_calls 확인 및 처리
             has_tool_calls = (
@@ -155,7 +124,6 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             # 상태 업데이트
             if has_tool_calls:
                 tool_calls = response.additional_kwargs["tool_calls"]
-                log.info(f"[CallModel] Found tool_calls in response: {tool_calls}")
                 
                 if is_dict:
                     state["next_step"] = "tool"
@@ -181,7 +149,6 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             else:
                 state.step_count += 1
                 
-            log.info(f"[CallModel] Added AI response, current message count: {len(messages)}")
             
             # 메시지 유효성 검사 (AgentState인 경우에만)
             if not is_dict and not state.validate_messages():

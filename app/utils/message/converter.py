@@ -14,7 +14,6 @@ def convert_to_openai_messages(messages: List[BaseMessage]) -> List[Dict[str, An
     Returns:
         OpenAI 메시지 형식의 딕셔너리 리스트
     """
-    log.info(f"[Converter] Converting {len(messages)} messages to OpenAI format")
     openai_messages = []
     last_assistant_message = None
     
@@ -30,7 +29,6 @@ def convert_to_openai_messages(messages: List[BaseMessage]) -> List[Dict[str, An
         
         # ToolMessage 특수 처리
         if isinstance(message, ToolMessage):
-            log.info(f"[Converter] Processing ToolMessage: {message}")
             msg_dict["role"] = "tool"  # 항상 tool role 유지
             
             # tool_call_id 처리

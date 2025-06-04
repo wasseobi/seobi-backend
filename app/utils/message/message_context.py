@@ -153,7 +153,6 @@ class MessageContext:
 
     def get_messages_for_storage(self) -> List[Dict[str, Any]]:
         """저장할 메시지 목록을 반환합니다."""
-        log.info(f"Preparing {len(self.messages)} messages for storage")
 
         seen_tool_calls = set()  # 중복 제거를 위한 도구 호출 ID 추적
         formatted_messages = []
@@ -178,7 +177,6 @@ class MessageContext:
 
     def reset(self) -> None:
         """메시지 컨텍스트를 초기화합니다."""
-        log.info("Resetting message context")
         self.messages.clear()
         self.final_content = ""
         self.current_tool_call_chunks.clear()
