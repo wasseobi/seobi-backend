@@ -84,6 +84,7 @@ class MessageService:
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str, metadata) -> Dict:
         """Create a new message (임베딩 벡터 및 키워드 벡터 포함)"""
+
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
@@ -102,17 +103,21 @@ class MessageService:
         try:
             # 단일 메시지 content에서 키워드 추출 프롬프트 구성
             messages = [
-                {"role": "system", "content": EXTRACT_KEYWORDS_SYSTEM_PROMPT},
-                {"role": "user", "content": f"아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력.\n문장: {content}"}
+                {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
+                {"role": "user", "content": content}
             ]
             keywords_response = get_completion(client, messages)
-            
+            print("[디버그] LLM 키워드 추출 응답:", keywords_response)
             keywords = json.loads(keywords_response)
             if isinstance(keywords, list) and keywords:
                 keyword_text = ", ".join(keywords)
                 # 첫 번째 키워드만 임베딩 (여러 개면 확장 가능)
                 keyword_vector = get_embedding(client, keywords[0])
+                print(f"[디버그] 추출 키워드: {keyword_text}, 임베딩: {keyword_vector[:5]}...")
+            else:
+                print("[디버그] 키워드 추출 결과 없음 또는 형식 오류:", keywords)
         except Exception as e:
+            print("[에러] 키워드 추출/임베딩 실패:", e)
             keyword_text = None
             keyword_vector = None
 
