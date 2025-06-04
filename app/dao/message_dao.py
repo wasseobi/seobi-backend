@@ -27,15 +27,18 @@ class MessageDAO(BaseDAO[Message]):
         return self.query().filter_by(session_id=session_id).order_by(Message.timestamp.asc()).all()
 
     def create(self, session_id: uuid.UUID, user_id: uuid.UUID, 
-                      content: str, role: str, vector=None, metadata=None) -> Message:
-        """Create a new message (vector 임베딩 포함)"""
+                      content: str, role: str, vector=None, metadata=None,
+                      keyword_text=None, keyword_vector=None) -> Message:
+        """Create a new message (vector 임베딩, 키워드 포함)"""
         return super().create(
             session_id=session_id,
             user_id=user_id,
             content=content,
             role=role,
             vector=vector,
-            message_metadata=metadata
+            message_metadata=metadata,
+            keyword_text=keyword_text,
+            keyword_vector=keyword_vector
         )
 
     def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
@@ -53,6 +56,21 @@ class MessageDAO(BaseDAO[Message]):
             .filter(Message.user_id == user_id)
             .filter(Message.vector != None)
             .order_by(Message.vector.l2_distance(query_vector))  # 또는 .cosine_distance(query_vector)
+            .limit(top_k)
+            .all()
+        )
+
+    def get_keyword_pgvector(self, user_id, query_vector, top_k=5):
+        """
+        [PGVECTOR] user_id의 메시지 중 query_vector와 가장 유사한 top_k keyword 반환 (keyword_vector 기준)
+        """
+        if isinstance(query_vector, np.ndarray):
+            query_vector = query_vector.tolist()
+        return (
+            self.query()
+            .filter(Message.user_id == user_id)
+            .filter(Message.keyword_vector != None)
+            .order_by(Message.keyword_vector.l2_distance(query_vector))  # 또는 .cosine_distance(query_vector)
             .limit(top_k)
             .all()
         )
