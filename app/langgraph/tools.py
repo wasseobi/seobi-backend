@@ -133,5 +133,6 @@ agent_tools = [
     search_web,
     calculator,
     google_search,
+    search_similar_messages,
     run_insight_graph
 ]
