@@ -69,7 +69,7 @@ class SignIn(Resource):
             # Create JWT token
             access_token = create_access_token(identity=user['id'])
             
-            return {'access_token': access_token}
+            return {'id': user['id'], 'access_token': access_token}
 
         except Exception as e:
             return {'error': 'Invalid id_token', 'detail': str(e)}, 401
