@@ -98,6 +98,9 @@ jobs:
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
       JWT_ACCESS_TOKEN_EXPIRES: ${{ secrets.TEST_JWT_ACCESS_TOKEN_EXPIRES }}
       GOOGLE_CLIENT_ID: ${{ secrets.TEST_GOOGLE_CLIENT_ID }}
+      REDIS_URL: ${{ secrets.TEST_REDIS_URL }}
+      REDIS_KEY: ${{ secrets.TEST_REDIS_KEY }}
+      REDIS_PORT: ${{ secrets.TEST_REDIS_PORT }}
 
     steps:
       - uses: actions/checkout@v4
