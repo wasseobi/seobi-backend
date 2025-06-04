@@ -129,9 +129,15 @@ def create_schedule_llm(text: str) -> dict:
     Returns:
         dict: 생성된 일정 정보 및 안내 메시지
     """
-    user_id = request.json.get('user_id')
+    user_id = None
+    if hasattr(g, 'user_id') and g.user_id:
+        user_id = g.user_id
+    elif request.headers.get('user_id'):
+        user_id = request.headers.get('user_id')
+    elif request.json and request.json.get('user_id'):
+        user_id = request.json.get('user_id')
     if not user_id:
-        raise ValueError("user_id가 필요합니다. body에 user_id를 포함해 주세요.")
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     import uuid
     try:
         uuid.UUID(user_id)
@@ -165,9 +171,15 @@ def get_user_schedules() -> list:
     Returns:
         list: 일정 정보 리스트
     """
-    user_id = request.json.get('user_id')
+    user_id = None
+    if hasattr(g, 'user_id') and g.user_id:
+        user_id = g.user_id
+    elif request.headers.get('user_id'):
+        user_id = request.headers.get('user_id')
+    elif request.json and request.json.get('user_id'):
+        user_id = request.json.get('user_id')
     if not user_id:
-        raise ValueError("user_id가 필요합니다. body에 user_id를 포함해 주세요.")
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     import uuid
     try:
         uuid.UUID(user_id)
