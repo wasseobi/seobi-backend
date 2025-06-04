@@ -14,7 +14,6 @@ from app.utils.prompt.service_prompts import (
 class SessionService:
     def __init__(self):
         self.session_dao = SessionDAO()
-        self._cleanup_executor = None
 
     @property
     def cleanup_executor(self):
@@ -77,37 +76,17 @@ class SessionService:
             raise ValueError('Session not found')
 
     def finish_session(self, session_id: uuid.UUID) -> Dict:
-        """Finish a session with validation and run cleanup graph"""
+        """Finish a session with validation"""
         session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
             raise ValueError('Session is already finished')
 
-        # Get conversation history
-        from app.services.message_service import MessageService
-        message_service = MessageService()
-        conversation_history = message_service.get_session_messages(session_id)
-
         current_time = datetime.now(timezone.utc)
         updated_session = self.session_dao.update_finish_time(session_id, current_time)
         if not updated_session:
             raise ValueError('Failed to update session finish time')
-
-        try:
-            # Run cleanup using executor
-            cleanup_result = self.cleanup_executor(session_id, conversation_history)
-            
-            # TODO(noah): 추후 삭제하고 실제 Auto task table에 저장하는 기능으로 대체해야 함.
-            if cleanup_result.get("error"):
-                print(f"Cleanup failed for session {session_id}: {cleanup_result['error']}")
-            else:
-                print(f"Cleanup completed for session {session_id}")
-                print(f"Analysis: {cleanup_result.get('analysis_result')}")
-                print(f"Generated tasks: {cleanup_result.get('generated_tasks')}")
-        except Exception as e:
-            print(f"Error during cleanup: {str(e)}")
-            # Cleanup 실패는 세션 종료를 막지 않음
         
         return self._serialize_session(updated_session)
 

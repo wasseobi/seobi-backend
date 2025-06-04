@@ -8,6 +8,8 @@ import json
 from flask import request, g
 from app.services.schedule_service import ScheduleService
 import re
+from app.services.schedule_service import ScheduleService
+import re
 
 @tool
 def search_web(query: str) -> str:
@@ -65,7 +67,7 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
     from app.services.message_service import MessageService
     message_service = MessageService()
-    results = message_service.search_similar_messages_pgvector(user_id, query, top_k)
+    results = message_service.search_similar_messages_pgvector_pgvector(user_id, query, top_k)
     return json.dumps(results, ensure_ascii=False)
 
 
@@ -211,6 +213,13 @@ def run_insight_graph() -> dict:
     user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
     if not user_id:
         raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
+def run_insight_graph() -> dict:
+    """
+    인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다. user_id는 백엔드에서 자동 추출합니다.
+    """
+    user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
+    if not user_id:
+        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     from app.services.insight_article_service import InsightArticleService
     service = InsightArticleService()
     article = service.create_article(user_id, type="chat")
@@ -228,6 +237,7 @@ def run_insight_graph() -> dict:
     return result
 
 schedule_service = ScheduleService()
+schedule_service = ScheduleService()
 
 agent_tools = [
     search_web,
@@ -237,5 +247,8 @@ agent_tools = [
     run_insight_graph,
     create_schedule_llm,
     get_user_schedules
+    run_insight_graph,
+    create_schedule_llm,
+    get_user_schedules
 ]
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

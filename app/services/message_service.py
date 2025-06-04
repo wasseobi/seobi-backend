@@ -106,124 +106,58 @@ class MessageService:
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
                                     content: str = None, messages: List[Union[BaseMessage, Dict[str, Any]]] = None) -> Generator[Dict, None, None]:
-        """LangGraph를 통한 응답 생성."""
-        processor = MessageProcessor(str(session_id), str(user_id))
-        context = self._get_or_create_context(str(session_id), str(user_id))
-        final_response = []
-
-        try:
-            context.add_user_message(
-                content if content is not None else messages[-1]['content'])
+        """LangGraph를 통한 응답 생성. (자연어 쿼리 → 벡터검색 → 요약/답변)"""
+        # 1. 벡터 검색 (user_id, content 기준 top3)
+        similar_msgs = self.search_similar_messages_pgvector(user_id, content, 3)
+        if not similar_msgs:
+            # 2. fallback 답변
             yield {
-                'type': 'start',
-                'user_message': {'content': content}
+                'type': 'chunk',
+                'content': '그런 내용이 있었나요오? 기억이 안나요오 ㅜ',
+                'metadata': {'fallback': True}
             }
-            messages = [HumanMessage(
-                content=content if content is not None else messages[-1]['content'])]
-            initial_state = {"messages": messages}
-            for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
-                try:
-                    chunk_data = None
-                    if isinstance(msg_chunk, ToolMessage):
-                        processed_list = list(
-                            processor.process_ai_or_tool_message(msg_chunk))
-                        for processed in processed_list:
-                            if isinstance(processed, str):
-                                try:
-                                    if processed.startswith("data: "):
-                                        processed = processed[len("data: "):]
-                                    processed = json.loads(processed)
-                                except Exception:
-                                    continue
-                            context.add_tool_result(
-                                tool_name=processed.get("metadata", {}).get(
-                                    "tool_name", "unknown"),
-                                result=processed.get("content", "")
-                            )
-                            chunk_data = {
-                                'type': 'toolmessage',
-                                'content': processed.get("content", ""),
-                                'metadata': {
-                                    **processed.get("metadata", {}),
-                                    "tool_response": True
-                                }
-                            }
-                            if chunk_data is not None:
-                                if chunk_data.get('type') == 'toolmessage':
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
-                                elif chunk_data.get('content'):
-                                    final_response.append(
-                                        chunk_data.get('content'))
-                                    yield chunk_data
-                    elif isinstance(msg_chunk, AIMessage):
-                        if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
-                            tool_calls = msg_chunk.additional_kwargs["tool_calls"]
-                            context.add_tool_call_chunk(tool_calls[0])
-                            chunk_data = {
-                                'type': 'tool_calls',
-                                'tool_calls': tool_calls
-                            }
-                            yield chunk_data
-                        elif msg_chunk.content:
-                            context.append_assistant_content(msg_chunk.content)
-                            chunk_data = {
-                                'type': 'chunk',
-                                'content': msg_chunk.content,
-                                'metadata': metadata
-                            }
-                            if chunk_data and chunk_data.get('content'):
-                                final_response.append(
-                                    chunk_data.get('content'))
-                                yield chunk_data
-                    elif isinstance(msg_chunk, dict):
-                        if "agent" in msg_chunk:
-                            messages_to_process = msg_chunk["agent"].get(
-                                "formatted_messages", [])
-                            for processed in processor.process_agent_messages(messages_to_process):
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", {})
-                                    }
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
-                        elif "content" in msg_chunk or "metadata" in msg_chunk:
-                            for processed in processor.process_dict_message(msg_chunk):
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", metadata)
-                                    }
-                                    if chunk_data and chunk_data.get('content'):
-                                        final_response.append(
-                                            chunk_data.get('content'))
-                                        yield chunk_data
-                except Exception:
-                    continue
-            context.finalize_assistant_response()
-            self._save_context_messages(context)
-            if final_response:
-                pass
             yield {
                 'type': 'end',
-                'context_saved': True
+                'context_saved': False
             }
-        except Exception as e:
-            yield {
-                'type': 'error',
-                'error': str(e)
-            }
-            raise
+            return
+        # 3. 메시지 요약 프롬프트 생성
+        summary_prompt = """아래는 사용자의 과거 대화 내용입니다. 이 중에서 현재 질문과 관련된 핵심 내용을 요약해서 자연어로 설명해 주세요.\n\n"""
+        for i, msg in enumerate(similar_msgs, 1):
+            summary_prompt += f"[{i}] {msg['content']}\n"
+        summary_prompt += f"\n위 내용을 바탕으로, 사용자가 '{content}'라고 물었을 때 자연스럽게 답변해 주세요."
+        # 4. LLM 호출 (LangGraph 기존 플로우 활용)
+        processor = MessageProcessor(str(session_id), str(user_id))
+        context = self._get_or_create_context(str(session_id), str(user_id))
+        context.add_user_message(content)
+        yield {
+            'type': 'start',
+            'user_message': {'content': content}
+        }
+        # summary_prompt를 첫 메시지로 사용
+        messages = [HumanMessage(content=summary_prompt)]
+        initial_state = {"messages": messages}
+        for msg_chunk, metadata in self.graph.stream(initial_state, stream_mode="messages"):
+            try:
+                chunk_data = None
+                if isinstance(msg_chunk, AIMessage):
+                    if msg_chunk.content:
+                        context.append_assistant_content(msg_chunk.content)
+                        chunk_data = {
+                            'type': 'chunk',
+                            'content': msg_chunk.content,
+                            'metadata': metadata
+                        }
+                        if chunk_data and chunk_data.get('content'):
+                            yield chunk_data
+            except Exception:
+                continue
+        context.finalize_assistant_response()
+        self._save_context_messages(context)
+        yield {
+            'type': 'end',
+            'context_saved': True
+        }
 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
