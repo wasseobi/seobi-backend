@@ -32,8 +32,20 @@ class GenerateTasksNode:
                 ))
             ])
             
+            # Extract JSON content from code block if present
+            content = response.content.strip()
+            
+            # Remove code block markers if present
+            if content.startswith("```json"):
+                content = content[7:]  # Remove ```json
+            elif content.startswith("```"):
+                content = content[3:]  # Remove ```
+            if content.endswith("```"):
+                content = content[:-3]  # Remove trailing ```
+            content = content.strip()  # Remove any extra whitespace
+
             # Parse the response
-            tasks = json.loads(response.content)
+            tasks = json.loads(content)
             
             # Update state
             state["generated_tasks"] = tasks

@@ -34,8 +34,27 @@ class AnalyzeConversationNode:
                 *messages
             ])
             
+            # Extract JSON content from code block if present
+            content = response.content.strip()
+            
+            # Remove code block markers if present
+            if content.startswith("```json"):
+                content = content[7:]  # Remove ```json
+            elif content.startswith("```"):
+                content = content[3:]  # Remove ```
+            if content.endswith("```"):
+                content = content[:-3]  # Remove trailing ```
+            content = content.strip()  # Remove any extra whitespace
+            
             # Parse the response
-            analysis_result = json.loads(response.content)
+            try:
+                analysis_result = json.loads(content)
+                print(f"Analysis result: {analysis_result}")
+            except json.JSONDecodeError as e:
+                print(f"JSON Parse Error: {str(e)}")
+                print(f"Raw content: {content}")
+                state["error"] = f"Error in conversation analysis: {str(e)}"
+                return state
             
             # Update state
             state["analysis_result"] = analysis_result
