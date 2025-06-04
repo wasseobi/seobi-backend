@@ -1,8 +1,9 @@
 from app.dao.message_dao import MessageDAO
 from app.models import Session
 from app.utils.message.message_context import MessageContext
+from app.utils.prompt.service_prompts import EXTRACT_KEYWORDS_SYSTEM_PROMPT
 
-from app.utils.openai_client import get_openai_client, get_embedding
+from app.utils.openai_client import get_openai_client, get_embedding, get_completion
 from app.utils.message.processor import MessageProcessor
 from app.langgraph.agent.executor import create_agent_executor
 from app.langgraph.agent.graph import build_graph
@@ -82,7 +83,7 @@ class MessageService:
 
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str, metadata) -> Dict:
-        """Create a new message (임베딩 벡터 포함)"""
+        """Create a new message (임베딩 벡터 및 키워드 벡터 포함)"""
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
@@ -95,8 +96,30 @@ class MessageService:
         except Exception as e:
             vector = None
 
+        # --- 키워드 추출 및 임베딩 추가 ---
+        keyword_text = None
+        keyword_vector = None
+        try:
+            # 단일 메시지 content에서 키워드 추출 프롬프트 구성
+            messages = [
+                {"role": "system", "content": EXTRACT_KEYWORDS_SYSTEM_PROMPT},
+                {"role": "user", "content": f"아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력.\n문장: {content}"}
+            ]
+            keywords_response = get_completion(client, messages)
+            
+            keywords = json.loads(keywords_response)
+            if isinstance(keywords, list) and keywords:
+                keyword_text = ", ".join(keywords)
+                # 첫 번째 키워드만 임베딩 (여러 개면 확장 가능)
+                keyword_vector = get_embedding(client, keywords[0])
+        except Exception as e:
+            keyword_text = None
+            keyword_vector = None
+
         message = self.message_dao.create(
-            session_id, user_id, content, role, vector, metadata)
+            session_id, user_id, content, role, vector, metadata,
+            keyword_text=keyword_text, keyword_vector=keyword_vector
+        )
         return self._serialize_message(message)
 
     def update_message(self, message_id: uuid.UUID, **kwargs) -> Dict:
@@ -390,6 +413,25 @@ class MessageService:
                 "id": str(msg.id),
                 "content": msg.content,
                 "similarity": None,  # 필요시 SQL에서 select로 유사도 값도 받을 수 있음
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+            }
+            for msg in messages
+        ]
+        return results
+
+    def search_similar_keywords_pgvector(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
+        """
+        [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (keyword_vector 기준, DB에서 벡터 연산)
+        """
+        client = get_openai_client()
+        query_vec = np.array(get_embedding(client, query))
+
+        messages = self.message_dao.get_keyword_pgvector(user_id, query_vec, top_k)
+        results = [
+            {
+                "id": str(msg.id),
+                "content": msg.content,
+                "keyword_text": msg.keyword_text,
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
             }
             for msg in messages

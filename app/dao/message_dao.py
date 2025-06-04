@@ -56,3 +56,18 @@ class MessageDAO(BaseDAO[Message]):
             .limit(top_k)
             .all()
         )
+
+    def get_keyword_pgvector(self, user_id, query_vector, top_k=5):
+        """
+        [PGVECTOR] user_id의 메시지 중 query_vector와 가장 유사한 top_k keyword 반환 (keyword_vector 기준)
+        """
+        if isinstance(query_vector, np.ndarray):
+            query_vector = query_vector.tolist()
+        return (
+            self.query()
+            .filter(Message.user_id == user_id)
+            .filter(Message.keyword_vector != None)
+            .order_by(Message.keyword_vector.l2_distance(query_vector))  # 또는 .cosine_distance(query_vector)
+            .limit(top_k)
+            .all()
+        )
