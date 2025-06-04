@@ -29,9 +29,4 @@ class UserDAO(BaseDAO[User]):
         return None
     
     def update_user_memory(self, user_id: uuid.UUID, user_memory: dict) -> Optional[User]:
-        user = self.get(str(user_id))
-        if user:
-            user.user_memory = user_memory
-            self.session.commit()
-            return user
-        return None
+        return super().update(str(user_id), user_memory=user_memory) 
