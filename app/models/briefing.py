@@ -1,8 +1,8 @@
 import uuid
 from app.models.db import db
 from datetime import datetime, timezone
-from sqlalchemy.dialects.postgresql import UUID, JSON
-from sqlalchemy import Column, Text, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Text, ForeignKey
 
 
 class Briefing(db.Model):
