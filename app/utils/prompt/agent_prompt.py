@@ -10,13 +10,16 @@ AGENT_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의 
 항상 대화의 마지막 사용자 메시지를 중심으로 답변하세요. 이전 대화 내용과 요약과 관련이 있는 사용자 메세지의 경우 해당 내용을 참고하여 답변을 생성하세요.
 
 답변은 한국어로 제공하며, 정중하고 전문적인 톤을 유지하세요.
+
+# [중요] 정규표현식 및 파싱 관련 안내 (LLM용)
+- 정규표현식(Regex)으로 특수문자, 공백, 기호 등을 제거할 때는 반드시 -를 \\-로 이스케이프하세요.
+- 문자 클래스([]) 내 -는 맨 앞([\\-...])이나 맨 뒤([...\\-])에만 위치해야 하며, 중간에 넣으면 에러가 발생합니다.
+- 파이썬 코드/정규표현식으로 직접 파싱, 후처리, 특수문자 제거 등을 시도하지 마세요. 이런 처리는 반드시 백엔드에서 처리합니다.
+- 예시: "정규표현식으로 [\\-.,·*!?]를 사용하려면 -를 맨 앞이나 맨 뒤에 두거나 \\-로 이스케이프해야 합니다."
 """
 
 # 변경된 부분: messages와 scratchpad를 하나의 MessagesPlaceholder로 통합
 prompt = ChatPromptTemplate.from_messages([
     ("system", AGENT_PROMPT),
-    MessagesPlaceholder(variable_name="messages"),  # 요약 메시지와 최신 메시지(합쳐진 리스트)를 전달
+    MessagesPlaceholder(variable_name="messages"),  # 이전 대화 기록과 현재 입력을 포함
 ])
-# 실제 LLM 호출 시 summarized_messages + messages[-N:]를 합쳐서 messages에 넣어 전달해야 함
-# (call_model.py에서 이미 해당 구조로 input_messages를 만들어 넘기도록 수정됨)
-# scratchpad 별도 분리 없이, messages에 요약+최신+도구결과 모두 포함

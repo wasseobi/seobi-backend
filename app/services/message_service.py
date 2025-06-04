@@ -305,7 +305,7 @@ class MessageService:
                 'error': str(e)
             }
             raise
-
+ 
     def get_user_messages(self, user_id: uuid.UUID) -> List[Dict]:
         try:
             messages = self.message_dao.get_all_by_user_id(user_id)
@@ -376,6 +376,25 @@ class MessageService:
         # 유사도 내림차순 정렬 후 top_k 반환
         results.sort(key=lambda x: x["similarity"], reverse=True)
         return results[:top_k]
+
+    def search_similar_messages_pgvector(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
+        """
+        [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (DB에서 벡터 연산)
+        """
+        client = get_openai_client()
+        query_vec = np.array(get_embedding(client, query))
+
+        messages = self.message_dao.get_similar_pgvector(user_id, query_vec, top_k)
+        results = [
+            {
+                "id": str(msg.id),
+                "content": msg.content,
+                "similarity": None,  # 필요시 SQL에서 select로 유사도 값도 받을 수 있음
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+            }
+            for msg in messages
+        ]
+        return results
 
     def update_message_vectors(self, user_id: uuid.UUID = None) -> Dict[str, Any]:
         """기존 메시지들의 벡터를 업데이트합니다."""
