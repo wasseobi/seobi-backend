@@ -24,12 +24,12 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 
 #### 4) 상태 관리 및 대화 세션 확장
 
-- [ ] LangGraph 실행 상태, tool call 결과, 대화 이력 등 세션 기반 관리
-- [ ] DB 연동 및 세션별 대화 흐름 저장
+- [x] LangGraph 실행 상태, tool call 결과, 대화 이력 등 세션 기반 관리
+- [x] DB 연동 및 세션별 대화 흐름 저장
 
 #### 5) 테스트 및 예외 처리 강화
 
-- [ ] LangGraph 기반 워크플로우 단위/통합 테스트 작성
+- [x] LangGraph 기반 워크플로우 단위/통합 테스트 작성
 - [ ] 도구 실패/예외 상황에 대한 graceful fallback 처리
 
 #### 6) 고도화 및 확장
@@ -157,8 +157,15 @@ uv sync
 ### 데이터베이스 마이그레이션
 
 ```bash
+flask db history
+flask db migrate -m "적고 싶은 메세지(수정관련 내용)" 
 flask db upgrade
 ```
+
+#### 새 DB로의 마이그레이션 시,
+- flask db history를 통해 지금 마이그레이션 파일이 존재하는지 확인.
+- 이후, config의 DB_HOST = os.getenv("PGHOST") 제대로 된 값으로 변경된 것이 맞는지 확인까지 마친 뒤 마이그레이션 부탁드립니다.
+
 
 ### 서버 실행
 
