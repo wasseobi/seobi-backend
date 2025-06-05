@@ -69,10 +69,10 @@ class TestScheduleDAO:
     """ScheduleDAO 테스트 클래스"""
 
     # BaseDAO에서 상속받은 메서드 테스트
-    def test_get_all_by_id(self, schedule_dao, sample_schedule):
-        """get_all_by_id() 메서드 테스트"""
+    def test_get_by_id(self, schedule_dao, sample_schedule):
+        """get() 메서드 테스트"""
         # When
-        found_schedule = schedule_dao.get_all_by_id(sample_schedule.id)
+        found_schedule = schedule_dao.get(sample_schedule.id)
 
         # Then
         assert found_schedule is not None
@@ -81,9 +81,9 @@ class TestScheduleDAO:
         assert found_schedule.memo == sample_schedule.memo
 
     def test_get_nonexistent_by_id(self, schedule_dao):
-        """존재하지 않는 ID로 get_all_by_id() 메서드 테스트"""
+        """존재하지 않는 ID로 get() 메서드 테스트"""
         # When
-        schedule = schedule_dao.get_all_by_id(uuid.uuid4())
+        schedule = schedule_dao.get(uuid.uuid4())
 
         # Then
         assert schedule is None

@@ -23,7 +23,7 @@ class SessionService:
         }
 
     def get_all_sessions(self) -> List[Dict]:
-        sessions = self.session_dao.get_all_by_id()
+        sessions = self.session_dao.get_all()
         return [self._serialize_session(session) for session in sessions]
 
     def get_user_sessions(self, user_id: uuid.UUID) -> List[Dict]:

@@ -20,7 +20,7 @@ class UserService:
         }
 
     def get_all_users(self) -> List[Dict]:
-        users = self.user_dao.get_all_by_id()
+        users = self.user_dao.get_all()
         return [self._serialize_user(user) for user in users]
 
     def get_user_by_id(self, user_id: uuid.UUID) -> Optional[Dict]:

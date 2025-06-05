@@ -16,7 +16,7 @@ class InterestService:
         return self.interest_dao.create(user_id, content, source_message, importance)
 
     def get_interest_by_id(self, interest_id):
-        return self.interest_dao.get_all_by_id(interest_id)
+        return self.interest_dao.get(interest_id)
 
     def get_interests_by_user(self, user_id):
         return self.interest_dao.get_all_by_user_id(user_id)

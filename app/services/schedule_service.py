@@ -15,7 +15,7 @@ class ScheduleService:
         return self.schedule_dao.get_all_by_user_id(user_id)
 
     def get_schedule(self, schedule_id):
-        return self.schedule_dao.get_all_by_id(schedule_id)
+        return self.schedule_dao.get(schedule_id)
 
     def get_by_date_range_status(self, user_id: UUID, start, end,
                                  status: Optional[str] = None) -> List[Dict]:

@@ -11,7 +11,7 @@ class InsightArticleService:
         self.interest_service = InterestService()
 
     def get_article(self, article_id):
-        article = self.insight_article_dao.get_all_by_id(article_id)
+        article = self.insight_article_dao.get(article_id)
         def safe_load(val):
             if isinstance(val, str):
                 try:

@@ -45,12 +45,12 @@ class MessageService:
 
     def get_all_messages(self) -> List[Dict]:
         """Get all messages"""
-        messages = self.message_dao.get_all_by_id()
+        messages = self.message_dao.get_all()
         return [self._serialize_message(msg) for msg in messages]
 
     def get_message(self, message_id: uuid.UUID) -> Dict:
         """Get a message by ID"""
-        message = self.message_dao.get_all_by_id(message_id)
+        message = self.message_dao.get_by_id(message_id)
         if not message:
             raise ValueError('Message not found')
         return self._serialize_message(message)
@@ -427,7 +427,7 @@ class MessageService:
             if user_id:
                 messages = self.message_dao.get_all_by_user_id(user_id)
             else:
-                messages = self.message_dao.get_all_by_id()
+                messages = self.message_dao.get_all()
 
             total = len(messages)
             updated = 0

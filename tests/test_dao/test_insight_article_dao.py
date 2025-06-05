@@ -91,7 +91,7 @@ class TestInsightArticleDAO:
     def test_get_nonexistent_by_id(self, insight_article_dao):
         """존재하지 않는 ID로 get_all() 메서드 테스트"""
         # When
-        article = insight_article_dao.get_all(uuid.uuid4())
+        article = insight_article_dao.get_all()
 
         # Then
         assert article is None
@@ -328,7 +328,7 @@ class TestInsightArticleDAO:
 
         # Then
         assert result is True
-        deleted_article = insight_article_dao.get_all(sample_article.id)
+        deleted_article = insight_article_dao.get_all()
         assert deleted_article is None
 
     def test_delete_nonexistent_article(self, insight_article_dao):

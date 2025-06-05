@@ -21,10 +21,6 @@ class InterestDAO(BaseDAO[Interest]):
             .filter(Interest.created_at >= start, Interest.created_at < end)\
             .order_by(Interest.created_at.asc()).all()
     
-    def get_all_by_id(self, interest_id: uuid.UUID):
-        """Get interest by ID"""
-        return self.get(str(interest_id))
-
     def create(self, user_id, content, source_message, importance=0.5, created_at=None):
         try:
             # 트랜잭션 시작

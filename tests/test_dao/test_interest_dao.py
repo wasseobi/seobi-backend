@@ -85,10 +85,10 @@ class TestInterestDAO:
         assert isinstance(interest.created_at, datetime)
         assert interest.created_at.tzinfo == timezone.utc
 
-    def test_get_all_by_id(self, interest_dao, sample_interest):
+    def test_get_by_id(self, interest_dao, sample_interest):
         """ID로 관심사 조회 테스트"""
         # When
-        found_interest = interest_dao.get_all_by_id(sample_interest.id)
+        found_interest = interest_dao.get(sample_interest.id)
 
         # Then
         assert found_interest is not None
@@ -99,7 +99,7 @@ class TestInterestDAO:
     def test_get_nonexistent_interest(self, interest_dao):
         """존재하지 않는 ID로 관심사 조회 테스트"""
         # When
-        interest = interest_dao.get_all_by_id(uuid.uuid4())
+        interest = interest_dao.get(uuid.uuid4())
 
         # Then
         assert interest is None
@@ -254,7 +254,7 @@ class TestInterestDAO:
 
         # Then
         assert result is True
-        deleted_interest = interest_dao.get_all_by_id(sample_interest.id)
+        deleted_interest = interest_dao.get(sample_interest.id)
         assert deleted_interest is None
 
     def test_delete_nonexistent_interest(self, interest_dao):

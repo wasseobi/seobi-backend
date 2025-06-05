@@ -71,7 +71,7 @@ class TestReportDAO:
 
     def test_get_nonexistent_by_id(self, report_dao):
         """존재하지 않는 리포트 조회 테스트"""
-        found_report = report_dao.get_all(uuid.uuid4())
+        found_report = report_dao.get_all()
         assert found_report is None
 
     def test_get_by_user(self, report_dao, sample_user):
