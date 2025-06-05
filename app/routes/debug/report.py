@@ -37,15 +37,13 @@ class ReportList(Resource):
         from flask import request
         data = request.json
         data['user_id'] = str(user_id)
-        # schedule_id, type, user_name, tz_str 등 필수값 추출
+        # schedule_id, type, tz_str 등 필수값 추출
         schedule_id = data['schedule_id']
         report_type = data.get('type', 'daily')
-        user_name = data.get('user_name', '사용자')  # 필요시 프론트에서 전달
         tz_str = data.get('tz_str', 'Asia/Seoul')   # 필요시 프론트에서 전달
         return service.generate_and_create_report(
             user_id=user_id,
             schedule_id=schedule_id,
-            user_name=user_name,
             tz_str=tz_str,
             report_type=report_type
         ), 201
