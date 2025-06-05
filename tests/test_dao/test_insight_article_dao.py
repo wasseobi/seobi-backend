@@ -298,7 +298,8 @@ class TestInsightArticleDAO:
             title="Yesterday Article",
             content={"sections": ["Content"]},
             type="chat",
-            created_at=yesterday
+            created_at=yesterday,
+            source="test_source"
         )
 
         # 오늘 생성된 아티클
@@ -307,7 +308,8 @@ class TestInsightArticleDAO:
             title="Today Article",
             content={"sections": ["Content"]},
             type="chat",
-            created_at=now
+            created_at=now,
+            source="test_source"
         )
 
         # When
