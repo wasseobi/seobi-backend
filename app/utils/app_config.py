@@ -4,7 +4,7 @@ from functools import lru_cache
 # Global config dictionary to store settings
 _config = {
     'DEV_MODE': False,
-    'GOOGLE_CLIENT_ID': None,
+    'GOOGLE_WEB_CLIENT_ID': None,
     'JWT_SECRET_KEY': None,
     'JWT_ACCESS_TOKEN_EXPIRES': None,
     'AZURE_OPENAI_DEPLOYMENT_NAME': None,
