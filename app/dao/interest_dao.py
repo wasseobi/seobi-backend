@@ -12,7 +12,7 @@ class InterestDAO(BaseDAO[Interest]):
     def __init__(self):
         super().__init__(Interest)
 
-    def get_all_by_id(self, interest_id):
+    def get_all(self, interest_id):
         return Interest.query.get(interest_id)
 
     def get_all_by_user_id(self, user_id):

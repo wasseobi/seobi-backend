@@ -331,3 +331,53 @@ class TestInsightArticleDAO:
             now - timedelta(days=2)
         )
         assert len(articles) == 0
+
+    def test_get_all(self, insight_article_dao, sample_user, other_user):
+        """get_all() 메서드 테스트"""
+        # Given
+        now = datetime.now(timezone.utc)
+        # 첫 번째 사용자의 아티클
+        article1 = insight_article_dao.create(
+            user_id=sample_user.id,
+            title="Test Article 1",
+            content={"sections": ["Content 1"]},
+            source="Test Source 1",
+            type="chat",
+            created_at=now
+        )
+        # 두 번째 사용자의 아티클
+        article2 = insight_article_dao.create(
+            user_id=other_user.id,
+            title="Test Article 2",
+            content={"sections": ["Content 2"]},
+            source="Test Source 2",
+            type="chat",
+            created_at=now + timedelta(hours=1)
+        )
+
+        # When
+        articles = insight_article_dao.get_all()
+
+        # Then
+        assert len(articles) == 2
+        # timestamp 기준 오름차순 정렬 확인
+        assert articles[0].id == article1.id
+        assert articles[1].id == article2.id
+
+    def test_delete_article(self, insight_article_dao, sample_article):
+        """delete() 메서드 테스트"""
+        # When
+        result = insight_article_dao.delete(sample_article.id)
+
+        # Then
+        assert result is True
+        deleted_article = insight_article_dao.get_by_id(sample_article.id)
+        assert deleted_article is None
+
+    def test_delete_nonexistent_article(self, insight_article_dao):
+        """존재하지 않는 아티클 delete() 메서드 테스트"""
+        # When
+        result = insight_article_dao.delete(uuid.uuid4())
+
+        # Then
+        assert result is False
