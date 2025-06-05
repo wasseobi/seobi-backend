@@ -104,10 +104,10 @@ class GenerateWeeklyReport():
         self.schedule_service = ScheduleService()
         
         month_start, month_end = TimeUtils.get_month_range(tz)
-        total_schedules = self.schedule_service.schedule_dao.get_count_by_date_range(
+        total_schedules = self.schedule_service.get_count_by_date_range(
             user_id, month_start, month_end
         )
-        completed_schedules = self.schedule_service.schedule_dao.get_count_by_date_range(
+        completed_schedules = self.schedule_service.get_count_by_date_range(
             user_id, month_start, month_end, status='done'
         )
         return {
