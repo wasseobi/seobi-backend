@@ -97,7 +97,7 @@ jobs:
       JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
       JWT_ACCESS_TOKEN_EXPIRES: ${{ secrets.TEST_JWT_ACCESS_TOKEN_EXPIRES }}
-      GOOGLE_CLIENT_ID: ${{ secrets.TEST_GOOGLE_CLIENT_ID }}
+      GOOGLE_WEB_CLIENT_ID: ${{ secrets.TEST_GOOGLE_WEB_CLIENT_ID }}
       REDIS_URL: ${{ secrets.TEST_REDIS_URL }}
       REDIS_KEY: ${{ secrets.TEST_REDIS_KEY }}
       REDIS_PORT: ${{ secrets.TEST_REDIS_PORT }}
