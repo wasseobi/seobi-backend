@@ -28,7 +28,7 @@ class GenerateMonthlyReport():
         start_date, end_date = TimeUtils.get_month_range(tz)
 
         # 다음달 목표 제안을 위한 데이터 준비
-        interests = self.interest_service.interest_dao.get_all_by_user_id_date_range(
+        interests = self.interest_service.get_all_by_user_id_date_range(
             user_id, start_date, end_date)
         ongoing_schedules = self.schedule_service.get_all_by_ongoing(
             user_id, end_date)

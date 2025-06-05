@@ -20,6 +20,9 @@ class InterestService:
 
     def get_interests_by_user(self, user_id):
         return self.interest_dao.get_all_by_user_id(user_id)
+    
+    def get_all_by_user_id_date_range(self, user_id, start, end):
+        return self.interest_dao.get_all_by_user_id_date_range(user_id, start, end)
 
     def update_interest(self, interest_id, **kwargs):
         return self.interest_dao.update(interest_id, **kwargs)
