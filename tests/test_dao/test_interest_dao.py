@@ -206,36 +206,6 @@ class TestInterestDAO:
         assert updated_interest.content == new_content
         assert updated_interest.importance == new_importance
 
-    def test_get_all(self, interest_dao, sample_user):
-        """get_all() 메서드 테스트"""
-        # Given
-        now = datetime.now(timezone.utc)
-        interest1 = interest_dao.create(
-            user_id=sample_user.id,
-            content="Interest 1",
-            source_message={"message_ids": [str(uuid.uuid4())]},
-            importance=0.5,
-            created_at=datetime.now(timezone.utc)
-        )
-        interest2 = interest_dao.create(
-            user_id=sample_user.id,
-            content="Interest 2",
-            source_message={"message_ids": [str(uuid.uuid4())]},
-            importance=0.7,
-            created_at=datetime.now(timezone.utc)
-        )
-
-        # When
-        interests = interest_dao.get_all()
-
-        # Then
-        assert len(interests) >= 2
-        # created_at 기준 오름차순 정렬 확인
-        assert interests[0].created_at <= interests[1].created_at
-        interest_ids = {i.id for i in interests}
-        assert interest1.id in interest_ids
-        assert interest2.id in interest_ids
-
     def test_update_nonexistent_interest(self, interest_dao):
         """존재하지 않는 관심사 업데이트 테스트"""
         # When

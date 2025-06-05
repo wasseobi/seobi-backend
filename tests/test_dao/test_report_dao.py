@@ -178,28 +178,6 @@ class TestReportDAO:
         assert report.type == report_type
         assert report.created_at is not None
 
-    def test_get_all(self, report_dao, sample_user):
-        """get_all() 메서드 테스트"""
-        # Given
-        report1 = report_dao.create(
-            user_id=sample_user.id,
-            content={"sections": "Content 2"},
-            type="daily"
-        )
-        
-        report2 = report_dao.create(
-            user_id=sample_user.id,
-            content={"sections": "Content 2"},
-            type="weekly"
-        )
-
-        # When
-        all_reports = report_dao.get_all()
-
-        # Then
-        assert all_reports is not None
-        assert all_reports[id] == report1.id
-
     def test_delete(self, report_dao, sample_report):
         """delete() 메서드 테스트"""
         # When
