@@ -30,7 +30,7 @@ api = Api(
 )
 
 def create_app(config_name=None):
-    load_dotenv()
+    load_dotenv(override=True)
     app = Flask(__name__)
 
     # set json encoding to utf-8
