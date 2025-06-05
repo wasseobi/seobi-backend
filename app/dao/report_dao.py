@@ -32,10 +32,6 @@ class ReportDAO:
 
         return self.get_all_by_user_id_in_range(user_id, start_date, end_date, report_type)
 
-    def get_all_by_type(self, user_id, year, month, report_type):
-        """Get all reports for a user in a specific month filtered by type."""
-        return self.get_reports_by_month(user_id, year, month, report_type)
-
     def create(self, **kwargs):
         report = Report(**kwargs)
         db.session.add(report)

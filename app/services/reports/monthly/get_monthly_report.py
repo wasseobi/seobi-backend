@@ -30,7 +30,7 @@ class GetMonthlyReport():
         start_date, end_date = TimeUtils.get_month_range(tz)
         year, month = TimeUtils.get_month_of_year(start_date)
         
-        return self.report_service.get_all_by_type(user_id, year, month, report_type='weekly')
+        return self.report_service.get_all_month_by_type(user_id, year, month, report_type='weekly')
 
     def get_monthly_interests(self, user_id: UUID, tz) -> Dict[str, List[Any]]:
         """월간 관심사 및 인사이트를 가져옴"""
