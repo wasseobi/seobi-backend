@@ -4,30 +4,16 @@ import uuid
 from app.models import Report, db
 
 class ReportDAO:
-    def get_by_user(self, user_id):
-        return Report.query.filter_by(user_id=user_id).all()
-
-    def get(self, report_id):
+    def get_all(self, report_id):
         return Report.query.get(report_id)
 
-    def create(self, **kwargs):
-        report = Report(**kwargs)
-        db.session.add(report)
-        db.session.commit()
-        return report
-
-    def delete(self, report_id):
-        report = self.get(report_id)
-        if report:
-            db.session.delete(report)
-            db.session.commit()
-            return True
-        return False
-
+    def get_by_user(self, user_id):
+        return Report.query.filter_by(user_id=user_id).all()
+    
     def get_by_user_and_type(self, user_id, report_type):
         return Report.query.filter_by(user_id=user_id, type=report_type).all()
 
-    def get_reports_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime, report_type: str = None) -> List[Report]:
+    def get_all_by_user_id_in_range(self, user_id: uuid.UUID, start: datetime, end: datetime, report_type: str = None) -> List[Report]:
         """Get all reports for a user in a given datetime range, optionally filtered by type."""
         query = Report.query.filter_by(user_id=user_id)
         query = query.filter(Report.created_at >= start, Report.created_at < end)
@@ -44,12 +30,22 @@ class ReportDAO:
         else:
             end_date = datetime(year, month + 1, 1)
 
-        return self.get_reports_by_date_range(user_id, start_date, end_date, report_type)
+        return self.get_all_by_user_id_in_range(user_id, start_date, end_date, report_type)
 
-    def get_weekly_reports_in_month(self, user_id: uuid.UUID, year: int, month: int) -> List[Report]:
-        """Get all weekly reports for a user in a specific month."""
-        return self.get_reports_by_month(user_id, year, month, 'weekly')
+    def get_all_by_type(self, user_id, year, month, report_type):
+        """Get all reports for a user in a specific month filtered by type."""
+        return self.get_reports_by_month(user_id, year, month, report_type)
 
-    def get_daily_reports_in_month(self, user_id: uuid.UUID, year: int, month: int) -> List[Report]:
-        """Get all daily reports for a user in a specific month."""
-        return self.get_reports_by_month(user_id, year, month, 'daily')
+    def create(self, **kwargs):
+        report = Report(**kwargs)
+        db.session.add(report)
+        db.session.commit()
+        return report
+
+    def delete(self, report_id):
+        report = self.get_all(report_id)
+        if report:
+            db.session.delete(report)
+            db.session.commit()
+            return True
+        return False
