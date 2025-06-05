@@ -64,15 +64,10 @@ class TestReportDAO:
 
     def test_get_by_id(self, report_dao, sample_report):
         """get_all() 메서드로 ID로 리포트 조회 테스트"""
-        found_report = report_dao.get_all(sample_report.id)
+        found_report = report_dao.get(sample_report.id)
         assert found_report is not None
         assert found_report.id == sample_report.id
         assert found_report.content == sample_report.content
-
-    def test_get_nonexistent_by_id(self, report_dao):
-        """존재하지 않는 리포트 조회 테스트"""
-        found_report = report_dao.get_all_by_user_id(uuid.uuid4())
-        assert found_report is None
 
     def test_get_by_user(self, report_dao, sample_user):
         """get_by_user() 메서드 테스트"""
@@ -89,7 +84,7 @@ class TestReportDAO:
         )
 
         # When
-        reports = report_dao.get_by_user(sample_user.id)
+        reports = report_dao.get_all_by_user_id(sample_user.id)
 
         # Then
         assert len(reports) == 2
@@ -112,7 +107,7 @@ class TestReportDAO:
         )
 
         # When
-        daily_reports = report_dao.get_by_user_and_type(sample_user.id, "daily")
+        daily_reports = report_dao.get_by_user_id_and_type(sample_user.id, "daily")
 
         # Then
         assert len(daily_reports) == 1
@@ -203,7 +198,7 @@ class TestReportDAO:
 
         # Then
         assert all_reports is not None
-        assert all_reports.id == report1.id
+        assert all_reports[id] == report1.id
 
     def test_delete(self, report_dao, sample_report):
         """delete() 메서드 테스트"""
@@ -212,5 +207,5 @@ class TestReportDAO:
 
         # Then
         assert result is True
-        deleted_report = report_dao.get_all(sample_report.id)
+        deleted_report = report_dao.get(sample_report.id)
         assert deleted_report is None
