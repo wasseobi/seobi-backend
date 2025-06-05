@@ -22,14 +22,30 @@ class GenerateWeeklyReport():
             
         except Exception as e:
             print(f"[ERROR] LLM 호출 실패:", e)
-            return error_response
+            return error_response    
+
+    def get_week_info(self, now):
+        """월과 주차 정보 계산"""
+        month = now.month
+        
+        # 이번 달의 첫 날
+        first_day = now.replace(day=1)
+        # 첫 주의 월요일부터 시작
+        while first_day.weekday() != 0:  # 0: 월요일
+            first_day -= timedelta(days=1)
+            
+        # 현재 날짜가 몇 번째 주인지 계산
+        week = ((now - first_day).days // 7) + 1
+        return month, week
 
     def generate_weekly_report(self, user_id, tz):
         """주간 리포트 생성"""
         from .summarize_weekly_report import SummarizeWeeklyReport
         self.summarizer = SummarizeWeeklyReport()
         
-        today = datetime.now(tz).strftime("%Y-%m-%d")
+        # 현재 날짜로부터 월과 주차 계산
+        now = datetime.now(tz)
+        month, week = self.get_week_info(now)
 
         # 1. 주간 성과 요약
         achievements = self.summarizer.summarize_weekly_achievements(user_id, tz)
@@ -47,13 +63,13 @@ class GenerateWeeklyReport():
         sections = f"{achievements}\n\n{conversations}\n\n{insights}\n\n{next_tasks}"
 
         # 프롬프트 구성 및 LLM 호출
-        prompt = WEEKLY_REPORT_PROMPT.format(today=today, sections=sections)
+        prompt = WEEKLY_REPORT_PROMPT.format(month=month, week=week, sections=sections)
         messages = [
             {"role": "system", "content": "아래 프롬프트에 따라 Weekly Report 마크다운을 생성해줘. 반드시 예시 구조와 순서를 지켜야 해."},
             {"role": "user", "content": prompt}
         ]
 
-        error_response = f"# Weekly Report – {today}\n(데이터 없음)"
+        error_response = f"# Weekly Report – {month}월 {week}주차\n(데이터 없음)"
         return self._call_llm(messages, error_response)
 
     def generate_weekly_report_script(self, user_id, markdown=None, tz=None):
@@ -64,10 +80,15 @@ class GenerateWeeklyReport():
             markdown = self.generate_weekly_report(user_id, tz)
             
         now = datetime.now(tz)
-        today = now.strftime("%m-%d")
+        month, week = self.get_week_info(now)
         now_time = now.strftime("%H:%M")
         
-        prompt = WEEKLY_REPORT_SCRIPT_PROMPT.format(today=today, now_time=now_time, markdown=markdown)
+        prompt = WEEKLY_REPORT_SCRIPT_PROMPT.format(
+            month=month, 
+            week=week, 
+            now_time=now_time, 
+            markdown=markdown
+        )
         
         messages = [
             {"role": "system", "content": "아래 프롬프트에 따라 Weekly Report 브리핑 스크립트를 생성해줘. 반드시 예시 구조와 어조를 지켜야 해."},

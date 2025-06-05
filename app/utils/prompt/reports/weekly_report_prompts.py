@@ -37,7 +37,7 @@ WEEKLY_ARTICLES_PROMPT = """
 
 WEEKLY_REPORT_PROMPT = """
 아래 마크다운 섹션들을 하나의 마크다운으로 합쳐줘.
-- 제목: # Weekly Report – {today}
+- 제목: # Weekly Report – {month}월 {week}주차
 - 각 섹션은 ## 헤더로 시작해야 하며, 순서는 아래와 같아야 해.
 - 섹션 간에는 --- 수평선을 한 줄로, 위아래 빈 줄 한 줄씩 추가해 구분해줘.
 - 반드시 코드블록(```markdown 등) 없이 순수 마크다운 텍스트로만 반환해줘.
@@ -101,7 +101,7 @@ WEEKLY_REPORT_SCRIPT_PROMPT = """
 아래의 Weekly Report 마크다운을 보고 브리핑 스크립트를 생성해주세요.
 
 [사용자 정보]
-- 날짜: {today} 
+- 일자: {month}월 {week}주차
 - 시각: {now_time}
 
 [Weekly Report 마크다운]
