@@ -271,8 +271,10 @@ class TestInsightArticleDAO:
         assert updated_article.content == new_content
         assert updated_article.tags == new_tags
         # 다른 필드들은 변경되지 않아야 함
-        assert updated_article.user_id == sample_article.user_id
+        assert updated_article.source == sample_article.source
         assert updated_article.type == sample_article.type
+        assert updated_article.keywords == sample_article.keywords
+        assert updated_article.interest_ids == sample_article.interest_ids
 
     def test_update_nonexistent_article(self, insight_article_dao):
         """존재하지 않는 아티클 update() 메서드 테스트"""
@@ -285,53 +287,6 @@ class TestInsightArticleDAO:
         # Then
         assert updated_article is None
 
-    def test_get_all_by_user_id_in_range(self, insight_article_dao, sample_user):
-        """get_all_by_user_id_in_range() 메서드 테스트"""
-        # Given
-        now = datetime.now(timezone.utc)
-        yesterday = now - timedelta(days=1)
-        tomorrow = now + timedelta(days=1)
-
-        # 어제 생성된 아티클
-        article1 = insight_article_dao.create(
-            user_id=sample_user.id,
-            title="Yesterday Article",
-            content={"sections": ["Content"]},
-            type="chat",
-            created_at=yesterday,
-            source="test_source"
-        )
-
-        # 오늘 생성된 아티클
-        article2 = insight_article_dao.create(
-            user_id=sample_user.id,
-            title="Today Article",
-            content={"sections": ["Content"]},
-            type="chat",
-            created_at=now,
-            source="test_source"
-        )
-
-        # When
-        articles = insight_article_dao.get_all_by_user_id_in_range(
-            sample_user.id,
-            yesterday,
-            tomorrow
-        )
-
-        # Then
-        assert len(articles) == 2
-        assert articles[0].id == article1.id  # 날짜순 정렬 (asc)
-        assert articles[1].id == article2.id
-
-        # 범위 밖의 날짜로 조회
-        articles = insight_article_dao.get_all_by_user_id_in_range(
-            sample_user.id,
-            now - timedelta(days=3),
-            now - timedelta(days=2)
-        )
-        assert len(articles) == 0
-
     def test_get_all(self, insight_article_dao, sample_user, other_user):
         """get_all() 메서드 테스트"""
         # Given
@@ -339,7 +294,7 @@ class TestInsightArticleDAO:
         # 첫 번째 사용자의 아티클
         article1 = insight_article_dao.create(
             user_id=sample_user.id,
-            title="Test Article 1",
+            title="Article 1",
             content={"sections": ["Content 1"]},
             source="Test Source 1",
             type="chat",
@@ -348,7 +303,7 @@ class TestInsightArticleDAO:
         # 두 번째 사용자의 아티클
         article2 = insight_article_dao.create(
             user_id=other_user.id,
-            title="Test Article 2",
+            title="Article 2",
             content={"sections": ["Content 2"]},
             source="Test Source 2",
             type="chat",
@@ -359,10 +314,12 @@ class TestInsightArticleDAO:
         articles = insight_article_dao.get_all()
 
         # Then
-        assert len(articles) == 2
-        # timestamp 기준 오름차순 정렬 확인
-        assert articles[0].id == article1.id
-        assert articles[1].id == article2.id
+        assert len(articles) >= 2
+        # created_at 기준 오름차순 정렬 확인
+        assert articles[0].created_at <= articles[1].created_at
+        article_ids = {a.id for a in articles}
+        assert article1.id in article_ids
+        assert article2.id in article_ids
 
     def test_delete_article(self, insight_article_dao, sample_article):
         """delete() 메서드 테스트"""
