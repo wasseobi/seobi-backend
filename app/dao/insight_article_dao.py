@@ -18,14 +18,14 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
         """Get all articles for a user ordered by created_at desc"""
         return self.query().filter_by(user_id=user_id).order_by(InsightArticle.created_at.desc()).all()
 
-    def create(self, user_id: uuid.UUID, **kwargs) -> InsightArticle:
-        return super().create(user_id=user_id, **kwargs)
-
-    def update(self, article_id: uuid.UUID, **kwargs) -> Optional[InsightArticle]:
-        return super().update(str(article_id), **kwargs)
-    
     def get_all_by_user_id_in_range(self, user_id: uuid.UUID, start: datetime, end: datetime) -> List[InsightArticle]:
         """Get all insight_article for a user in a given datetime range."""
         return InsightArticle.query.filter_by(user_id=user_id)\
             .filter(InsightArticle.created_at >= start, InsightArticle.created_at < end)\
             .order_by(InsightArticle.created_at.asc()).all()
+
+    def create(self, user_id: uuid.UUID, **kwargs) -> InsightArticle:
+        return super().create(user_id=user_id, **kwargs)
+
+    def update(self, article_id: uuid.UUID, **kwargs) -> Optional[InsightArticle]:
+        return super().update(str(article_id), **kwargs)
