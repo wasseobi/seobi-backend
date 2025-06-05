@@ -349,14 +349,16 @@ class TestScheduleDAO:
             user_id=sample_user.id,
             title="Test Schedule 1",
             created_at=now,
-            start_at=now
+            start_at=now,
+            linked_service="test_service"
         )
         # 두 번째 사용자의 일정
         schedule2 = schedule_dao.create(
             user_id=other_user.id,
             title="Test Schedule 2",
             created_at=now + timedelta(hours=1),
-            start_at=now + timedelta(hours=1)
+            start_at=now + timedelta(hours=1),
+            linked_service="test_service"
         )
 
         # When
@@ -381,7 +383,8 @@ class TestScheduleDAO:
             title="Yesterday Schedule",
             created_at=yesterday,
             start_at=yesterday,
-            status="done"
+            status="done",
+            linked_service="test_service"
         )
 
         # 오늘 일정
@@ -390,14 +393,16 @@ class TestScheduleDAO:
             title="Today Schedule 1",
             created_at=now,
             start_at=now,
-            status="undone"
+            status="undone",
+            linked_service="test_service"
         )
         schedule_dao.create(
             user_id=sample_user.id,
             title="Today Schedule 2",
             created_at=now,
             start_at=now,
-            status="undone"
+            status="undone",
+            linked_service="test_service"
         )
 
         # When & Then
