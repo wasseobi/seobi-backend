@@ -70,10 +70,10 @@ def sample_article(app, insight_article_dao, sample_user):
 class TestInsightArticleDAO:
     """InsightArticleDAO 테스트 클래스"""
 
-    def test_get_by_id(self, insight_article_dao, sample_article):
-        """get_by_id() 메서드 테스트"""
+    def test_get_all(self, insight_article_dao, sample_article):
+        """get_all() 메서드 테스트"""
         # When
-        found_article = insight_article_dao.get_by_id(sample_article.id)
+        found_article = insight_article_dao.get_all(sample_article.id)
 
         # Then
         assert found_article is not None
@@ -89,9 +89,9 @@ class TestInsightArticleDAO:
         assert found_article.created_at == sample_article.created_at
 
     def test_get_nonexistent_by_id(self, insight_article_dao):
-        """존재하지 않는 ID로 get_by_id() 메서드 테스트"""
+        """존재하지 않는 ID로 get_all() 메서드 테스트"""
         # When
-        article = insight_article_dao.get_by_id(uuid.uuid4())
+        article = insight_article_dao.get_all(uuid.uuid4())
 
         # Then
         assert article is None
@@ -328,7 +328,7 @@ class TestInsightArticleDAO:
 
         # Then
         assert result is True
-        deleted_article = insight_article_dao.get_by_id(sample_article.id)
+        deleted_article = insight_article_dao.get_all(sample_article.id)
         assert deleted_article is None
 
     def test_delete_nonexistent_article(self, insight_article_dao):

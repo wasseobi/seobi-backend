@@ -8,6 +8,7 @@ from app.models.interest import Interest
 from app.models.user import User
 from app.models.db import db
 
+
 @pytest.fixture(autouse=True)
 def setup_teardown(app):
     """각 테스트 전후로 데이터베이스를 정리하는 fixture"""
@@ -18,17 +19,20 @@ def setup_teardown(app):
         User.query.delete()
         db.session.commit()
 
+
 @pytest.fixture
 def interest_dao(app):
     """InterestDAO 인스턴스를 생성하는 fixture"""
     with app.app_context():
         return InterestDAO()
 
+
 @pytest.fixture
 def user_dao(app):
     """UserDAO 인스턴스를 생성하는 fixture"""
     with app.app_context():
         return UserDAO()
+
 
 @pytest.fixture
 def sample_user(user_dao):
@@ -37,6 +41,7 @@ def sample_user(user_dao):
         username="testuser",
         email="test@example.com"
     )
+
 
 @pytest.fixture
 def sample_interest(interest_dao, sample_user):
@@ -48,7 +53,9 @@ def sample_interest(interest_dao, sample_user):
         importance=0.7
     )
 
-@pytest.mark.run(order=3)  # DB 설정(1) -> 모델(2) -> DAO(3) -> Service(4) -> Route(5) -> DB 정리(6)
+
+# DB 설정(1) -> 모델(2) -> DAO(3) -> Service(4) -> Route(5) -> DB 정리(6)
+@pytest.mark.run(order=3)
 class TestInterestDAO:
     """InterestDAO 테스트 클래스"""
 
@@ -104,7 +111,8 @@ class TestInterestDAO:
             user_id=sample_user.id,
             content="Interest 1",
             source_message={"message_ids": [str(uuid.uuid4())]},
-            importance=0.5
+            importance=0.5,
+            created_at=datetime.now(timezone.utc)
         )
         interest2 = interest_dao.create(
             user_id=sample_user.id,
@@ -116,7 +124,8 @@ class TestInterestDAO:
             user_id=sample_user.id,
             content="Interest 3",
             source_message={"message_ids": [str(uuid.uuid4())]},
-            importance=0.9
+            importance=0.9,
+            created_at=datetime.now(timezone.utc) + timedelta(days=1)
         )
 
         # When
@@ -137,7 +146,8 @@ class TestInterestDAO:
             user_id=sample_user.id,
             content="Interest 1",
             source_message={"message_ids": [str(uuid.uuid4())]},
-            importance=0.5
+            importance=0.5,
+            created_at=datetime.now(timezone.utc)
         )
 
         # When
@@ -163,7 +173,8 @@ class TestInterestDAO:
                 user_id=sample_user.id,
                 content=f"Interest {i}",
                 source_message={"message_ids": [str(uuid.uuid4())]},
-                importance=0.5
+                importance=0.5,
+                created_at=datetime.now(timezone.utc)
             )
             interests.append(interest)
 
@@ -173,7 +184,8 @@ class TestInterestDAO:
         # Then
         assert len(user_interests) == 200  # 최대 200개만 유지
         # 가장 최근 200개가 유지되었는지 확인
-        assert all(i.id in [interest.id for interest in interests[-200:]] for i in user_interests)
+        assert all(i.id in [interest.id for interest in interests[-200:]]
+                   for i in user_interests)
 
     def test_update_interest(self, interest_dao, sample_interest):
         """관심사 업데이트 테스트"""
@@ -185,7 +197,7 @@ class TestInterestDAO:
         updated_interest = interest_dao.update(
             interest_id=sample_interest.id,
             content=new_content,
-            importance=new_importance
+            importance=new_importance,
         )
 
         # Then
@@ -203,14 +215,14 @@ class TestInterestDAO:
             content="Interest 1",
             source_message={"message_ids": [str(uuid.uuid4())]},
             importance=0.5,
-            created_at=now
+            created_at=datetime.now(timezone.utc)
         )
         interest2 = interest_dao.create(
             user_id=sample_user.id,
             content="Interest 2",
             source_message={"message_ids": [str(uuid.uuid4())]},
             importance=0.7,
-            created_at=now + timedelta(hours=1)
+            created_at=datetime.now(timezone.utc)
         )
 
         # When
