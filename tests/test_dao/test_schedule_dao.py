@@ -338,4 +338,98 @@ class TestScheduleDAO:
         assert updated_schedule.user_id == sample_schedule.user_id
         assert updated_schedule.start_at == sample_schedule.start_at
         assert updated_schedule.finish_at == sample_schedule.finish_at
-        assert updated_schedule.linked_service == sample_schedule.linked_service 
+        assert updated_schedule.linked_service == sample_schedule.linked_service
+
+    def test_get_all(self, schedule_dao, sample_user, other_user):
+        """get_all() 메서드 테스트"""
+        # Given
+        now = datetime.now(timezone.utc)
+        # 첫 번째 사용자의 일정
+        schedule1 = schedule_dao.create(
+            user_id=sample_user.id,
+            title="Test Schedule 1",
+            timestamp=now,
+            start_at=now
+        )
+        # 두 번째 사용자의 일정
+        schedule2 = schedule_dao.create(
+            user_id=other_user.id,
+            title="Test Schedule 2",
+            timestamp=now + timedelta(hours=1),
+            start_at=now + timedelta(hours=1)
+        )
+
+        # When
+        schedules = schedule_dao.get_all()
+
+        # Then
+        assert len(schedules) == 2
+        # timestamp 기준 오름차순 정렬 확인
+        assert schedules[0].id == schedule1.id
+        assert schedules[1].id == schedule2.id
+
+    def test_get_count_by_date_range(self, schedule_dao, sample_user):
+        """get_count_by_date_range() 메서드 테스트"""
+        # Given
+        now = datetime.now(timezone.utc)
+        yesterday = now - timedelta(days=1)
+        tomorrow = now + timedelta(days=1)
+
+        # 어제 일정
+        schedule_dao.create(
+            user_id=sample_user.id,
+            title="Yesterday Schedule",
+            timestamp=yesterday,
+            start_at=yesterday,
+            status="completed"
+        )
+
+        # 오늘 일정
+        schedule_dao.create(
+            user_id=sample_user.id,
+            title="Today Schedule 1",
+            timestamp=now,
+            start_at=now,
+            status="pending"
+        )
+        schedule_dao.create(
+            user_id=sample_user.id,
+            title="Today Schedule 2",
+            timestamp=now,
+            start_at=now,
+            status="pending"
+        )
+
+        # When & Then
+        # 전체 기간 조회
+        count = schedule_dao.get_count_by_date_range(
+            sample_user.id,
+            yesterday,
+            tomorrow
+        )
+        assert count == 3
+
+        # 상태별 조회
+        completed_count = schedule_dao.get_count_by_date_range(
+            sample_user.id,
+            yesterday,
+            tomorrow,
+            status="completed"
+        )
+        assert completed_count == 1
+
+        pending_count = schedule_dao.get_count_by_date_range(
+            sample_user.id,
+            yesterday,
+            tomorrow,
+            status="pending"
+        )
+        assert pending_count == 2
+
+        # 범위 밖의 날짜로 조회
+        out_of_range_count = schedule_dao.get_count_by_date_range(
+            sample_user.id,
+            now - timedelta(days=3),
+            now - timedelta(days=2)
+        )
+        assert out_of_range_count == 0

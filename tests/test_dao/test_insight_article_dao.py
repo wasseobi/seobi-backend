@@ -247,4 +247,85 @@ class TestInsightArticleDAO:
         assert updated_article.keywords == sample_article.keywords
         assert updated_article.interest_ids == sample_article.interest_ids
         assert updated_article.user_id == sample_article.user_id
-        assert updated_article.created_at == sample_article.created_at 
+        assert updated_article.created_at == sample_article.created_at
+
+    def test_update(self, insight_article_dao, sample_article):
+        """update() 메서드 테스트"""
+        # Given
+        new_title = "Updated Title"
+        new_content = {"sections": ["Updated Content"]}
+        new_tags = ["new_tag1", "new_tag2"]
+
+        # When
+        updated_article = insight_article_dao.update(
+            sample_article.id,
+            title=new_title,
+            content=new_content,
+            tags=new_tags
+        )
+
+        # Then
+        assert updated_article is not None
+        assert updated_article.id == sample_article.id
+        assert updated_article.title == new_title
+        assert updated_article.content == new_content
+        assert updated_article.tags == new_tags
+        # 다른 필드들은 변경되지 않아야 함
+        assert updated_article.user_id == sample_article.user_id
+        assert updated_article.type == sample_article.type
+
+    def test_update_nonexistent_article(self, insight_article_dao):
+        """존재하지 않는 아티클 update() 메서드 테스트"""
+        # When
+        updated_article = insight_article_dao.update(
+            uuid.uuid4(),
+            title="New Title"
+        )
+
+        # Then
+        assert updated_article is None
+
+    def test_get_all_by_user_id_in_range(self, insight_article_dao, sample_user):
+        """get_all_by_user_id_in_range() 메서드 테스트"""
+        # Given
+        now = datetime.now(timezone.utc)
+        yesterday = now - timedelta(days=1)
+        tomorrow = now + timedelta(days=1)
+
+        # 어제 생성된 아티클
+        article1 = insight_article_dao.create(
+            user_id=sample_user.id,
+            title="Yesterday Article",
+            content={"sections": ["Content"]},
+            type="chat",
+            created_at=yesterday
+        )
+
+        # 오늘 생성된 아티클
+        article2 = insight_article_dao.create(
+            user_id=sample_user.id,
+            title="Today Article",
+            content={"sections": ["Content"]},
+            type="chat",
+            created_at=now
+        )
+
+        # When
+        articles = insight_article_dao.get_all_by_user_id_in_range(
+            sample_user.id,
+            yesterday,
+            tomorrow
+        )
+
+        # Then
+        assert len(articles) == 2
+        assert articles[0].id == article1.id  # 날짜순 정렬 (asc)
+        assert articles[1].id == article2.id
+
+        # 범위 밖의 날짜로 조회
+        articles = insight_article_dao.get_all_by_user_id_in_range(
+            sample_user.id,
+            now - timedelta(days=3),
+            now - timedelta(days=2)
+        )
+        assert len(articles) == 0
