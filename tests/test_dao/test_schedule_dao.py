@@ -169,7 +169,7 @@ class TestScheduleDAO:
         assert timestamps == sorted(timestamps)
 
     def test_get_all_by_user_id_in_range(self, schedule_dao, sample_user):
-        """get_all_by_user_id_in_range() 메서드 테스트"""
+        """get_all_by_user_id_in_range_status() 메서드 테스트"""
         # Given
         now = datetime.now()
         base_time = datetime(now.year, now.month, now.day, 10, 0)  # 오늘 10:00
@@ -199,7 +199,7 @@ class TestScheduleDAO:
         # When
         start_time = base_time
         end_time = base_time + timedelta(hours=3)
-        schedules = schedule_dao.get_all_by_user_id_in_range(
+        schedules = schedule_dao.get_all_by_user_id_in_range_status(
             sample_user.id,
             start_time,
             end_time
@@ -211,7 +211,7 @@ class TestScheduleDAO:
         assert schedules[0].id != out_of_range_schedule.id
 
     def test_get_all_by_user_id_in_range_with_status(self, schedule_dao, sample_user):
-        """get_all_by_user_id_in_range() 메서드의 status 필터링 테스트"""
+        """get_all_by_user_id_in_range_status() 메서드의 status 필터링 테스트"""
         # Given
         now = datetime.now()
         base_time = datetime(now.year, now.month, now.day, 10, 0)  # 오늘 10:00
@@ -239,13 +239,13 @@ class TestScheduleDAO:
         # When
         start_time = base_time
         end_time = base_time + timedelta(hours=3)
-        undone_schedules = schedule_dao.get_all_by_user_id_in_range(
+        undone_schedules = schedule_dao.get_all_by_user_id_in_range_status(
             sample_user.id,
             start_time,
             end_time,
             status="undone"
         )
-        done_schedules = schedule_dao.get_all_by_user_id_in_range(
+        done_schedules = schedule_dao.get_all_by_user_id_in_range_status(
             sample_user.id,
             start_time,
             end_time,

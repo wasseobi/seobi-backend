@@ -14,7 +14,7 @@ class GetMonthlyReport():
         start_date, end_date = TimeUtils.get_month_range(tz)
         
         # 전체 일정과 완료된 일정을 가져옴
-        all_schedules = self.schedule_service.schedule_dao.get_all_by_user_id_in_range(user_id, start_date, end_date)
+        all_schedules = self.schedule_service.get_by_date_range_status(user_id, start_date, end_date)
         completed_schedules = [s for s in all_schedules if s.is_completed]
         
         return {

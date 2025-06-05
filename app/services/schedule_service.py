@@ -46,10 +46,9 @@ class ScheduleService:
         }
         return self.create(parsed_data)
 
-    def get_weekly_schedules(self, user_id: UUID, tz: timezone,
+    def get_by_date_range_status(self, user_id: UUID, start, end, tz: timezone,
                              status: Optional[str] = None) -> List[Dict]:
         """주간 일정 조회"""
-        week_start, week_end = TimeUtils.get_week_range(tz)
-        return self.schedule_dao.get_all_by_user_id_in_range(
-            user_id, week_start, week_end, status=status
+        return self.schedule_dao.get_all_by_user_id_in_range_status(
+            user_id, start, end, status=status
         )
