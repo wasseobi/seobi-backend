@@ -381,7 +381,7 @@ class TestScheduleDAO:
             title="Yesterday Schedule",
             created_at=yesterday,
             start_at=yesterday,
-            status="completed"
+            status="done"
         )
 
         # 오늘 일정
@@ -390,14 +390,14 @@ class TestScheduleDAO:
             title="Today Schedule 1",
             created_at=now,
             start_at=now,
-            status="pending"
+            status="undone"
         )
         schedule_dao.create(
             user_id=sample_user.id,
             title="Today Schedule 2",
             created_at=now,
             start_at=now,
-            status="pending"
+            status="undone"
         )
 
         # When & Then
@@ -410,21 +410,21 @@ class TestScheduleDAO:
         assert count == 3
 
         # 상태별 조회
-        completed_count = schedule_dao.get_count_by_date_range(
+        done_count = schedule_dao.get_count_by_date_range(
             sample_user.id,
             yesterday,
             tomorrow,
-            status="completed"
+            status="done"
         )
-        assert completed_count == 1
+        assert done_count == 1
 
-        pending_count = schedule_dao.get_count_by_date_range(
+        undone_count = schedule_dao.get_count_by_date_range(
             sample_user.id,
             yesterday,
             tomorrow,
-            status="pending"
+            status="undone"
         )
-        assert pending_count == 2
+        assert undone_count == 2
 
         # 범위 밖의 날짜로 조회
         out_of_range_count = schedule_dao.get_count_by_date_range(
