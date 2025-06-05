@@ -287,7 +287,7 @@ class TestInsightArticleDAO:
         # Then
         assert updated_article is None
 
-    def test_get_all(self, insight_article_dao, sample_user, other_user):
+    def test_get_all(self):
         """get_all() 메서드 테스트"""
         # Given
         now = datetime.now(timezone.utc)

@@ -12,9 +12,6 @@ class InterestDAO(BaseDAO[Interest]):
     def __init__(self):
         super().__init__(Interest)
 
-    def get_all(self, interest_id):
-        return Interest.query.get(interest_id)
-
     def get_all_by_user_id(self, user_id):
         return Interest.query.filter_by(user_id=user_id).all()
     
@@ -24,7 +21,11 @@ class InterestDAO(BaseDAO[Interest]):
             .filter(Interest.created_at >= start, Interest.created_at < end)\
             .order_by(Interest.created_at.asc()).all()
     
-    def create(self, user_id, content, source_message, importance=0.5):
+    def get_all_by_id(self, interest_id: uuid.UUID):
+        """Get interest by ID"""
+        return self.get(str(interest_id))
+
+    def create(self, user_id, content, source_message, importance=0.5, created_at=None):
         try:
             # 트랜잭션 시작
             with super().query().session.begin_nested():
@@ -47,14 +48,17 @@ class InterestDAO(BaseDAO[Interest]):
                         self.model.query.filter(self.model.id.in_(old_ids)).delete()
                 
                 # 새로운 관심사 생성
+                if created_at is None:
+                    created_at = datetime.now(timezone.utc)
+                
                 new_interest = super().create(
                     user_id=user_id,
                     content=content,
                     source_message=source_message,
                     importance=importance,
-                    created_at=datetime.now(timezone.utc)
+                    created_at=created_at
                 )
-                
+
                 return new_interest
         except Exception as e:
             super().query().session.rollback()

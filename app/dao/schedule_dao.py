@@ -10,11 +10,7 @@ class ScheduleDAO(BaseDAO[Schedule]):
     def __init__(self):
         super().__init__(Schedule)
 
-    def get_all(self) -> List[Schedule]:
-        """Get all schedules ordered by created_at asc"""
-        return self.query().order_by(Schedule.created_at.asc()).all()
-
-    def get_by_id(self, schedule_id: uuid.UUID) -> Optional[Schedule]:
+    def get_all_by_id(self, schedule_id: uuid.UUID) -> Optional[Schedule]:
         """Get a schedule by ID"""
         return self.get(str(schedule_id))
 

@@ -10,7 +10,7 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
     def __init__(self):
         super().__init__(InsightArticle)
 
-    def get_all(self, article_id: uuid.UUID) -> Optional[InsightArticle]:
+    def get_all_by_id(self, article_id: uuid.UUID) -> Optional[InsightArticle]:
         """Get an article by ID"""
         return self.get(str(article_id))
 
