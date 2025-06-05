@@ -22,7 +22,7 @@ class ScheduleDAO(BaseDAO[Schedule]):
         """Get all schedules for a user ordered by timestamp asc"""
         return self.query().filter_by(user_id=user_id).order_by(Schedule.timestamp.asc()).all()
 
-    def get_schedules_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime, status=None) -> List[Schedule]:
+    def get_all_by_user_id_in_range(self, user_id: uuid.UUID, start: datetime, end: datetime, status=None) -> List[Schedule]:
         """Get all schedules for a user in a given datetime range, optionally filtered by status."""
         query = self.query().filter_by(user_id=user_id)
         query = query.filter(self.model.start_at >= start, self.model.start_at < end)
