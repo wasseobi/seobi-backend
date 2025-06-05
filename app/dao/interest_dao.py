@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from typing import List
+import uuid
 
 from app.models.db import db
 from app.models.interest import Interest
@@ -44,3 +46,9 @@ class InterestDAO:
         db.session.delete(interest)
         db.session.commit()
         return True
+
+    def get_interests_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime) -> List[Interest]:
+        """Get all interests for a user in a given datetime range."""
+        return Interest.query.filter_by(user_id=user_id)\
+            .filter(Interest.created_at >= start, Interest.created_at < end)\
+            .order_by(Interest.created_at.asc()).all()

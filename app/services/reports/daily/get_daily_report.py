@@ -1,18 +1,12 @@
 import uuid
-from datetime import datetime, timedelta, timezone
-from app.services.session_service import SessionService
-from app.services.schedule_service import ScheduleService
-from app.services.insight_article_service import InsightArticleService
+from datetime import datetime
 from app.utils.time import TimeUtils
 
-
-class GetReportService:
-    def __init__(self):
-        self.session_service = SessionService()
+class GetDailyReport():
+    def get_today_schedules(self, user_id: uuid.UUID, tz, when='today', status=None):
+        from app.services.schedule_service import ScheduleService
         self.schedule_service = ScheduleService()
-        self.article_service = InsightArticleService()
 
-    def get_schedules(self, user_id: uuid.UUID, tz, when='today', status=None):
         if when == 'today':
             start, end = TimeUtils.get_today_range(tz)
         elif when == 'tomorrow':
@@ -46,21 +40,41 @@ class GetReportService:
         ]
 
     def get_today_sessions(self, user_id: uuid.UUID, tz):
+        from app.services.session_service import SessionService
+        self.session_service = SessionService()
+        
         start, end = TimeUtils.get_today_range(tz)
-        sessions = [session for session in self.session_service.session_dao.get_user_sessions(user_id)
-                    if session.start_at >= start and session.start_at < end]
-        return [
-            {
-                "id": str(session.id),
-                "title": session.title,
-                "description": session.description,
-                "start_at": TimeUtils.to_local(session.start_at, tz),
-                "finish_at": TimeUtils.to_local(session.finish_at, tz)
-            }
-            for session in sessions
-        ]
+        
+        all_sessions = self.session_service.get_user_sessions(user_id)
+        sessions = []
+        
+        for session in all_sessions:
+            if not session.get('start_at'):
+                continue
+                
+            session_start = datetime.fromisoformat(session['start_at'].replace('Z', '+00:00'))
+            if start <= session_start < end:
+                finish_at = None
+                if session.get('finish_at'):
+                    finish_at = TimeUtils.to_local(
+                        datetime.fromisoformat(session['finish_at'].replace('Z', '+00:00')), 
+                        tz
+                    )
+                    
+                sessions.append({
+                    "id": str(session['id']),
+                    "title": session['title'],
+                    "description": session['description'],
+                    "start_at": TimeUtils.to_local(session_start, tz),
+                    "finish_at": finish_at
+                })
+                
+        return sessions
 
     def get_today_articles(self, user_id: uuid.UUID, tz):
+        from app.services.insight_article_service import InsightArticleService
+        self.article_service = InsightArticleService()
+
         start, end = TimeUtils.get_today_range(tz)
         articles = [article for article in self.article_service.insight_article_dao.get_all_by_user_id(user_id)
                     if article.created_at >= start and article.created_at < end]
