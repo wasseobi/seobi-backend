@@ -22,13 +22,30 @@ class ScheduleDAO(BaseDAO[Schedule]):
         """Get all schedules for a user ordered by timestamp asc"""
         return self.query().filter_by(user_id=user_id).order_by(Schedule.timestamp.asc()).all()
 
-    def get_all_by_user_id_in_range(self, user_id: uuid.UUID, start: datetime, end: datetime, status=None) -> List[Schedule]:
+    def get_schedules_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime, status=None) -> List[Schedule]:
         """Get all schedules for a user in a given datetime range, optionally filtered by status."""
         query = self.query().filter_by(user_id=user_id)
         query = query.filter(self.model.start_at >= start, self.model.start_at < end)
         if status:
             query = query.filter_by(status=status)
         return query.order_by(self.model.timestamp.asc()).all()
+
+    def get_schedules_count_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime, status=None) -> int:
+        """Get the count of schedules for a user in a given datetime range, optionally filtered by status."""
+        query = self.query().filter_by(user_id=user_id)
+        query = query.filter(self.model.start_at >= start, self.model.start_at < end)
+        if status:
+            query = query.filter_by(status=status)
+        return query.count()
+
+    def get_ongoing_schedules(self, user_id: uuid.UUID, current_time: datetime) -> List[Schedule]:
+        """현재 진행 중인 일정 조회 (시작했지만 아직 완료되지 않은 일정)"""
+        return (self.query()
+                .filter_by(user_id=user_id)
+                .filter(self.model.start_at <= current_time)
+                .filter(self.model.is_completed == False)
+                .order_by(self.model.start_at.asc())
+                .all())
 
     def create(self, user_id: uuid.UUID, **kwargs) -> Schedule:
         return super().create(user_id=user_id, **kwargs)

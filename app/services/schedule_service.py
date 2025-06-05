@@ -1,6 +1,11 @@
+from datetime import timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
 from app.dao.schedule_dao import ScheduleDAO
-import datetime
 from app.langgraph.parsing_agent.graph import parsing_agent
+from app.utils.time import TimeUtils
+
 
 class ScheduleService:
     def __init__(self):
@@ -40,3 +45,11 @@ class ScheduleService:
             'linked_service': result.get('linked_service', ''),
         }
         return self.create(parsed_data)
+
+    def get_weekly_schedules(self, user_id: UUID, tz: timezone,
+                             status: Optional[str] = None) -> List[Dict]:
+        """주간 일정 조회"""
+        week_start, week_end = TimeUtils.get_week_range(tz)
+        return self.schedule_dao.get_schedules_by_date_range(
+            user_id, week_start, week_end, status=status
+        )
