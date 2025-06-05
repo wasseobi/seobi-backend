@@ -24,7 +24,7 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
     def update(self, article_id: uuid.UUID, **kwargs) -> Optional[InsightArticle]:
         return super().update(str(article_id), **kwargs)
     
-    def get_insight_article_by_date_range(self, user_id: uuid.UUID, start: datetime, end: datetime) -> List[InsightArticle]:
+    def get_all_by_user_id_in_range(self, user_id: uuid.UUID, start: datetime, end: datetime) -> List[InsightArticle]:
         """Get all insight_article for a user in a given datetime range."""
         return InsightArticle.query.filter_by(user_id=user_id)\
             .filter(InsightArticle.created_at >= start, InsightArticle.created_at < end)\

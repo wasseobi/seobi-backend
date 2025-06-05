@@ -46,7 +46,7 @@ class ScheduleService:
         }
         return self.create(parsed_data)
 
-    def get_by_date_range_status(self, user_id: UUID, start, end, tz: timezone,
+    def get_by_date_range_status(self, user_id: UUID, start, end,
                              status: Optional[str] = None) -> List[Dict]:
         """주간 일정 조회"""
         return self.schedule_dao.get_all_by_user_id_in_range_status(

@@ -76,8 +76,8 @@ class GetDailyReport():
         self.article_service = InsightArticleService()
 
         start, end = TimeUtils.get_today_range(tz)
-        articles = [article for article in self.article_service.insight_article_dao.get_all_by_user_id(user_id)
-                    if article.created_at >= start and article.created_at < end]
+        articles = self.article_service.get_user_articles_in_range(user_id, start, end)
+
         return [
             {
                 "id": str(article.id),

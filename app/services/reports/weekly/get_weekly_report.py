@@ -47,8 +47,8 @@ class GetWeeklyReport():
         self.article_service = InsightArticleService()
         
         week_start, week_end = TimeUtils.get_week_range(tz)
-        articles = [article for article in self.article_service.get_user_articles_by_date(user_id)
-                    if article.created_at >= week_start and article.created_at < week_end]
+        articles = self.article_service.get_user_articles_in_range(user_id, week_start, week_end)
+
         return [
             {
                 "id": str(article.id),

@@ -44,7 +44,7 @@ class GetMonthlyReport():
         
         # 해당 월의 관심사와 인사이트를 가져옴
         interests = self.interest_service.interest_dao.get_all_by_user_id_date_range(user_id, start_date, end_date)
-        insight_articles = self.insight_article_service.insight_article_dao.get_insight_article_by_date_range(user_id, start_date, end_date)
+        insight_articles = self.insight_article_service.get_user_articles_in_range(user_id, start_date, end_date)
         
         return {
             "interests": interests,
