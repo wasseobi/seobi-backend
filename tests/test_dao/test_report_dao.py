@@ -2,25 +2,55 @@ import uuid
 from datetime import datetime, timedelta
 import pytest
 from app.dao.report_dao import ReportDAO
+from app.dao.user_dao import UserDAO
+from app.models.session import Session
+from app.models.user import User
 from app.models import Report, db
 
-@pytest.fixture
-def report_dao():
-    return ReportDAO()
+@pytest.fixture(autouse=True)
+def setup_teardown(app):
+    """각 테스트 전후로 데이터베이스를 정리하는 fixture"""
+    with app.app_context():
+        yield
+        db.session.rollback()
+        Report.query.delete()
+        Session.query.delete()
+        User.query.delete()
+        db.session.commit()
 
 @pytest.fixture
-def sample_report(db_session):
-    user_id = uuid.uuid4()
-    report = Report(
-        user_id=user_id,
-        title="Test Report",
-        content={"summary": "Test content"},
-        type="daily",
-        created_at=datetime.utcnow()
+def report_dao(app):
+    with app.app_context():
+        return ReportDAO()
+
+@pytest.fixture
+def user_dao(app):
+    """UserDAO 인스턴스를 생성하는 fixture"""
+    with app.app_context():
+        return UserDAO()
+
+@pytest.fixture
+def sample_user(user_dao):
+    """테스트용 사용자를 생성하는 fixture"""
+    return user_dao.create(
+        username="testuser",
+        email="test@example.com"
     )
-    db_session.add(report)
-    db_session.commit()
-    return report
+
+
+@pytest.fixture
+def sample_report(app, report_dao, sample_user):
+    """테스트용 리포트를 생성하는 fixture"""
+    with app.app_context():
+        report = report_dao.create(
+            user_id=sample_user.id,
+            title="Test Report",
+            content={"summary": "Test content"},
+            type="daily",
+            created_at=datetime.utcnow()
+        )
+        db.session.refresh(report)
+        return report
 
 def test_get_by_id(report_dao, sample_report):
     result = report_dao.get_by_id(sample_report.id)
@@ -28,21 +58,22 @@ def test_get_by_id(report_dao, sample_report):
     assert result.id == sample_report.id
     assert result.title == "Test Report"
 
-def test_get_all(report_dao, sample_report):
+def test_get_all(report_dao, sample_report, sample_user):
+    """get_all() 메서드 테스트"""
+    # Given
     # 추가 리포트 생성
-    user_id = uuid.uuid4()
-    new_report = Report(
-        user_id=user_id,
+    new_report = report_dao.create(
+        user_id=sample_user.id,
         title="Another Report",
         content={"summary": "Another content"},
         type="weekly",
         created_at=datetime.utcnow() + timedelta(days=1)
     )
-    db.session.add(new_report)
-    db.session.commit()
 
-    # 전체 리포트 조회
+    # When
     results = report_dao.get_all()
+
+    # Then
     assert len(results) == 2
     # created_at desc 순서 확인
     assert results[0].id == new_report.id  # 더 최신 리포트
@@ -86,23 +117,27 @@ def test_get_reports_by_month(report_dao, sample_report):
     results = report_dao.get_reports_by_month(sample_report.user_id, now.year, (now.month + 1) % 12 or 12)
     assert len(results) == 0
 
-def test_create(report_dao, db_session):
-    user_id = uuid.uuid4()
+def test_create(report_dao, sample_user):
+    """create() 메서드 테스트"""
+    # Given
     data = {
-        "user_id": user_id,
+        "user_id": sample_user.id,
         "title": "New Report",
         "content": {"summary": "New content"},
         "type": "weekly",
         "created_at": datetime.utcnow()
     }
     
+    # When
     report = report_dao.create(**data)
+
+    # Then
     assert report is not None
     assert report.title == "New Report"
     assert report.type == "weekly"
 
     # DB에서 확인
-    saved_report = Report.query.get(report.id)
+    saved_report = report_dao.get_by_id(report.id)
     assert saved_report is not None
     assert saved_report.title == "New Report"
 
