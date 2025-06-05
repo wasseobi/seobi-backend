@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 from app.dao.report_dao import ReportDAO
 from app.dao.user_dao import UserDAO
@@ -47,16 +47,21 @@ def sample_report(app, report_dao, sample_user):
             title="Test Report",
             content={"summary": "Test content"},
             type="daily",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.session.refresh(report)
         return report
 
-def test_get_by_id(report_dao, sample_report):
-    result = report_dao.get_by_id(sample_report.id)
-    assert result is not None
-    assert result.id == sample_report.id
-    assert result.title == "Test Report"
+def test_get_by_id(app, report_dao, sample_report):
+    """get_by_id() 메서드 테스트"""
+    with app.app_context():
+        # When
+        result = report_dao.get_by_id(sample_report.id)
+
+        # Then
+        assert result is not None
+        assert result.id == sample_report.id
+        assert result.title == "Test Report"
 
 def test_get_all(report_dao, sample_report, sample_user):
     """get_all() 메서드 테스트"""
@@ -79,43 +84,67 @@ def test_get_all(report_dao, sample_report, sample_user):
     assert results[0].id == new_report.id  # 더 최신 리포트
     assert results[1].id == sample_report.id
 
-def test_get_by_user(report_dao, sample_report):
-    results = report_dao.get_by_user(sample_report.user_id)
-    assert len(results) == 1
-    assert results[0].id == sample_report.id
+def test_get_by_user(app, report_dao, sample_report):
+    """get_by_user() 메서드 테스트"""
+    with app.app_context():
+        # When
+        results = report_dao.get_by_user(sample_report.user_id)
 
-def test_get_by_user_and_type(report_dao, sample_report):
-    results = report_dao.get_by_user_and_type(sample_report.user_id, "daily")
-    assert len(results) == 1
-    assert results[0].id == sample_report.id
+        # Then
+        assert len(results) == 1
+        assert results[0].id == sample_report.id
 
-    # 다른 타입으로 조회 시 빈 리스트 반환
-    results = report_dao.get_by_user_and_type(sample_report.user_id, "weekly")
-    assert len(results) == 0
+def test_get_by_user_and_type(app, report_dao, sample_report):
+    """get_by_user_and_type() 메서드 테스트"""
+    with app.app_context():
+        # When
+        results = report_dao.get_by_user_and_type(sample_report.user_id, "daily")
 
-def test_get_all_by_user_id_in_range(report_dao, sample_report):
-    start = datetime.utcnow() - timedelta(days=1)
-    end = datetime.utcnow() + timedelta(days=1)
-    
-    results = report_dao.get_all_by_user_id_in_range(sample_report.user_id, start, end)
-    assert len(results) == 1
-    assert results[0].id == sample_report.id
+        # Then
+        assert len(results) == 1
+        assert results[0].id == sample_report.id
 
-    # 범위 밖의 날짜로 조회
-    past_start = datetime.utcnow() - timedelta(days=3)
-    past_end = datetime.utcnow() - timedelta(days=2)
-    results = report_dao.get_all_by_user_id_in_range(sample_report.user_id, past_start, past_end)
-    assert len(results) == 0
+        # 다른 타입으로 조회 시 빈 리스트 반환
+        results = report_dao.get_by_user_and_type(sample_report.user_id, "weekly")
+        assert len(results) == 0
 
-def test_get_reports_by_month(report_dao, sample_report):
-    now = datetime.utcnow()
-    results = report_dao.get_reports_by_month(sample_report.user_id, now.year, now.month)
-    assert len(results) == 1
-    assert results[0].id == sample_report.id
+def test_get_all_by_user_id_in_range(app, report_dao, sample_report):
+    """get_all_by_user_id_in_range() 메서드 테스트"""
+    with app.app_context():
+        # Given
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(days=1)
+        end = now + timedelta(days=1)
+        
+        # When
+        results = report_dao.get_all_by_user_id_in_range(sample_report.user_id, start, end)
 
-    # 다른 달로 조회
-    results = report_dao.get_reports_by_month(sample_report.user_id, now.year, (now.month + 1) % 12 or 12)
-    assert len(results) == 0
+        # Then
+        assert len(results) == 1
+        assert results[0].id == sample_report.id
+
+        # 범위 밖의 날짜로 조회
+        past_start = now - timedelta(days=3)
+        past_end = now - timedelta(days=2)
+        results = report_dao.get_all_by_user_id_in_range(sample_report.user_id, past_start, past_end)
+        assert len(results) == 0
+
+def test_get_reports_by_month(app, report_dao, sample_report):
+    """get_reports_by_month() 메서드 테스트"""
+    with app.app_context():
+        # Given
+        now = datetime.now(timezone.utc)
+
+        # When
+        results = report_dao.get_reports_by_month(sample_report.user_id, now.year, now.month)
+
+        # Then
+        assert len(results) == 1
+        assert results[0].id == sample_report.id
+
+        # 다른 달로 조회
+        results = report_dao.get_reports_by_month(sample_report.user_id, now.year, (now.month + 1) % 12 or 12)
+        assert len(results) == 0
 
 def test_create(report_dao, sample_user):
     """create() 메서드 테스트"""
@@ -141,10 +170,16 @@ def test_create(report_dao, sample_user):
     assert saved_report is not None
     assert saved_report.title == "New Report"
 
-def test_delete(report_dao, sample_report):
-    # 삭제 성공
-    assert report_dao.delete(sample_report.id) is True
-    assert Report.query.get(sample_report.id) is None
+def test_delete(app, report_dao, sample_report):
+    """delete() 메서드 테스트"""
+    with app.app_context():
+        # When
+        result = report_dao.delete(sample_report.id)
 
-    # 존재하지 않는 ID로 삭제 시도
-    assert report_dao.delete(uuid.uuid4()) is False
+        # Then
+        assert result is True
+        deleted_report = report_dao.get_by_id(sample_report.id)
+        assert deleted_report is None
+
+        # 존재하지 않는 ID로 삭제 시도
+        assert report_dao.delete(uuid.uuid4()) is False
