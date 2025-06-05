@@ -16,8 +16,13 @@ report_response = ns.model('ReportResponse', {
     'id': fields.String(description='리포트 ID', example=str(uuid.uuid4())),
     'user_id': fields.String(description='사용자 ID', example=str(uuid.uuid4())),
     'content': fields.Raw(description='리포트 내용 (JSON 형식)',
-                          example={"summary": "오늘의 업무 요약", "script": "오늘의 업무 스크립트"}),
+                          example={"text": "오늘의 업무 요약", "script": "오늘의 업무 스크립트"}),
     'type': fields.String(enum=['daily', 'weekly', 'monthly'], description='리포트 유형', example='daily'),
+})
+
+report_content_response = ns.model('ReportContentResponse', {
+    'text': fields.String(description='리포트 요약'),
+    'script': fields.String(description='리포트 스크립트')
 })
 
 service = ReportService()
@@ -79,7 +84,7 @@ class DailyReport(Resource):
             
         return service.get_user_type_reports(user_id, 'daily')
 
-    @ns.marshal_with(report_response)
+    @ns.marshal_with(report_content_response)
     @ns.doc('데일리 리포트 생성',
             description='데일리 리포트를 생성합니다. ',
             security='Bearer' if not is_dev_mode() else None,
@@ -102,9 +107,6 @@ class DailyReport(Resource):
         )
         tz_str = request.headers.get('timezone', 'Asia/Seoul')
 
-        print("[DEBUG] Headers:", dict(request.headers))
-        print("[DEBUG] Received user_id from header:", user_id)
-
         if not user_id:
             return {"message": "user-id header is required"}, 400
 
@@ -116,13 +118,13 @@ class DailyReport(Resource):
         )
 
         # 2. 생성된 리포트를 DB에 저장
-        report = service.save_report(
+        service.save_report(
             user_id=user_id,
             content=content,
             report_type='daily'
         )
 
-        return report, 201
+        return content, 201
 
 
 @ns.route('/report/w')
@@ -151,7 +153,7 @@ class WeeklyReport(Resource):
             
         return service.get_user_type_reports(user_id, 'weekly')
 
-    @ns.marshal_with(report_response)
+    @ns.marshal_with(report_content_response)
     @ns.doc('위클리 리포트 생성',
             description='위클리 리포트를 생성합니다. ',
             security='Bearer' if not is_dev_mode() else None,
@@ -174,9 +176,6 @@ class WeeklyReport(Resource):
         )
         tz_str = request.headers.get('timezone', 'Asia/Seoul')
 
-        print("[DEBUG] Headers:", dict(request.headers))
-        print("[DEBUG] Received user_id from header:", user_id)
-
         if not user_id:
             return {"message": "user-id header is required"}, 400
 
@@ -188,13 +187,13 @@ class WeeklyReport(Resource):
         )
 
         # 2. 생성된 리포트를 DB에 저장
-        report = service.save_report(
+        service.save_report(
             user_id=user_id,
             content=content,
             report_type='weekly'
         )
 
-        return report, 201
+        return content, 201
 
 # @ns.route('/report/m')
 # class MonthlyReport(Resource):
