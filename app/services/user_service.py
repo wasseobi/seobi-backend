@@ -67,7 +67,7 @@ class UserService:
     # TODO(GideokKim): Test 코드 작성 필요
     def get_user_memory(self, user_id: uuid.UUID) -> Optional[str]:
         """사용자의 장기 기억(메모리) 조회"""
-        return self.user_dao.get_user_memory(user_id)
+        return self.user_dao.get_memory(user_id)
 
     # TODO(GideokKim): Test 코드 작성 필요
     def update_user_memory(self, user_id: uuid.UUID, memory_data: str) -> Optional[str]:

@@ -16,13 +16,7 @@ class UserDAO(BaseDAO[User]):
     def get_by_username(self, username: str) -> Optional[User]:
         return self.query().filter_by(username=username).first()
 
-    def create(self, username: str, email: str) -> User:
-        return super().create(username=username, email=email)
-
-    def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
-        return super().update(str(user_id), username=username, email=email) 
-    
-    def get_user_memory(self, user_id: uuid.UUID) -> Optional[dict]:
+    def get_memory(self, user_id: uuid.UUID) -> Optional[dict]:
         user = self.get(str(user_id))
         if user:
             return user.user_memory
@@ -30,3 +24,10 @@ class UserDAO(BaseDAO[User]):
     
     def update_user_memory(self, user_id: uuid.UUID, user_memory: dict) -> Optional[User]:
         return super().update(str(user_id), user_memory=user_memory) 
+    
+    def create(self, username: str, email: str) -> User:
+        return super().create(username=username, email=email)
+
+    def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
+        return super().update(str(user_id), username=username, email=email) 
+    
