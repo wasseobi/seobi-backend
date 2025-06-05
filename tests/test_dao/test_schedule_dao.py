@@ -119,8 +119,8 @@ class TestScheduleDAO:
         schedule_ids = {s.id for s in schedules}
         assert schedule1.id in schedule_ids
         assert schedule2.id in schedule_ids
-        # timestamp 기준 오름차순 정렬 확인
-        timestamps = [s.timestamp for s in schedules]
+        # created_at 기준 오름차순 정렬 확인
+        timestamps = [s.created_at for s in schedules]
         assert timestamps == sorted(timestamps)
 
     def test_get_all_by_user_id(self, schedule_dao, sample_user, other_user):
@@ -165,7 +165,7 @@ class TestScheduleDAO:
         assert schedule2.id in schedule_ids
         assert schedule3.id not in schedule_ids
         # timestamp 기준 오름차순 정렬 확인
-        timestamps = [s.timestamp for s in user_schedules]
+        timestamps = [s.created_at for s in user_schedules]
         assert timestamps == sorted(timestamps)
 
     def test_get_all_by_user_id_in_range(self, schedule_dao, sample_user):
@@ -348,14 +348,14 @@ class TestScheduleDAO:
         schedule1 = schedule_dao.create(
             user_id=sample_user.id,
             title="Test Schedule 1",
-            timestamp=now,
+            created_at=now,
             start_at=now
         )
         # 두 번째 사용자의 일정
         schedule2 = schedule_dao.create(
             user_id=other_user.id,
             title="Test Schedule 2",
-            timestamp=now + timedelta(hours=1),
+            created_at=now + timedelta(hours=1),
             start_at=now + timedelta(hours=1)
         )
 
@@ -379,7 +379,7 @@ class TestScheduleDAO:
         schedule_dao.create(
             user_id=sample_user.id,
             title="Yesterday Schedule",
-            timestamp=yesterday,
+            created_at=yesterday,
             start_at=yesterday,
             status="completed"
         )
@@ -388,14 +388,14 @@ class TestScheduleDAO:
         schedule_dao.create(
             user_id=sample_user.id,
             title="Today Schedule 1",
-            timestamp=now,
+            created_at=now,
             start_at=now,
             status="pending"
         )
         schedule_dao.create(
             user_id=sample_user.id,
             title="Today Schedule 2",
-            timestamp=now,
+            created_at=now,
             start_at=now,
             status="pending"
         )
