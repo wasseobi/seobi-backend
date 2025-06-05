@@ -104,7 +104,7 @@ class TestMessageDAO:
     def test_get_message_by_id(self, message_dao, sample_message):
         """ID로 메시지 조회 테스트"""
         # When
-        found_message = message_dao.get_by_id(sample_message.id)
+        found_message = message_dao.get_all_by_id(sample_message.id)
 
         # Then
         assert found_message is not None
@@ -115,7 +115,7 @@ class TestMessageDAO:
     def test_get_nonexistent_message(self, message_dao):
         """존재하지 않는 ID로 메시지 조회 테스트"""
         # When
-        message = message_dao.get_by_id(uuid.uuid4())
+        message = message_dao.get_all_by_id(uuid.uuid4())
 
         # Then
         assert message is None
@@ -226,7 +226,7 @@ class TestMessageDAO:
 
         # Then
         assert result is True
-        deleted_message = message_dao.get_by_id(sample_message.id)
+        deleted_message = message_dao.get_all_by_id(sample_message.id)
         assert deleted_message is None
 
     def test_delete_nonexistent_message(self, message_dao):

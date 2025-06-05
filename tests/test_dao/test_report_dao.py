@@ -51,7 +51,6 @@ def sample_report(app, report_dao, sample_user):
     with app.app_context():
         report = report_dao.create(
             user_id=sample_user.id,
-            title="Test Report",
             content={"text": "Test content"},
             type="daily",
             created_at=datetime.now(timezone.utc)
