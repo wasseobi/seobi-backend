@@ -71,7 +71,7 @@ class TestReportDAO:
 
     def test_get_nonexistent_by_id(self, report_dao):
         """존재하지 않는 리포트 조회 테스트"""
-        found_report = report_dao.get_all()
+        found_report = report_dao.get_all_by_user_id(uuid.uuid4())
         assert found_report is None
 
     def test_get_by_user(self, report_dao, sample_user):
@@ -191,6 +191,7 @@ class TestReportDAO:
             content={"sections": "Content 2"},
             type="daily"
         )
+        
         report2 = report_dao.create(
             user_id=sample_user.id,
             content={"sections": "Content 2"},
@@ -198,7 +199,7 @@ class TestReportDAO:
         )
 
         # When
-        all_reports = report_dao.get_all(report1.id)
+        all_reports = report_dao.get_all()
 
         # Then
         assert all_reports is not None

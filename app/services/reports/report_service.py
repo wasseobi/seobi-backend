@@ -23,11 +23,11 @@ class ReportService:
         }
 
     def get_user_reports(self, user_id):
-        reports = self.report_dao.get_by_user(user_id)
+        reports = self.report_dao.get_all_by_user_id(user_id)
         return [self._serialize_report(r) for r in reports]
 
     def get_user_type_reports(self, user_id, type):
-        reports = self.report_dao.get_by_user_and_type(user_id, type)
+        reports = self.report_dao.get_by_user_id_and_type(user_id, type)
         return [self._serialize_report(r) for r in reports]
 
     def get_report(self, report_id):

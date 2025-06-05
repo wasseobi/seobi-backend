@@ -73,25 +73,18 @@ class TestInsightArticleDAO:
     def test_get_all(self, insight_article_dao, sample_article):
         """get_all() 메서드 테스트"""
         # When
-        found_article = insight_article_dao.get_all(sample_article.id)
+        articles = insight_article_dao.get_all()
 
         # Then
-        assert found_article is not None
-        assert found_article.id == sample_article.id
-        assert found_article.user_id == sample_article.user_id
-        assert found_article.title == sample_article.title
-        assert found_article.content == sample_article.content
-        assert found_article.source == sample_article.source
-        assert found_article.type == sample_article.type
-        assert found_article.tags == sample_article.tags
-        assert found_article.keywords == sample_article.keywords
-        assert found_article.interest_ids == sample_article.interest_ids
-        assert found_article.created_at == sample_article.created_at
+        assert articles is not None
+        assert isinstance(articles, list)
+        assert len(articles) > 0
+        assert sample_article.id in [a.id for a in articles]
 
     def test_get_nonexistent_by_id(self, insight_article_dao):
         """존재하지 않는 ID로 get_all() 메서드 테스트"""
         # When
-        article = insight_article_dao.get_all()
+        article = insight_article_dao.get(uuid.uuid4())
 
         # Then
         assert article is None
@@ -287,40 +280,6 @@ class TestInsightArticleDAO:
         # Then
         assert updated_article is None
 
-    def test_get_all(self):
-        """get_all() 메서드 테스트"""
-        # Given
-        now = datetime.now(timezone.utc)
-        # 첫 번째 사용자의 아티클
-        article1 = insight_article_dao.create(
-            user_id=sample_user.id,
-            title="Article 1",
-            content={"sections": ["Content 1"]},
-            source="Test Source 1",
-            type="chat",
-            created_at=now
-        )
-        # 두 번째 사용자의 아티클
-        article2 = insight_article_dao.create(
-            user_id=other_user.id,
-            title="Article 2",
-            content={"sections": ["Content 2"]},
-            source="Test Source 2",
-            type="chat",
-            created_at=now + timedelta(hours=1)
-        )
-
-        # When
-        articles = insight_article_dao.get_all()
-
-        # Then
-        assert len(articles) >= 2
-        # created_at 기준 오름차순 정렬 확인
-        assert articles[0].created_at <= articles[1].created_at
-        article_ids = {a.id for a in articles}
-        assert article1.id in article_ids
-        assert article2.id in article_ids
-
     def test_delete_article(self, insight_article_dao, sample_article):
         """delete() 메서드 테스트"""
         # When
@@ -328,7 +287,7 @@ class TestInsightArticleDAO:
 
         # Then
         assert result is True
-        deleted_article = insight_article_dao.get_all()
+        deleted_article = insight_article_dao.get(sample_article.id)
         assert deleted_article is None
 
     def test_delete_nonexistent_article(self, insight_article_dao):
