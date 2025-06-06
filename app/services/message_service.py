@@ -105,13 +105,13 @@ class MessageService:
                 {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
                 {"role": "user", "content": content}
             ]
-            keywords_response = get_completion(client, messages)
+            keywords_response = get_completion(messages)
             print("[디버그] LLM 키워드 추출 응답:", keywords_response)
             keywords = json.loads(keywords_response)
             if isinstance(keywords, list) and keywords:
                 keyword_text = ", ".join(keywords)
                 # 첫 번째 키워드만 임베딩 (여러 개면 확장 가능)
-                keyword_vector = get_embedding(client, keywords[0])
+                keyword_vector = get_embedding(keywords[0])
                 print(f"[디버그] 추출 키워드: {keyword_text}, 임베딩: {keyword_vector[:5]}...")
             else:
                 print("[디버그] 키워드 추출 결과 없음 또는 형식 오류:", keywords)
