@@ -208,7 +208,7 @@ class TestMessageDAO:
 
         # When
         updated_message = message_dao.update(
-            message_id=sample_message.id,
+            id=sample_message.id,
             content=new_content,
             message_metadata=new_metadata
         )

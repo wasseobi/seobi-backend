@@ -210,7 +210,7 @@ class TestInterestDAO:
         """존재하지 않는 관심사 업데이트 테스트"""
         # When
         updated_interest = interest_dao.update(
-            interest_id=uuid.uuid4(),
+            id=uuid.uuid4(),
             content="New content"
         )
 
@@ -251,7 +251,7 @@ class TestInterestDAO:
 
         # When
         updated_interest = interest_dao.update(
-            interest_id=sample_interest.id,
+            id=sample_interest.id,
             importance=new_importance
         )
 
