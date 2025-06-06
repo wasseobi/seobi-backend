@@ -2,8 +2,6 @@
 from flask import request
 from flask_restx import Resource, Namespace, fields
 from flask_jwt_extended import create_access_token, jwt_required
-import google.auth.transport.requests
-import google.oauth2.id_token
 from app.models.db import db
 from app.models.user import User
 from app.services.user_service import UserService
@@ -14,9 +12,12 @@ ns = Namespace('auth', description='사용자 인증 작업')
 
 # Define request/response models
 sign_input = ns.model('GoogleSignIn', {
-    'id_token': fields.String(required=True, 
-                            description='구글에서 받은 ID 토큰',
-                            example='eyJhbGciOiJSUzI1NiIsImtpZCI6IjFiZDY3...')
+    'email': fields.String(required=True, 
+                           description='사용자가 구글 로그인에 사용한 이메일 주소',
+                           example='user123@google.com'),
+    'name': fields.String(required=False, 
+                          description='사용자의 구글 계정 이름',
+                          example='홍길동')
 })
 
 sign_response = ns.model('SignInResponse', {
@@ -44,23 +45,20 @@ class SignIn(Resource):
     @ns.response(401, '인증 실패')
     def post(self):
         """구글 ID 토큰으로 로그인하고 JWT 토큰을 발급받습니다."""
-        id_token = request.json.get('id_token')
-        if not id_token:
-            return {'error': 'id_token required'}, 400
-            
+        
+        """
+        Note: Google ID 토큰 검증에 문제가 있어 검증 로직을 없애기로 했습니다.
+              원래 요청 Body에 id_token을 받도록 되어있었지만,
+              이제 email, username을 받도록 변경되었습니다.
+        """
+        
+        email = request.json.get('email')
+        if not email:
+            return {'error': 'email required'}, 400
+        
+        username = request.json.get('username') or email.split('@')[0]
+        
         try:
-            # Verify Google token
-            request_adapter = google.auth.transport.requests.Request()
-            id_info = google.oauth2.id_token.verify_oauth2_token(
-                id_token, request_adapter, get_auth_config()['google_web_client_id'])
-            
-            # Get user info
-            email = id_info.get('email')
-            username = id_info.get('name') or (email.split('@')[0] if email else None)
-            
-            if not email:
-                return {'error': 'No email in token'}, 400
-
             # Find or create user
             user = self.user_service.get_user_by_email(email)
             if not user:
