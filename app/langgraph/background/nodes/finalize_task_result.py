@@ -61,8 +61,7 @@ def finalize_task_result(state: BGState) -> BGState:
     task = state.get("task")
     print(f"[DEBUG][finalize_task_result] state['task']: {task}")
     if not task:
-        print(f"[DEBUG][finalize_task_result] task 없음, 에러 반환")
-        state["error"] = "No task found"
+        state["error"] = "모든 AutoTask 완료"
         state["finished"] = True
         return state
 

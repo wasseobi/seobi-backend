@@ -23,6 +23,7 @@ def fetch_next_task(state: BGState) -> BGState:
         state["finished"] = True
         return state
 
+    # NOTE: (juaa) user_id로 auto_task 가져오는 부분 service로 옮길 예정 
     try:
         auto_tasks = auto_task_service.get_user_auto_tasks(user_id)  # 최신순 DESC 정렬된 상태로 반환
     except Exception as e:

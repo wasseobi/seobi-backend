@@ -1,6 +1,6 @@
 import uuid
 from pprint import pprint
-from app.langgraph.background.graph import get_background_graph
+from app.langgraph.background.graph import build_background_graph
 from app.langgraph.background.bg_state import BGState
 from app import create_app
 
@@ -10,15 +10,16 @@ def run():
     with app.app_context():
         # DB URI 등 각종 설정, 모델, 서비스 다 사용 가능
         print("[DEBUG] DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
-        graph = get_background_graph()
+        graph = build_background_graph()
 
         # ✅ 1. 초기 상태 정의
         state = BGState(
-            user_id=uuid.UUID("af553404-7b43-413a-9caf-06d2e2495d8c"),
+            user_id=uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df"),
             task=None,
             last_completed_title=None,
             error=None,
-            finished=False
+            finished=False,
+            step=None
         )
 
         round_count = 0

@@ -13,8 +13,7 @@ def write_result_to_db(state: BGState) -> BGState:
     print(f"[DEBUG][write_result_to_db] task: {task}")
     if not task:
         # 더 이상 처리할 task가 없을 때는 그냥 상태만 반환
-        print(f"[DEBUG][write_result_to_db] task 없음, 에러 반환")
-        state["error"] = "No task to write"
+        state["error"] = "모든 AutoTask 완료"
         state["finished"] = True
         return state
 
