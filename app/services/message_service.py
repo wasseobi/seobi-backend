@@ -3,7 +3,7 @@ from app.models import Session
 from app.utils.message.message_context import MessageContext
 from app.utils.prompt.service_prompts import EXTRACT_KEYWORDS_SYSTEM_PROMPT
 
-from app.utils.openai_client import get_openai_client, get_embedding, get_completion
+from app.utils.openai_client import get_embedding, get_completion
 from app.utils.message.processor import MessageProcessor
 from app.langgraph.agent.executor import create_agent_executor
 from app.langgraph.agent.graph import build_graph
@@ -92,8 +92,7 @@ class MessageService:
             raise ValueError('Cannot add message to finished session')
 
         try:
-            client = get_openai_client()
-            vector = get_embedding(client, content)
+            vector = get_embedding(content)
         except Exception as e:
             vector = None
 
@@ -362,8 +361,7 @@ class MessageService:
             return []
 
         # 쿼리 임베딩 생성
-        client = get_openai_client()
-        query_vec = np.array(get_embedding(client, query))
+        query_vec = np.array(get_embedding(query))
 
         # 각 메시지와의 코사인 유사도 계산
         results = []
@@ -386,8 +384,7 @@ class MessageService:
         """
         [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (DB에서 벡터 연산)
         """
-        client = get_openai_client()
-        query_vec = np.array(get_embedding(client, query))
+        query_vec = np.array(get_embedding(query))
 
         messages = self.message_dao.get_similar_pgvector(user_id, query_vec, top_k)
         results = [
@@ -405,8 +402,7 @@ class MessageService:
         """
         [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (keyword_vector 기준, DB에서 벡터 연산)
         """
-        client = get_openai_client()
-        query_vec = np.array(get_embedding(client, query))
+        query_vec = np.array(get_embedding(query))
 
         messages = self.message_dao.get_keyword_pgvector(user_id, query_vec, top_k)
         results = [
@@ -433,11 +429,10 @@ class MessageService:
             updated = 0
             errors = 0
 
-            client = get_openai_client()
             for msg in messages:
                 if msg.vector is None:  # 벡터가 없는 메시지만 업데이트
                     try:
-                        vector = get_embedding(client, msg.content)
+                        vector = get_embedding(msg.content)
                         self.message_dao.update(msg.id, vector=vector)
                         updated += 1
                     except Exception as e:

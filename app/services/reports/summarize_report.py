@@ -1,4 +1,4 @@
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.services.schedule_service import ScheduleService
 
 class SummarizeReport:
@@ -8,8 +8,7 @@ class SummarizeReport:
     def _call_llm(self, messages: list, header: str = None, count: int = None) -> str:
         """LLM 호출 공통 로직"""
         try:
-            client = get_openai_client()
-            response = get_completion(client, messages)
+            response = get_completion(messages)
             
             if not response:
                 if header:

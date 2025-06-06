@@ -1,4 +1,4 @@
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 
 def generate_title_tags(context):
     """
@@ -12,12 +12,11 @@ def generate_title_tags(context):
         "아래 기사 본문을 읽고, JSON 형태로 변형해줘. 예시: {\"title\": \"...\", \"tags\": [\"...\", ...]}\n"
         "[기사 본문]\n" + content
     )
-    client = get_openai_client()
     messages = [
         {"role": "system", "content": "기사 제목과 태그를 반드시 JSON 형태로만 생성해줘. 예시: {\"title\": \"...\", \"tags\": [\"...\", ...]}"},
         {"role": "user", "content": prompt}
     ]
-    response = get_completion(client, messages)
+    response = get_completion(messages)
     import json
     # JSON 문자열이 코드블록(```json ... ```)으로 감싸져 있을 경우 처리
     if response.strip().startswith('```'):

@@ -1,4 +1,4 @@
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.utils.prompt.insight_prompts import INSIGHT_ANALYSIS_PROMPT
 
 def generate_insight(context):
@@ -17,11 +17,10 @@ def generate_insight(context):
         keywords=", ".join(keywords),
         context=document_text + "\n" + related_news_text + "\n" + str(relations)
     )
-    client = get_openai_client()
     messages = [
         {"role": "system", "content": "아래 프롬프트에 따라 인사이트를 생성해줘."},
         {"role": "user", "content": prompt}
     ]
-    response = get_completion(client, messages)
+    response = get_completion(messages)
     context['insight'] = response
     return context

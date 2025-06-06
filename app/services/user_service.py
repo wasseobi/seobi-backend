@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 from langchain_core.messages import BaseMessage
 
 from app.dao.user_dao import UserDAO
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.utils.prompt.service_prompts import USER_MEMORY_SYSTEM_PROMPT
 
 class UserService:
@@ -91,7 +91,7 @@ class UserService:
             {"role": "system", "content": USER_MEMORY_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt}
         ]
-        updated_memory = get_completion(get_openai_client(), llm_messages)
+        updated_memory = get_completion(llm_messages)
         return self.update_user_memory(user_id, memory_data=updated_memory)
 
     # TODO(GideokKim): User DAO가 필요 없으므로 나중에 새로 service 만들어서 관리해야 함

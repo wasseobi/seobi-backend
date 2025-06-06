@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from typing import Dict
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.utils.time import TimeUtils
 from app.utils.prompt.reports.weekly_report_prompts import (
     WEEKLY_REPORT_PROMPT,
@@ -12,8 +12,7 @@ class GenerateWeeklyReport():
     def _call_llm(self, messages: list, error_response: str) -> str:
         """LLM 호출 공통 로직"""
         try:
-            client = get_openai_client()
-            response = get_completion(client, messages)
+            response = get_completion(messages)
             
             if not response:
                 return error_response

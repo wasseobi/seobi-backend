@@ -1,7 +1,6 @@
 from datetime import timezone
 import json
 from uuid import UUID
-from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.reports.weekly_report_prompts import (
     WEEKLY_ACHIEVEMENTS_PROMPT,
     WEEKLY_CONVERSATION_PROMPT,

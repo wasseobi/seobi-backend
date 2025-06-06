@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 
 from app.dao.session_dao import SessionDAO
 from app.utils.json_utils import extract_json_string
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 
 class SessionService:
     def __init__(self):
@@ -82,8 +82,7 @@ class SessionService:
         self.get_session(session_id)
 
         # TODO(GideokKim): OpenAI API 호출과 응답을 받을 위치를 고민해볼 필요 있음.
-        client = get_openai_client()
-        response = get_completion(client, context_messages)
+        response = get_completion(context_messages)
 
         try:
             json_str = extract_json_string(response)
