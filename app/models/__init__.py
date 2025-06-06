@@ -10,3 +10,4 @@ from .insight_article import InsightArticle
 from .interest import Interest
 from .auto_task import AutoTask
 from .briefing import Briefing
+from .auto_task_step import AutoTaskStep
