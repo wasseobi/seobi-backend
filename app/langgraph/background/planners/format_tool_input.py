@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import _get_openai_client, get_completion
 import json
 
 # 툴별 입력 스키마 정의
@@ -58,7 +58,7 @@ Objective: "클라우드 컴퓨팅에 대한 최신 정보 수집"
 
 import json
 from typing import Dict, Any, Optional
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import _get_openai_client, get_completion
 
 def format_tool_input(
     tool_name: str,
@@ -76,7 +76,7 @@ def format_tool_input(
     Returns:
         Optional[Dict[str, Any]]: 도구 실행에 필요한 입력값
     """
-    client = get_openai_client()
+    client = _get_openai_client()
 
     # prior_outputs → 요약 문자열로 정리
     prior_outputs = json.dumps(prior_outputs or {}, indent=2, ensure_ascii=False)

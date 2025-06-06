@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import _get_openai_client, get_completion
 import json
 
 # ✏️ 프롬프트 템플릿 정의
@@ -75,7 +75,7 @@ def generate_plan_steps(title: str, description: str, tool_names: List[str]) -> 
         tool_names=", ".join(tool_names)
     )
 
-    client = get_openai_client()
+    client = _get_openai_client()
     messages = [
         {"role": "system", "content": "너는 체계적인 AI 업무 계획자야. JSON 형식으로 정확히 출력해."},
         {"role": "user", "content": prompt}
