@@ -24,7 +24,7 @@ class GetDailyReport():
         else:
             raise ValueError("status는 'done', 'undone', None만 지원합니다.")
 
-        schedules = self.schedule_service.get_by_date_range_status(user_id, start, end, status=status_filter)
+        schedules = self.schedule_service.get_schedule_by_date_range_status(user_id, start, end, status=status_filter)
         return [
             {
                 "id": str(schedule.id),
