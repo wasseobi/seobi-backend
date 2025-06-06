@@ -289,7 +289,7 @@ class MessageService:
             # 4. 마지막으로 AI 응답 전송
             for chunk in final_response_buffer:
                 yield chunk
-                final_response_buffer.clear()
+            final_response_buffer.clear()
 
             context.finalize_assistant_response()
             self._save_context_messages(context)
