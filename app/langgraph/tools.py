@@ -158,7 +158,7 @@ def create_schedule_llm(text: str) -> dict:
         'status': schedule.status,
         'memo': clean_text(schedule.memo),
         'linked_service': schedule.linked_service,
-        'timestamp': schedule.timestamp.isoformat() if hasattr(schedule, 'timestamp') and schedule.timestamp else None,
+        'created_at': schedule.created_at.isoformat() if hasattr(schedule, 'created_at') and schedule.created_at else None,
     }
     return result
 
@@ -198,7 +198,7 @@ def get_user_schedules() -> list:
             'status': s.status,
             'memo': clean_text(s.memo),
             'linked_service': s.linked_service,
-            'timestamp': s.timestamp.isoformat() if hasattr(s, 'timestamp') and s.timestamp else None,
+            'created_at': s.created_at.isoformat() if hasattr(s, 'created_at') and s.created_at else None,
         }
         for s in schedules
     ]

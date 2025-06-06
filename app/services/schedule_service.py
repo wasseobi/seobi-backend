@@ -15,7 +15,24 @@ class ScheduleService:
         return self.schedule_dao.get_all_by_user_id(user_id)
 
     def get_schedule(self, schedule_id):
-        return self.schedule_dao.get_by_id(schedule_id)
+        return self.schedule_dao.get(schedule_id)
+
+    def get_by_date_range_status(self, user_id: UUID, start, end,
+                                 status: Optional[str] = None) -> List[Dict]:
+        """주간 일정 조회"""
+        return self.schedule_dao.get_all_by_user_id_in_range_status(
+            user_id, start, end, status=status
+        )
+
+    def get_count_by_date_range(self, user_id: UUID, start, end,
+                                status: Optional[str] = None) -> int:
+        return self.schedule_dao.get_count_by_date_range(
+            user_id, start, end, status=status
+        )
+    
+    def get_all_by_ongoing(self, user_id: UUID, current_time: timezone) -> List[Dict]:
+        """현재 진행 중인 일정 조회 (시작했지만 아직 완료되지 않은 일정)"""
+        return self.schedule_dao.get_all_by_ongoing(user_id, current_time)
 
     def create(self, data):
         return self.schedule_dao.create(**data)
@@ -45,11 +62,3 @@ class ScheduleService:
             'linked_service': result.get('linked_service', ''),
         }
         return self.create(parsed_data)
-
-    def get_weekly_schedules(self, user_id: UUID, tz: timezone,
-                             status: Optional[str] = None) -> List[Dict]:
-        """주간 일정 조회"""
-        week_start, week_end = TimeUtils.get_week_range(tz)
-        return self.schedule_dao.get_all_by_user_id_in_range(
-            user_id, week_start, week_end, status=status
-        )

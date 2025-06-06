@@ -16,10 +16,13 @@ class InterestService:
         return self.interest_dao.create(user_id, content, source_message, importance)
 
     def get_interest_by_id(self, interest_id):
-        return self.interest_dao.get_interest_by_id(interest_id)
+        return self.interest_dao.get(interest_id)
 
     def get_interests_by_user(self, user_id):
-        return self.interest_dao.get_interests_by_user(user_id)
+        return self.interest_dao.get_all_by_user_id(user_id)
+    
+    def get_all_by_user_id_date_range(self, user_id, start, end):
+        return self.interest_dao.get_all_by_user_id_date_range(user_id, start, end)
 
     def update_interest(self, interest_id, **kwargs):
         return self.interest_dao.update(interest_id, **kwargs)
@@ -42,7 +45,7 @@ class InterestService:
         ]
 
         # 기존 키워드 리스트 추출
-        interests = self.interest_dao.get_interests_by_user(session.user_id)
+        interests = self.interest_dao.get_all_by_user_id(session.user_id)
         user_keywords = [interest.content for interest in interests]
 
         # 2. 프롬프트 생성 (기존 키워드 리스트 포함)

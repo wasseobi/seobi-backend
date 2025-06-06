@@ -10,6 +10,7 @@ from app.utils.prompt.reports.weekly_report_prompts import (
 )
 from .get_weekly_report import GetWeeklyReport
 from ..summarize_report import SummarizeReport
+from app.utils.time import TimeUtils
 
 class SummarizeWeeklyReport(SummarizeReport):
     def __init__(self):
@@ -18,10 +19,10 @@ class SummarizeWeeklyReport(SummarizeReport):
 
     def summarize_weekly_achievements(self, user_id: UUID, tz: timezone) -> str:
         """주간 성과 요약"""
-        schedules = self.schedule_service.get_weekly_schedules(
-            user_id, tz, status='done')
-        daily_reports = self.get_report_service.get_weekly_daily_reports(
-            user_id, tz)
+        week_start, week_end = TimeUtils.get_week_range(tz)
+        schedules = self.schedule_service.get_by_date_range_status(
+            user_id, start=week_start, end=week_end, status='done')
+        daily_reports = self.get_report_service.get_reports_by_date_range(user_id, start=week_start, end=week_end, report_type='daily')
 
         schedule_count = len(schedules)
         report_count = len(daily_reports)
