@@ -12,10 +12,13 @@ def fetch_next_task(state: BGState) -> BGState:
     - 메인 Task → 서브 Task 순
     """
     if state.get("task") is not None:
+        print("[DEBUG] fetch_next_task - 이미 task가 있음, 바로 반환")
         return state
 
     user_id = state.get("user_id")
+    print(f"[DEBUG] fetch_next_task - user_id: {user_id}")
     if not user_id:
+        print("[DEBUG] fetch_next_task - user_id 없음, 에러 반환")
         state["error"] = "Missing user_id in state"
         state["finished"] = True
         return state
@@ -23,12 +26,14 @@ def fetch_next_task(state: BGState) -> BGState:
     try:
         auto_tasks = auto_task_service.get_user_auto_tasks(user_id)  # 최신순 DESC 정렬된 상태로 반환
     except Exception as e:
+        print(f"[DEBUG] fetch_next_task - get_user_auto_tasks 예외: {e}")
         state["error"] = str(e)
         state["finished"] = True
         return state
 
     # 가장 최근에 완료한 main task title
     last_title = state.get("last_completed_title")
+    print(f"[DEBUG] fetch_next_task - last_completed_title: {last_title}")
 
     selected = None
 
@@ -57,6 +62,7 @@ def fetch_next_task(state: BGState) -> BGState:
         selected = main_tasks[-1] if main_tasks else None
 
     if selected:
+        print(f"[DEBUG] fetch_next_task - 선택된 task: {selected}")
         state["task"] = TaskRuntime(
             task_id=uuid.UUID(selected["id"]),
             title=selected["title"],
@@ -72,8 +78,8 @@ def fetch_next_task(state: BGState) -> BGState:
     else:
         # ✅ 모든 main_task + sub_task 처리 완료
         print("[fetch_next_task] 모든 AutoTask 완료됨. 처리할 Task 없음.")
-        state["error"] = "No remaining AutoTask to process"
-        state["task"] = None
-        state["finished"] = True
-        
+        # state["error"] = "No remaining AutoTask to process"
+        # state["task"] = None
+        # state["finished"] = True
+
     return state

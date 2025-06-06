@@ -57,8 +57,11 @@ AI 도구 실행 결과 요약 (step_outputs): {step_outputs}
 """
 
 def finalize_task_result(state: BGState) -> BGState:
+    print(f"[DEBUG][finalize_task_result] state: {state}")
     task = state.get("task")
+    print(f"[DEBUG][finalize_task_result] state['task']: {task}")
     if not task:
+        print(f"[DEBUG][finalize_task_result] task 없음, 에러 반환")
         state["error"] = "No task found"
         state["finished"] = True
         return state
@@ -66,6 +69,9 @@ def finalize_task_result(state: BGState) -> BGState:
     plan = task.get("plan", {})
     completed = task.get("completed_ids", [])
     ready_queue = task.get("ready_queue", [])
+    print(f"[DEBUG][finalize_task_result] plan: {plan}")
+    print(f"[DEBUG][finalize_task_result] completed: {completed}")
+    print(f"[DEBUG][finalize_task_result] ready_queue: {ready_queue}")
 
     # 모든 Step이 완료되었는지 확인
     if len(completed) == len(plan) and not ready_queue:
@@ -73,11 +79,13 @@ def finalize_task_result(state: BGState) -> BGState:
 
         # Step 결과 순서는 최초 실행 순서대로 → ready_queue 순서를 기록한 리스트 사용
         sorted_step_ids = [sid for sid in plan.keys() if sid in completed]
+        print(f"[DEBUG][finalize_task_result] sorted_step_ids: {sorted_step_ids}")
         step_summaries = []
         step_outputs_for_llm = []
 
         for step_id in sorted_step_ids:
             step = plan[step_id]
+            print(f"[DEBUG][finalize_task_result] step_id: {step_id}, step: {step}")
             summary_entry = {
                 "step_id": step_id,
                 "tool": step.get("tool"),
@@ -94,21 +102,26 @@ def finalize_task_result(state: BGState) -> BGState:
         title = task.get("title", "")
         description = task.get("description", "")
         joined_outputs = "\n".join(step_outputs_for_llm)
+        print(f"[DEBUG][finalize_task_result] title: {title}, description: {description}")
+        print(f"[DEBUG][finalize_task_result] step_outputs_for_llm: {joined_outputs}")
 
         prompt = TASK_RESULT_CONTENT_PROMPT.format(
             title=title,
             description=description,
             step_outputs=joined_outputs
         )
+        print(f"[DEBUG][finalize_task_result] prompt: {prompt}")
 
         messages = [
             {"role": "system", "content": "너는 전문 칼럼니스트야"},
             {"role": "user", "content": prompt}
         ]
+        print(f"[DEBUG][finalize_task_result] messages: {messages}")
 
         client = get_openai_client()
         try:
             response = get_completion(client, messages)
+            print(f"[DEBUG][finalize_task_result] LLM 응답: {response}")
             match = re.search(r'```json\s*({[\s\S]*?})\s*```', response)
             if not match:
                 # ```json ... ``` 블록이 없으면 그냥 JSON 오브젝트만 추출
@@ -136,9 +149,12 @@ def finalize_task_result(state: BGState) -> BGState:
             "summary": summary,
             "steps": step_summaries
         }
+        print(f"[DEBUG][finalize_task_result] task['task_result']: {task['task_result']}")
         task["finish_at"] = datetime.now(timezone.utc)
+        print(f"[DEBUG][finalize_task_result] task['finish_at']: {task['finish_at']}")
 
         state["task"] = task
         state["finished"] = True
+        print(f"[DEBUG][finalize_task_result] state 반환: {state}")
 
     return state

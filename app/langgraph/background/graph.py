@@ -25,7 +25,7 @@ def get_background_graph() -> StateGraph:
     # Entry와 Finish가 동일한 이유:
     # fetch_next_task → 서브태스크를 반복적으로 처리 후, 메인 태스크 종료 판단 용도
     builder.set_entry_point("fetch_next_task")
-    builder.set_finish_point("fetch_next_task")
+    builder.set_finish_point("write_result_to_db")
 
     builder.add_edge("fetch_next_task", "initialize_task_plan")
     builder.add_edge("initialize_task_plan", "dequeue_ready_step")
@@ -40,6 +40,5 @@ def get_background_graph() -> StateGraph:
         "fail": "finalize_task_result"
     })
     builder.add_edge("finalize_task_result", "write_result_to_db")
-    builder.add_edge("write_result_to_db", "fetch_next_task")
 
     return builder.compile()

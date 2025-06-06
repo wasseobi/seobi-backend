@@ -98,8 +98,9 @@ class AutoTaskService:
 
     # ✅ 여기 아래에 추가!
     def save_result(self, task_id, result, finish_at):
-        self.auto_task_dao.update(task_id, {
-            "linked_service": result['summary'],  # ✅ 요약결과 임시 저장
-            "finish_at": finish_at,
-            "status": "done"
-        })
+        self.auto_task_dao.update(
+            task_id,
+            linked_service=result['summary'],
+            finish_at=finish_at,
+            status="done"
+        )

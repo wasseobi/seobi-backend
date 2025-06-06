@@ -5,16 +5,23 @@ from app.langgraph.background.planners.format_tool_input import format_tool_inpu
 from app.utils.summarize_output import gpt_summarize_output
 import re
 
-def run_tool(state: BGState, step: PlanStep) -> Tuple[BGState, PlanStep]:
+def run_tool(state: BGState) -> BGState:
     """
     주어진 PlanStep에 해당하는 tool을 실행하고 결과를 PlanStep에 저장한다.
     실행 결과는 step["output"]에 저장하며, 성공 여부에 따라 status를 변경한다.
     """
+    step = state.get("step")
     task = state.get("task")
+
+    if not step:
+        state["error"] = "No step found"
+        state["finished"] = True
+        return state
+
     if not task:
         state["error"] = "No task found"
         state["finished"] = True
-        return state, step
+        return state
 
     try:
         tool_name = step.get("tool")
@@ -75,5 +82,6 @@ def run_tool(state: BGState, step: PlanStep) -> Tuple[BGState, PlanStep]:
     # 상태 반영
     task["plan"][step["step_id"]] = step
     state["task"] = task
+    state["step"] = step
 
-    return state, step
+    return state

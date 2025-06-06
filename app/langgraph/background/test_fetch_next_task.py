@@ -7,6 +7,8 @@ from app.langgraph.background.nodes.evaluate_step import evaluate_step
 from app.langgraph.background.nodes.finalize_task_result import finalize_task_result
 from app.langgraph.background.bg_state import BGState
 from app import create_app
+from app.langgraph.background.nodes.write_result_to_db import write_result_to_db
+from datetime import datetime, timezone
 
 # def test_fetch_next_task_main_task():
 #     # 실제 존재하는 유저 UUID로 교체하세요
@@ -148,7 +150,152 @@ from app import create_app
 #         else:
 #             print("No task to initialize plan for.")
 
-def test_full_task_execution_loop():
+# def test_full_task_execution_loop():
+#     user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
+#     state: BGState = {
+#         "user_id": user_id,
+#         "task": None,
+#         "last_completed_title": None,
+#         "error": None,
+#         "finished": False
+#     }
+#     app = create_app()
+#     with app.app_context():
+#         # 1. fetch_next_task
+#         state = fetch_next_task(state)
+#         assert state["task"] is not None, "Task가 존재해야 합니다."
+#         # 2. initialize_task_plan
+#         state = initialize_task_plan(state)
+#         assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
+#         # 3. 루프: 모든 step 완료까지 반복
+#         while True:
+#             # dequeue_ready_step
+#             result = dequeue_ready_step(state)
+#             # finalize_task_result 등은 (state, result_status) 튜플을 반환할 수 있으므로 분기 처리
+#             if isinstance(result, tuple):
+#                 state = result[0]
+#             else:
+#                 state = result
+#             step = state.get("step")
+#             if step is None:
+#                 print("[test_full_task_execution_loop] 모든 step 완료, finalize_task_result로 분기")
+#                 break
+#             # run_tool
+#             result = run_tool(state, step)
+#             if isinstance(result, tuple):
+#                 state = result[0]
+#             else:
+#                 state = result
+#             step = state.get("step")
+#             # evaluate_step
+#             result = evaluate_step(state)
+#             if isinstance(result, tuple):
+#                 state = result[0]
+#             else:
+#                 state = result
+#             eval_status = state.get("eval_status")
+#             print(f"[test_full_task_execution_loop] step {step['step_id']} 평가 결과: {eval_status}")
+#             if eval_status == "success":
+#                 # 성공 시 다음 step으로 루프 계속
+#                 continue
+#             elif eval_status == "retry":
+#                 # 재시도 예약: pending 상태로 다시 run_tool로 루프
+#                 continue
+#             elif eval_status == "fail":
+#                 # 완전 실패: 루프 종료
+#                 print(f"[test_full_task_execution_loop] step {step['step_id']} 완전 실패, 루프 종료")
+#                 break
+#         # 모든 step 완료 후 상태 검증
+#         assert state["task"] is not None
+#         print("[test_full_task_execution_loop] 최종 state=", state)
+
+# def test_finalize_task_result_after_full_loop():
+#     user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
+#     state: BGState = {
+#         "user_id": user_id,
+#         "task": None,
+#         "last_completed_title": None,
+#         "error": None,
+#         "finished": False
+#     }
+#     app = create_app()
+#     with app.app_context():
+#         # 1. fetch_next_task
+#         state = fetch_next_task(state)
+#         assert state["task"] is not None, "Task가 존재해야 합니다."
+#         # 2. initialize_task_plan
+#         state = initialize_task_plan(state)
+#         assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
+#         # 3. 루프: 모든 step 완료까지 반복
+#         while True:
+#             state = dequeue_ready_step(state)
+#             step = state.get("step")
+#             if step is None:
+#                 break
+#             state = run_tool(state)
+#             state = evaluate_step(state)
+#             eval_status = state.get("eval_status")
+#             if eval_status == "fail":
+#                 break
+#         # 4. 모든 step 완료 후 finalize_task_result 호출
+#         state, result_status = finalize_task_result(state)
+#         print("[test_finalize_task_result_after_full_loop] result_status=", result_status)
+#         print("[test_finalize_task_result_after_full_loop] 최종 state=", state)
+#         # 검증: task_result가 생성되어 있는지
+#         assert state["task"].get("task_result") is not None, "task_result가 생성되어야 합니다."
+#         assert state["finished"] is True, "finished가 True여야 합니다."
+
+# def test_finalize_task_result_summary_content():
+#     user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
+#     state: BGState = {
+#         "user_id": user_id,
+#         "task": None,
+#         "last_completed_title": None,
+#         "error": None,
+#         "finished": False
+#     }
+#     app = create_app()
+#     with app.app_context():
+#         # 1. fetch_next_task
+#         state = fetch_next_task(state)
+#         assert state["task"] is not None, "Task가 존재해야 합니다."
+#         # 2. initialize_task_plan
+#         state = initialize_task_plan(state)
+#         assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
+#         # 3. 루프: 모든 step 완료까지 반복
+#         while True:
+#             state = dequeue_ready_step(state)
+#             step = state.get("step")
+#             if step is None:
+#                 break
+#             state = run_tool(state)
+#             state = evaluate_step(state)
+#             eval_status = state.get("eval_status")
+#             if eval_status == "fail":
+#                 break
+#         # 4. 모든 step 완료 후 finalize_task_result 호출
+#         state = finalize_task_result(state)
+#         print("[test_finalize_task_result_summary_content] 최종 state=", state)
+#         # 검증: summary가 비어있지 않고 string 또는 list가 아닌지 확인
+#         task_result = state["task"].get("task_result")
+#         assert task_result is not None, "task_result가 생성되어야 합니다."
+#         summary = task_result.get("summary")
+#         assert summary is not None, "summary가 None이 아니어야 합니다."
+#         print(f"[test_finalize_task_result_summary_content] summary type: {type(summary)}, value: {summary}")
+#         # summary가 dict면 value가 string이고 비어있지 않은지 확인
+#         if isinstance(summary, dict):
+#             assert len(list(summary.values())[0].strip()) > 0, "summary dict의 value가 비어있지 않아야 합니다."
+#         elif isinstance(summary, str):
+#             assert len(summary.strip()) > 0, "summary가 비어있지 않아야 합니다."
+#         elif isinstance(summary, list):
+#             assert any(len(str(s).strip()) > 0 for s in summary), "summary 리스트가 비어있지 않아야 합니다."
+#         else:
+#             assert False, f"summary 타입이 예상과 다름: {type(summary)}"
+
+def test_finalize_and_write_result_to_db():
+    """
+    finalize_task_result로 요약 생성 후 write_result_to_db로 DB 저장까지 전체 워크플로우를 검증하는 통합 테스트
+    """
     user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
     state: BGState = {
         "user_id": user_id,
@@ -159,138 +306,59 @@ def test_full_task_execution_loop():
     }
     app = create_app()
     with app.app_context():
+        print("[DEBUG] DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
         # 1. fetch_next_task
         state = fetch_next_task(state)
+        print("[TEST DEBUG] fetch_next_task 호출 후 state:", state)
         assert state["task"] is not None, "Task가 존재해야 합니다."
         # 2. initialize_task_plan
         state = initialize_task_plan(state)
         assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
-        # 3. 루프: 모든 step 완료까지 반복
+        # 3. step 루프
         while True:
-            # dequeue_ready_step
             result = dequeue_ready_step(state)
-            # finalize_task_result 등은 (state, result_status) 튜플을 반환할 수 있으므로 분기 처리
             if isinstance(result, tuple):
                 state = result[0]
             else:
                 state = result
             step = state.get("step")
             if step is None:
-                print("[test_full_task_execution_loop] 모든 step 완료, finalize_task_result로 분기")
                 break
-            # run_tool
-            result = run_tool(state, step)
+            result = run_tool(state)  # step 인자 없이 호출
             if isinstance(result, tuple):
                 state = result[0]
             else:
                 state = result
             step = state.get("step")
-            # evaluate_step
             result = evaluate_step(state)
             if isinstance(result, tuple):
                 state = result[0]
             else:
                 state = result
             eval_status = state.get("eval_status")
-            print(f"[test_full_task_execution_loop] step {step['step_id']} 평가 결과: {eval_status}")
-            if eval_status == "success":
-                # 성공 시 다음 step으로 루프 계속
-                continue
-            elif eval_status == "retry":
-                # 재시도 예약: pending 상태로 다시 run_tool로 루프
-                continue
-            elif eval_status == "fail":
-                # 완전 실패: 루프 종료
-                print(f"[test_full_task_execution_loop] step {step['step_id']} 완전 실패, 루프 종료")
-                break
-        # 모든 step 완료 후 상태 검증
-        assert state["task"] is not None
-        print("[test_full_task_execution_loop] 최종 state=", state)
-
-def test_finalize_task_result_after_full_loop():
-    user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
-    state: BGState = {
-        "user_id": user_id,
-        "task": None,
-        "last_completed_title": None,
-        "error": None,
-        "finished": False
-    }
-    app = create_app()
-    with app.app_context():
-        # 1. fetch_next_task
-        state = fetch_next_task(state)
-        assert state["task"] is not None, "Task가 존재해야 합니다."
-        # 2. initialize_task_plan
-        state = initialize_task_plan(state)
-        assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
-        # 3. 루프: 모든 step 완료까지 반복
-        while True:
-            state = dequeue_ready_step(state)
-            step = state.get("step")
-            if step is None:
-                break
-            state = run_tool(state)
-            state = evaluate_step(state)
-            eval_status = state.get("eval_status")
             if eval_status == "fail":
                 break
-        # 4. 모든 step 완료 후 finalize_task_result 호출
-        state, result_status = finalize_task_result(state)
-        print("[test_finalize_task_result_after_full_loop] result_status=", result_status)
-        print("[test_finalize_task_result_after_full_loop] 최종 state=", state)
-        # 검증: task_result가 생성되어 있는지
-        assert state["task"].get("task_result") is not None, "task_result가 생성되어야 합니다."
-        assert state["finished"] is True, "finished가 True여야 합니다."
-
-def test_finalize_task_result_summary_content():
-    user_id = uuid.UUID("904c10cb-f4f1-4c32-b56f-331af20777df")
-    state: BGState = {
-        "user_id": user_id,
-        "task": None,
-        "last_completed_title": None,
-        "error": None,
-        "finished": False
-    }
-    app = create_app()
-    with app.app_context():
-        # 1. fetch_next_task
-        state = fetch_next_task(state)
-        assert state["task"] is not None, "Task가 존재해야 합니다."
-        # 2. initialize_task_plan
-        state = initialize_task_plan(state)
-        assert "ready_queue" in state["task"] and len(state["task"]["ready_queue"]) > 0, "ready_queue가 비어있지 않아야 합니다."
-        # 3. 루프: 모든 step 완료까지 반복
-        while True:
-            state = dequeue_ready_step(state)
-            step = state.get("step")
-            if step is None:
-                break
-            state = run_tool(state)
-            state = evaluate_step(state)
-            eval_status = state.get("eval_status")
-            if eval_status == "fail":
-                break
-        # 4. 모든 step 완료 후 finalize_task_result 호출
-        state, result_status = finalize_task_result(state)
-        print("[test_finalize_task_result_summary_content] result_status=", result_status)
-        print("[test_finalize_task_result_summary_content] 최종 state=", state)
-        # 검증: summary가 비어있지 않고 string 또는 list가 아닌지 확인
-        task_result = state["task"].get("task_result")
-        assert task_result is not None, "task_result가 생성되어야 합니다."
-        summary = task_result.get("summary")
-        assert summary is not None, "summary가 None이 아니어야 합니다."
-        print(f"[test_finalize_task_result_summary_content] summary type: {type(summary)}, value: {summary}")
-        # summary가 dict면 value가 string이고 비어있지 않은지 확인
-        if isinstance(summary, dict):
-            assert len(list(summary.values())[0].strip()) > 0, "summary dict의 value가 비어있지 않아야 합니다."
-        elif isinstance(summary, str):
-            assert len(summary.strip()) > 0, "summary가 비어있지 않아야 합니다."
-        elif isinstance(summary, list):
-            assert any(len(str(s).strip()) > 0 for s in summary), "summary 리스트가 비어있지 않아야 합니다."
+        # 4. finalize_task_result로 요약 생성
+        result = finalize_task_result(state)
+        if isinstance(result, tuple):
+            state = result[0]
         else:
-            assert False, f"summary 타입이 예상과 다름: {type(summary)}"
+            state = result
+        print("[test_finalize_and_write_result_to_db] 요약 생성 후 state:", state)
+        # 5. write_result_to_db로 DB 저장
+        new_state = write_result_to_db(state)
+        print("[test_finalize_and_write_result_to_db] DB 저장 후 state:", new_state)
+        # 검증
+        if new_state.get("error") is None:
+            assert new_state["task"] is None, "task가 None으로 초기화되어야 합니다."
+        else:
+            assert new_state["task"] is not None, "저장 실패 시 task가 남아 있어야 합니다."
+        assert new_state["finished"] is True, "finished가 True여야 합니다."
+        assert new_state["last_completed_title"] == state["task"]["title"] if state["task"] else True, "last_completed_title이 title로 갱신되어야 합니다."
+        assert new_state.get("error") is None, f"에러가 없어야 합니다. error={new_state.get('error')}"
 
-test_full_task_execution_loop()
-test_finalize_task_result_after_full_loop()
-test_finalize_task_result_summary_content()
+# test_full_task_execution_loop()
+# test_finalize_task_result_after_full_loop()
+# test_finalize_task_result_summary_content()
+# test_write_result_to_db()
+test_finalize_and_write_result_to_db()

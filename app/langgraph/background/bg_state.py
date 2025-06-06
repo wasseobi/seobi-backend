@@ -31,3 +31,4 @@ class BGState(TypedDict):
     last_completed_title: Optional[str]
     error: Optional[str]
     finished: bool
+    step: Optional[PlanStep]
