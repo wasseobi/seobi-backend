@@ -18,4 +18,3 @@ class User(db.Model):
     interests = db.relationship('Interest', back_populates='user', cascade='all, delete-orphan', lazy="joined")
     auto_tasks = db.relationship('AutoTask', back_populates='user', cascade='all, delete-orphan', lazy="select")
     briefings = db.relationship('Briefing', back_populates='user', cascade='all, delete-orphan', lazy=True)
-    auto_task_steps = db.relationship('AutoTaskStep', back_populates='user', cascade='all, delete-orphan', lazy="select")
