@@ -2,7 +2,7 @@ import json
 
 from app.dao.interest_dao import InterestDAO
 from app.dao.session_dao import SessionDAO
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.utils.prompt.service_prompts import (
     EXTRACT_KEYWORDS_SYSTEM_PROMPT, get_interest_user_prompt)
 
@@ -57,8 +57,7 @@ class InterestService:
         ]
 
         # 3. LLM 호출
-        client = get_openai_client()
-        response = get_completion(client, context_messages)
+        response = get_completion(context_messages)
 
         # 4. 결과 파싱 및 저장 (response는 LLM이 반환하는 JSON 문자열이어야 함)
         try:
@@ -66,7 +65,7 @@ class InterestService:
             # 기존 키워드 importance 감소 및 update
             for interest in interests:
                 interest.importance *= 0.9  # 예시: 10% 감소
-                self.interest_dao.update(interest.id, importance=interest.importance)
+                self.update_interest(interest.id, importance=interest.importance)
             # 새 키워드 처리
             for item in result:
                 keyword = item["keyword"]

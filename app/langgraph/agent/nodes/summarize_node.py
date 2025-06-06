@@ -1,5 +1,5 @@
 from app.langgraph.agent.agent_state import AgentState
-from app.utils.openai_client import get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from langchain_core.messages import BaseMessage, HumanMessage, RemoveMessage, AIMessage
 import logging
 from typing import Dict, List, Union
@@ -53,7 +53,7 @@ def summarize_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         ]
 
         # 요약 생성
-        response = get_completion(get_openai_client(), summarize_messages)
+        response = get_completion(summarize_messages)
         new_summary = response.strip()
 
         # 상태 업데이트

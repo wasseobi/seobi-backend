@@ -24,7 +24,7 @@ def init_langchain_llm(tools: List[BaseTool] = None):
         return llm.bind_tools(tools)
     return llm
 
-def get_openai_client():
+def _get_openai_client():
     """Get configured Azure OpenAI client"""
     config = get_openai_config()
     client = AzureOpenAI(
@@ -34,10 +34,9 @@ def get_openai_client():
     )
     return client
 
-# TODO get_openai_client 어차피 계속 호출되므로, get_openai_client()를 호출하는 대신
-# get_completion()이랑 get_embedding()에서 client를 인자로 받도록 변경하는 게 나아보임.
-def get_completion(client, messages, max_completion_tokens=2000):
+def get_completion(messages, max_completion_tokens=2000):
     """Generate chat completion using Azure OpenAI."""
+    client = _get_openai_client()
     try:
         config = get_openai_config()
         response = client.chat.completions.create(
@@ -50,8 +49,9 @@ def get_completion(client, messages, max_completion_tokens=2000):
     except Exception as e:
         raise RuntimeError(f"Error calling OpenAI API: {str(e)}")
 
-def get_embedding(client, text: str) -> list[float]:
+def get_embedding(text: str) -> list[float]:
     """Generate embedding vector using Azure OpenAI."""
+    client = _get_openai_client()
     try:
         config = get_openai_config()
         response = client.embeddings.create(

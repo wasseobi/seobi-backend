@@ -1,7 +1,6 @@
 from datetime import timezone
 import json
 from uuid import UUID
-from app.utils.openai_client import get_openai_client, get_completion
 from app.utils.prompt.reports.weekly_report_prompts import (
     WEEKLY_ACHIEVEMENTS_PROMPT,
     WEEKLY_CONVERSATION_PROMPT,
@@ -19,10 +18,13 @@ class SummarizeWeeklyReport(SummarizeReport):
 
     def summarize_weekly_achievements(self, user_id: UUID, tz: timezone) -> str:
         """주간 성과 요약"""
+        from app.services.reports.report_service import ReportService
+        self.report_service = ReportService()
+        self.report_service = ReportService()
         week_start, week_end = TimeUtils.get_week_range(tz)
-        schedules = self.schedule_service.get_by_date_range_status(
+        schedules = self.schedule_service.get_schedule_by_date_range_status(
             user_id, start=week_start, end=week_end, status='done')
-        daily_reports = self.get_report_service.get_reports_by_date_range(user_id, start=week_start, end=week_end, report_type='daily')
+        daily_reports = self.report_service.get_reports_by_date_range(user_id, start=week_start, end=week_end, report_type='daily')
 
         schedule_count = len(schedules)
         report_count = len(daily_reports)

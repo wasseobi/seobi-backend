@@ -67,7 +67,7 @@ class GetWeeklyReport():
         self.schedule_service = ScheduleService()
 
         next_week_start, next_week_end = TimeUtils.get_next_week_range(tz)
-        schedules = self.schedule_service.get_by_date_range_status(
+        schedules = self.schedule_service.get_schedule_by_date_range_status(
             user_id, next_week_start, next_week_end, status='undone'
         )
         return [

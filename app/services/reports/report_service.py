@@ -27,7 +27,7 @@ class ReportService:
         return [self._serialize_report(r) for r in reports]
 
     def get_user_type_reports(self, user_id, type):
-        reports = self.report_dao.get_by_user_id_and_type(user_id, type)
+        reports = self.report_dao.get_all_by_user_id_and_type(user_id, type)
         return [self._serialize_report(r) for r in reports]
 
     def get_report(self, report_id):
@@ -40,9 +40,9 @@ class ReportService:
             user_id, start, end, report_type=report_type
         )
 
-    def get_all_month_by_type(self, user_id: UUID, year: int, month: int, report_type: str) -> List[Dict]:
+    def get_reports_month_by_type(self, user_id: UUID, year: int, month: int, report_type: str) -> List[Dict]:
         """특정 연도와 월에 해당하는 리포트 조회"""
-        return self.report_dao.get_reports_by_month(user_id, year, month, report_type=report_type)
+        return self.report_dao.get_all_by_month(user_id, year, month, report_type=report_type)
 
     def create_report(self, data):
         report = self.report_dao.create(**data)

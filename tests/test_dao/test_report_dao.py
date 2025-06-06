@@ -107,7 +107,7 @@ class TestReportDAO:
         )
 
         # When
-        daily_reports = report_dao.get_by_user_id_and_type(sample_user.id, "daily")
+        daily_reports = report_dao.get_all_by_user_id_and_type(sample_user.id, "daily")
 
         # Then
         assert len(daily_reports) == 1
@@ -140,8 +140,8 @@ class TestReportDAO:
         assert report1.id in report_ids
         assert report2.id in report_ids
 
-    def test_get_reports_by_month(self, report_dao, sample_user):
-        """get_reports_by_month() 메서드 테스트"""
+    def test_get_all_by_month(self, report_dao, sample_user):
+        """get_all_by_month() 메서드 테스트"""
         # Given
         now = datetime.now(timezone.utc)
         report = report_dao.create(
@@ -151,7 +151,7 @@ class TestReportDAO:
         )
 
         # When
-        reports = report_dao.get_reports_by_month(sample_user.id, now.year, now.month)
+        reports = report_dao.get_all_by_month(sample_user.id, now.year, now.month)
 
         # Then
         assert len(reports) > 0

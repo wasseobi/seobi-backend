@@ -30,7 +30,7 @@ class GenerateMonthlyReport():
         # 다음달 목표 제안을 위한 데이터 준비
         interests = self.interest_service.get_all_by_user_id_date_range(
             user_id, start_date, end_date)
-        ongoing_schedules = self.schedule_service.get_all_by_ongoing(
+        ongoing_schedules = self.schedule_service.get_schedule_by_ongoing(
             user_id, end_date)
         next_month_goals = self.summarizer.suggest_next_month_goals(
             user_id, monthly_achievements, interests, ongoing_schedules

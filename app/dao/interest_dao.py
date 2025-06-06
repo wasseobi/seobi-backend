@@ -59,6 +59,3 @@ class InterestDAO(BaseDAO[Interest]):
         except Exception as e:
             super().query().session.rollback()
             raise e
-
-    def update(self, interest_id, **kwargs):
-        return super().update(str(interest_id), **kwargs)
