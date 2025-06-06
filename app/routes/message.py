@@ -52,6 +52,10 @@ class UserMessages(Resource):
     def get(self, user_id):
         """특정 사용자의 모든 메시지 기록을 가져옵니다."""
         try:
-            return message_service.get_user_messages(user_id)
+            messages = []
+            for message in message_service.get_user_messages(user_id):
+                message.pop('vector', None)
+                messages.append(message)
+            return messages, 200
         except Exception as e:
             return {'error': str(e)}, 400

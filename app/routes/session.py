@@ -348,7 +348,11 @@ class SessionMessages(Resource):
     def get(self, session_id):
         """특정 세션의 모든 메시지 기록을 가져옵니다."""
         try:
-            messages = message_service.get_session_messages(session_id)
-            return messages
+            messages = []
+            for message in message_service.get_session_messages(session_id):
+                message.pop('vector', None)
+                messages.append(message)
+            return messages, 200
         except Exception as e:
+            print(e)
             ns.abort(400, f"Failed to get session messages: {str(e)}")
