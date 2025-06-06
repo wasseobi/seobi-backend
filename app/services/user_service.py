@@ -12,7 +12,8 @@ class UserService:
         return {
             'id': str(user.id),
             'username': user.username,
-            'email': user.email
+            'email': user.email,
+            'user_memory': user.user_memory
         }
 
     # NOTE(GideokKim): 유저가 없을 경우엔 빈 리스트를 반환하는 것은 정상적인 동작이므로 예외처리 필요 없음.
