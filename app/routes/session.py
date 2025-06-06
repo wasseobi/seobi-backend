@@ -350,7 +350,7 @@ class SessionMessages(Resource):
         try:
             messages = []
             for message in message_service.get_session_messages(session_id):
-                del message['vector']
+                message.pop('vector', None)
                 messages.append(message)
             return messages, 200
         except Exception as e:
