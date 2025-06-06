@@ -41,7 +41,3 @@ class ScheduleDAO(BaseDAO[Schedule]):
 
     def create(self, user_id: uuid.UUID, **kwargs) -> Schedule:
         return super().create(user_id=user_id, **kwargs)
-
-    def update(self, schedule_id: uuid.UUID, **kwargs) -> Optional[Schedule]:
-        """Update a schedule with specific fields"""
-        return super().update(str(schedule_id), **kwargs)

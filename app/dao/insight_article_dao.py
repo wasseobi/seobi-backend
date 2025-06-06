@@ -22,6 +22,3 @@ class InsightArticleDAO(BaseDAO[InsightArticle]):
 
     def create(self, user_id: uuid.UUID, **kwargs) -> InsightArticle:
         return super().create(user_id=user_id, **kwargs)
-
-    def update(self, article_id: uuid.UUID, **kwargs) -> Optional[InsightArticle]:
-        return super().update(str(article_id), **kwargs)

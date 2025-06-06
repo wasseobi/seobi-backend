@@ -64,6 +64,3 @@ class MessageDAO(BaseDAO[Message]):
             keyword_text=keyword_text,
             keyword_vector=keyword_vector
         )
-
-    def update(self, message_id: uuid.UUID, **kwargs) -> Optional[Message]:
-        return super().update(str(message_id), **kwargs)
