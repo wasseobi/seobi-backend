@@ -8,15 +8,11 @@ class ReportDAO(BaseDAO[Report]):
     def __init__(self):
         super().__init__(Report)
 
-    def get_all_reports(self) -> List[Report]:
-        """Get all reports ordered by created_at desc"""
-        return self.query().order_by(Report.created_at.desc()).all()
-
     def get_all_by_user_id(self, user_id: uuid.UUID) -> List[Report]:
         """Get all reports for a user"""
         return self.query().filter_by(user_id=user_id).all()
     
-    def get_by_user_id_and_type(self, user_id: uuid.UUID, report_type: str) -> List[Report]:
+    def get_all_by_user_id_and_type(self, user_id: uuid.UUID, report_type: str) -> List[Report]:
         """Get all reports for a user with specific type"""
         return self.query().filter_by(user_id=user_id, type=report_type).all()
 
@@ -28,7 +24,7 @@ class ReportDAO(BaseDAO[Report]):
             query = query.filter_by(type=report_type)
         return query.order_by(Report.created_at.asc()).all()
 
-    def get_reports_by_month(self, user_id: uuid.UUID, year: int, month: int, report_type: Optional[str] = None) -> List[Report]:
+    def get_all_by_month(self, user_id: uuid.UUID, year: int, month: int, report_type: Optional[str] = None) -> List[Report]:
         """Get all reports for a user in a specific month, optionally filtered by type."""
         # 해당 월의 시작일과 다음 달의 시작일을 계산
         start_date = datetime(year, month, 1)
