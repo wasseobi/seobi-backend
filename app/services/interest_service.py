@@ -65,7 +65,7 @@ class InterestService:
             # 기존 키워드 importance 감소 및 update
             for interest in interests:
                 interest.importance *= 0.9  # 예시: 10% 감소
-                self.interest_dao.update(interest.id, importance=interest.importance)
+                self.update_interest(interest.id, importance=interest.importance)
             # 새 키워드 처리
             for item in result:
                 keyword = item["keyword"]

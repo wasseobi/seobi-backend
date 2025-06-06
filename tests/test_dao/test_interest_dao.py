@@ -195,7 +195,7 @@ class TestInterestDAO:
 
         # When
         updated_interest = interest_dao.update(
-            interest_id=sample_interest.id,
+            id=sample_interest.id,
             content=new_content,
             importance=new_importance,
         )
