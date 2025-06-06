@@ -35,5 +35,3 @@ class BackgroundService:
         except Exception as e:
             print(f"Error during background: {str(e)}")
             return {"error": str(e)}
-
-

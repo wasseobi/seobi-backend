@@ -11,15 +11,21 @@ background_model = register_models(ns)
 background_service = BackgroundService()
 
 def safe_background_response(data: dict) -> dict:
-    return {
+    result = {
         'user_id': data.get('user_id') or "",
-        'task': None,  # 빈 dict 대신 None!
-        'last_completed_title': data.get('last_completed_title') or "",
-        'error': data.get('error') or "",
-        'finished': bool(data.get('finished')),
-        'step': None,  # 빈 dict 대신 None!
-    }
-
+        'finished': bool(data.get('finished'))
+        }
+    
+    if data.get('task') is not None:
+        result['task'] = data['task']
+    if data.get('last_completed_title'):
+        result['last_completed_title'] = data['last_completed_title']
+    if data.get('error'):
+        result['error'] = data['error']
+    if data.get('step') is not None:
+        result['step'] = data['step']
+    return result
+    
 @ns.route('/auto-task/<uuid:user_id>')
 @ns.param('user_id', '사용자(user) UUID')
 class BackgroundAutoTask(Resource):

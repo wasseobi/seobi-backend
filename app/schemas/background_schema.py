@@ -1,6 +1,5 @@
 from flask_restx import fields as api_fields
 
-
 def register_models(ns):
 
     background_model = ns.model('Background', {
