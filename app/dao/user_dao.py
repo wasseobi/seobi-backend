@@ -22,12 +22,12 @@ class UserDAO(BaseDAO[User]):
             return user.user_memory
         return None
     
-    def update_user_memory(self, user_id: uuid.UUID, user_memory: dict) -> Optional[User]:
-        return super().update(str(user_id), user_memory=user_memory) 
-    
     def create(self, username: str, email: str) -> User:
         return super().create(username=username, email=email)
 
     def update(self, user_id: uuid.UUID, username: Optional[str] = None, email: Optional[str] = None) -> Optional[User]:
         return super().update(str(user_id), username=username, email=email) 
+    
+    def update_user_memory(self, user_id: uuid.UUID, user_memory: dict) -> Optional[User]:
+        return super().update(str(user_id), user_memory=user_memory) 
     
