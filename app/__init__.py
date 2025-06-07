@@ -1,4 +1,6 @@
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -29,9 +31,45 @@ api = Api(
     security='Bearer'  # 모든 엔드포인트에 기본적으로 Bearer 인증 적용
 )
 
+def configure_logging(app):
+    """Configure logging for the application"""
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    
+    # Set up file handler
+    file_handler = RotatingFileHandler(
+        'logs/app.log',
+        maxBytes=1024 * 1024,  # 1MB
+        backupCount=10
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    
+    # Set up console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s'
+    ))
+    console_handler.setLevel(logging.INFO)
+    
+    # Configure root logger
+    app.logger.addHandler(file_handler)
+    app.logger.addHandler(console_handler)
+    app.logger.setLevel(logging.INFO)
+    
+    # Set logging level for other loggers
+    logging.getLogger('werkzeug').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 def create_app(config_name=None):
     load_dotenv(override=True)
     app = Flask(__name__)
+
+    # Configure logging
+    configure_logging(app)
+    app.logger.info('Seobi application startup')
 
     # set json encoding to utf-8
     app.json.ensure_ascii = False

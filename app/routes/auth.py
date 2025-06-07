@@ -6,6 +6,7 @@ from app.models.db import db
 from app.models.user import User
 from app.services.user_service import UserService
 from app.utils.app_config import get_auth_config, is_dev_mode
+import logging
 
 # Create namespace
 ns = Namespace('auth', description='사용자 인증 작업')
@@ -35,6 +36,7 @@ class SignIn(Resource):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user_service = UserService()
+        self.logger = logging.getLogger(__name__)
 
     @ns.doc('구글 로그인',
             description='구글 ID 토큰으로 로그인하고 JWT 토큰을 발급받습니다.',
@@ -51,25 +53,39 @@ class SignIn(Resource):
               원래 요청 Body에 id_token을 받도록 되어있었지만,
               이제 email, username을 받도록 변경되었습니다.
         """
+
+        self.logger.info("SignIn request received")
+        self.logger.debug(f"Request headers: {dict(request.headers)}")
         
         email = request.json.get('email')
         if not email:
+            self.logger.warning("SignIn failed: email not provided")
             return {'error': 'email required'}, 400
         
         username = request.json.get('username') or email.split('@')[0]
+        self.logger.info(f"Processing sign in for email: {email}, username: {username}")
         
         try:
             # Find or create user
+            self.logger.debug(f"Attempting to find user with email: {email}")
             user = self.user_service.get_user_by_email(email)
+            
             if not user:
+                self.logger.info(f"User not found, creating new user with email: {email}")
                 user = self.user_service.create_user(username=username, email=email)
+                self.logger.info(f"New user created with ID: {user['id']}")
+            else:
+                self.logger.info(f"Existing user found with ID: {user['id']}")
 
             # Create JWT token
+            self.logger.debug("Creating JWT token")
             access_token = create_access_token(identity=user['id'])
+            self.logger.info(f"JWT token created for user ID: {user['id']}")
             
             return {'id': user['id'], 'access_token': access_token}
 
         except Exception as e:
+            self.logger.error(f"SignIn failed with error: {str(e)}", exc_info=True)
             return {'error': 'Invalid id_token', 'detail': str(e)}, 401
 
 @ns.route('/verify')
