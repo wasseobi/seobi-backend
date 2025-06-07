@@ -206,4 +206,56 @@ class TestUserDAO:
 
         # When/Then
         with pytest.raises(Exception):  # 구체적인 예외 타입은 실제 구현에 따라 달라질 수 있음
-            user_dao.create(username=duplicate_username, email=new_email) 
+            user_dao.create(username=duplicate_username, email=new_email)
+
+    def test_update_user_memory(self, user_dao, sample_user):
+        """사용자 메모리 업데이트 테스트"""
+        # Given
+        new_memory = {
+            "last_login": "2024-03-20",
+            "preferences": {
+                "theme": "dark",
+                "notifications": True
+            }
+        }
+
+        # When
+        updated_user = user_dao.update_user_memory(sample_user.id, new_memory)
+
+        # Then
+        assert updated_user is not None
+        assert updated_user.id == sample_user.id
+        assert updated_user.user_memory == new_memory
+        # 다른 필드들은 변경되지 않았는지 확인
+        assert updated_user.username == sample_user.username
+        assert updated_user.email == sample_user.email
+
+    def test_update_user_memory_to_null(self, user_dao, sample_user):
+        """사용자 메모리를 null로 업데이트 테스트"""
+        # Given
+        # 먼저 user_memory를 설정
+        initial_memory = {"test": "data"}
+        user_dao.update_user_memory(sample_user.id, initial_memory)
+        
+        # When
+        updated_user = user_dao.update_user_memory(sample_user.id, None)
+
+        # Then
+        assert updated_user is not None
+        assert updated_user.id == sample_user.id
+        assert updated_user.user_memory is None
+        # 다른 필드들은 변경되지 않았는지 확인
+        assert updated_user.username == sample_user.username
+        assert updated_user.email == sample_user.email
+
+    def test_update_user_memory_nonexistent_user(self, user_dao):
+        """존재하지 않는 사용자의 메모리 업데이트 시도 테스트"""
+        # Given
+        nonexistent_id = uuid.uuid4()
+        test_memory = {"test": "data"}
+
+        # When
+        updated_user = user_dao.update_user_memory(nonexistent_id, test_memory)
+
+        # Then
+        assert updated_user is None 

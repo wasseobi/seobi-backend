@@ -264,4 +264,56 @@ class TestUserService:
         # Then
         assert len(all_users) >= len(users)
         for created_user in users:
-            assert any(u['id'] == created_user['id'] for u in all_users) 
+            assert any(u['id'] == created_user['id'] for u in all_users)
+
+    def test_get_user_memory(self, user_service, sample_user_data):
+        """사용자 메모리 조회 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        test_memory = {"key": "value", "nested": {"data": 123}}
+        user_service.update_user_memory(uuid.UUID(created_user['id']), test_memory)
+        
+        # When
+        memory = user_service.get_user_memory(uuid.UUID(created_user['id']))
+        
+        # Then
+        assert memory == test_memory
+
+    def test_get_user_memory_not_found(self, user_service):
+        """존재하지 않는 사용자의 메모리 조회 시도 테스트"""
+        # When/Then
+        with pytest.raises(ValueError, match="User with id .* not found"):
+            user_service.get_user_memory(uuid.uuid4())
+
+    def test_update_user_memory(self, user_service, sample_user_data):
+        """사용자 메모리 업데이트 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        test_memory = {
+            "preferences": {"theme": "dark", "notifications": True},
+            "history": ["item1", "item2"],
+            "stats": {"visits": 5, "last_visit": "2024-03-20"}
+        }
+        
+        # When
+        updated_user = user_service.update_user_memory(
+            uuid.UUID(created_user['id']),
+            test_memory
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert updated_user['id'] == created_user['id']
+        assert updated_user['user_memory'] == test_memory
+
+    def test_update_user_memory_not_found(self, user_service):
+        """존재하지 않는 사용자의 메모리 업데이트 시도 테스트"""
+        # When/Then
+        with pytest.raises(ValueError, match="User with id .* not found"):
+            user_service.update_user_memory(uuid.uuid4(), {"test": "data"}) 
