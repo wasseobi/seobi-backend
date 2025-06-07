@@ -1,5 +1,5 @@
 from flask_restx import Namespace, Resource
-from app.services.background_serive import BackgroundService
+from app.services.background_service import BackgroundService
 from app.schemas.background_schema import register_models
 from app.utils.auth_middleware import require_auth
 from app import api
