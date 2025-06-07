@@ -7,7 +7,10 @@ import os
 import json
 from flask import request, g
 from app.services.schedule_service import ScheduleService
+from bs4 import BeautifulSoup
 import re
+import os
+import requests
 
 @tool
 def search_web(query: str) -> str:
@@ -98,6 +101,58 @@ def google_search(query: str, num_results: int = 3) -> List[Dict[str, str]]:
 
     except Exception as e:
         return [{"error": f"검색 중 오류 발생: {str(e)}"}]
+
+
+@tool
+def google_search_expansion(query: str, num_results: int = 3) -> List[Dict[str, str]]:
+    """Google 검색을 수행하고, 각 결과의 스니펫을 HTML 본문에서 확장합니다.
+
+    Args:
+        query (str): 검색할 키워드나 문장
+        num_results (int, optional): 가져올 결과 수. 기본값 3.
+
+    Returns:
+        List[Dict[str, str]]: 검색 결과 리스트. 각 결과는 title, link, snippet을 포함
+    """
+    try:
+        api_key = os.environ['GOOGLE_API_KEY']
+        cse_id = os.environ['GOOGLE_CSE_ID']
+        if not api_key or not cse_id:
+            return [{"error": "환경 변수 GOOGLE_API_KEY 또는 GOOGLE_CSE_ID가 비어 있습니다."}]
+        if not isinstance(query, str):
+            return [{"error": f"검색어(query)는 문자열이어야 합니다. 현재 타입: {type(query)}"}]
+        if not isinstance(num_results, int):
+            return [{"error": f"num_results는 int여야 합니다. 현재 타입: {type(num_results)}"}]
+
+        search = GoogleSearchAPIWrapper(
+            google_api_key=api_key,
+            google_cse_id=cse_id
+        )
+        raw_results = search.results(query, num_results=num_results)
+
+        enhanced_results = []
+        for result in raw_results:
+            snippet = result.get("snippet", "")
+            url = result.get("link", "")
+            try:
+                response = requests.get(url, timeout=3)
+                soup = BeautifulSoup(response.text, "html.parser")
+                page_text = soup.get_text(separator=" ", strip=True)
+                extended_snippet = page_text[:500]  # 최대 500자까지 본문에서 추출
+                snippet += f"\n\n[본문 발췌] {extended_snippet}"
+            except Exception as e:
+                snippet += f"\n\n[본문 발췌 실패: {e}]"
+            enhanced_results.append({
+                "title": result.get("title", ""),
+                "link": url,
+                "snippet": snippet
+            })
+
+        return enhanced_results
+
+    except Exception as e:
+        return [{"error": f"예외 발생: {str(e)}"}]
+
 
 
 @tool
@@ -236,6 +291,8 @@ agent_tools = [
     run_insight_graph,
     create_schedule_llm,
     get_user_schedules,
-    search_similar_messages
+    search_similar_messages,
+    google_search_expansion,
+    google_news
 ]
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

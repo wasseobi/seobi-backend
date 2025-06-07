@@ -109,6 +109,7 @@ def create_app(config_name=None):
     from app.routes.debug.schedule import ns as debug_schedule_ns
     from app.routes.debug.report import ns as debug_report_ns
     from app.routes.debug.auto_task import ns as debug_auto_task_ns
+    from app.routes.debug.background import ns as debug_background_ns
 
     # Add production namespaces
     api.add_namespace(auth_ns)  # /sign, /verify
@@ -124,5 +125,6 @@ def create_app(config_name=None):
     api.add_namespace(debug_schedule_ns, path='/debug/schedule')
     api.add_namespace(debug_report_ns, path='/debug/reports')
     api.add_namespace(debug_auto_task_ns, path='/debug/autotask')
+    api.add_namespace(debug_background_ns, path='/debug/background')
 
     return app
