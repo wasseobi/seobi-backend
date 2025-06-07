@@ -1,6 +1,6 @@
 from typing import Tuple, Literal
 from app.langgraph.background.bg_state import BGState, PlanStep
-from app.utils.openai_client import _get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from datetime import datetime, timezone
 import json
 import re
@@ -117,9 +117,8 @@ def finalize_task_result(state: BGState) -> BGState:
         ]
         print(f"[DEBUG][finalize_task_result] messages: {messages}")
 
-        client = _get_openai_client()
         try:
-            response = get_completion(client, messages)
+            response = get_completion(messages)
             print(f"[DEBUG][finalize_task_result] LLM 응답: {response}")
             match = re.search(r'```json\s*({[\s\S]*?})\s*```', response)
             if not match:

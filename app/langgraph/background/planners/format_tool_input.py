@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from app.utils.openai_client import _get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 import json
 
 # 툴별 입력 스키마 정의
@@ -56,10 +56,6 @@ Objective: "클라우드 컴퓨팅에 대한 최신 정보 수집"
 {{"query": "클라우드 컴퓨팅 최신 동향", "num_results": 5, "tbs": "qdr:d"}}
 """
 
-import json
-from typing import Dict, Any, Optional
-from app.utils.openai_client import _get_openai_client, get_completion
-
 def format_tool_input(
     tool_name: str,
     objective: str,
@@ -76,7 +72,6 @@ def format_tool_input(
     Returns:
         Optional[Dict[str, Any]]: 도구 실행에 필요한 입력값
     """
-    client = _get_openai_client()
 
     # prior_outputs → 요약 문자열로 정리
     prior_outputs = json.dumps(prior_outputs or {}, indent=2, ensure_ascii=False)
@@ -103,7 +98,7 @@ def format_tool_input(
 
     try:
         print("[format_tool_input] called")  # 함수 진입 확인
-        response = get_completion(client, messages)
+        response = get_completion(messages)
         print(f"[format_tool_input] LLM 응답: {response}")  # 디버깅용
         parsed = json.loads(response.strip())
         print(f"[format_tool_input] 파싱 결과: {parsed}")  # 디버깅용

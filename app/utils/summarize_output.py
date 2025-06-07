@@ -1,5 +1,5 @@
 from typing import Any, Optional
-from app.utils.openai_client import _get_openai_client, get_completion
+from app.utils.openai_client import get_completion
 from app.utils.text_cleaner import clean_text
 import json
 import re
@@ -52,7 +52,6 @@ def gpt_summarize_output(
     LLM을 이용해 도구 output을 요약하고, objective 부합도를 평가합니다.
     - 결과는 Dict[str, Any] 형식으로 출력되며 quality_score가 포함됩니다.
     """
-    client = _get_openai_client()
 
     try:
         if isinstance(output, list):
@@ -83,7 +82,7 @@ def gpt_summarize_output(
             {"role": "user", "content": prompt}
         ]
 
-        response = get_completion(client, messages)
+        response = get_completion(messages)
 
         match = re.search(r'```json\s*({[\s\S]*?})\s*```', response)
         if match:
