@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from app.langgraph.background.bg_state import BGState
 from app.services.auto_task_service import AutoTaskService
+import json
 
 auto_task_service = AutoTaskService()
 
@@ -23,12 +24,14 @@ def write_result_to_db(state: BGState) -> BGState:
     finish_at = task.get("finish_at", datetime.now(timezone.utc))
     print(f"[DEBUG][write_result_to_db] task_id: {task_id}, title: {title}, result: {result}, finish_at: {finish_at}")
 
+    result_str = json.dumps(result, ensure_ascii=False)
+
     # NOTE : DB에 저장 (테스트용), 변경 예정 (+ auto_task_service)
     try:
         print(f"[DEBUG][write_result_to_db] auto_task_service.save_result 호출")
-        auto_task_service.save_result(
+        auto_task_service.background_save_result(
             task_id=task_id,
-            result=result,
+            result=result_str,
             finish_at=finish_at
         )
         print(f"[DEBUG][write_result_to_db] save_result 성공")

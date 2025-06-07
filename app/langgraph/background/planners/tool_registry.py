@@ -1,7 +1,7 @@
 from typing import List, Callable, Optional
 from app.langgraph.tools import agent_tools
 
-ALLOWED_TOOL_NAMES = {"search_web", "google_search_expansion", "google_news"}
+ALLOWED_TOOL_NAMES = {"search_web", "google_search_expansion"}
 
 def get_available_tools() -> List[str]:
     """

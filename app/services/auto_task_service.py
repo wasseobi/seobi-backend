@@ -1,5 +1,6 @@
 from app.dao.auto_task_dao import AutoTaskDAO
 from typing import List, Optional, Dict, Any
+import json
 
 class AutoTaskService:
     def __init__(self):
@@ -96,11 +97,14 @@ class AutoTaskService:
             
         return created_tasks
 
-    # ✅ 여기 아래에 추가!
-    def save_result(self, task_id, result, finish_at):
+    # NOTE: (juaa): Update 사용해도 되지만 확장/유지보수/의미 명확성을 위해 만들어놨어요. 
+    def background_save_result(self, task_id, result, finish_at):
+        if isinstance(result, str):
+            result = json.loads(result)
         self.auto_task_dao.update(
             task_id,
-            linked_service=result['summary'],
+            output=result['summary'],
             finish_at=finish_at,
             status="done"
         )
+        print("[DEBUG] 최종 DB 저장값:", result['summary'])
