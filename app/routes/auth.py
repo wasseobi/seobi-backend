@@ -15,7 +15,7 @@ sign_input = ns.model('GoogleSignIn', {
     'email': fields.String(required=True, 
                            description='사용자가 구글 로그인에 사용한 이메일 주소',
                            example='user123@google.com'),
-    'name': fields.String(required=False, 
+    'username': fields.String(required=False, 
                           description='사용자의 구글 계정 이름',
                           example='홍길동')
 })
