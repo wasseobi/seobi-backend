@@ -39,7 +39,7 @@ class BriefingList(Resource):
         try:
             briefing = briefing_service.create_briefing(
                 user_id=uuid.UUID(data['user_id']),
-                content=data['content']
+                **{k: v for k, v in data.items() if k != 'user_id'}
             )
             return briefing, 201
         except Exception as e:
@@ -68,10 +68,10 @@ class BriefingResource(Resource):
     def put(self, briefing_id):
         data = request.json
 
-        if not data or 'content' not in data:
-            ns.abort(400, 'content is required')
+        if not data:
+            ns.abort(400, 'No update data provided')
         try:
-            return briefing_service.update_briefing(briefing_id, content=data.get('content'))
+            return briefing_service.update_briefing(briefing_id, **data)
         except ValueError as e:
             ns.abort(404, str(e))
         except Exception as e:
