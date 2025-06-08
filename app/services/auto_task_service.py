@@ -1,13 +1,36 @@
 from app.dao.auto_task_dao import AutoTaskDAO
 from typing import List, Optional, Dict, Any
 import json
+from datetime import datetime, timezone, timedelta
 
 class AutoTaskService:
     def __init__(self):
         self.auto_task_dao = AutoTaskDAO()
 
+    def _calculate_remaining_time(self, auto_task: Any) -> Optional[timedelta]:
+        """남은 수행 시간을 계산합니다."""
+        if not auto_task.start_at:
+            return timedelta(hours=1)
+        
+        if not auto_task.finish_at:
+            return timedelta(minutes=10)
+        
+        now = datetime.now(timezone.utc)
+        if now > auto_task.finish_at:
+            return timedelta(seconds=0)
+        
+        return auto_task.finish_at - now
+
     def _serialize_auto_task(self, auto_task: Any) -> Dict[str, Any]:
         """Serialize message data for API response"""
+        # meta 필드가 없으면 빈 딕셔너리로 초기화
+        meta = auto_task.meta or {}
+        
+        # remaining_time 계산 및 meta에 추가
+        remaining_time = self._calculate_remaining_time(auto_task)
+        if remaining_time is not None:
+            meta['remaining_time'] = str(remaining_time)
+        
         return {
             'id': str(auto_task.id),
             'user_id': str(auto_task.user_id),
@@ -25,7 +48,7 @@ class AutoTaskService:
             'current_step': auto_task.current_step,
             'status': auto_task.status,
             'output': auto_task.output,
-            'meta': auto_task.meta
+            'meta': meta
         }
 
     def get_all_auto_tasks(self) -> List[Dict]:
