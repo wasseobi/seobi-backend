@@ -2,8 +2,9 @@ from langchain_core.tools import tool
 import json
 from flask import request, g
 
+
 @tool
-def insight_article() -> dict:
+def insight_article() -> str:
     """
     사용자의 가장 최근 아티클을 가져옵니다.
     """
@@ -11,7 +12,20 @@ def insight_article() -> dict:
     from app.services.insight_article_service import InsightArticleService
     service = InsightArticleService()
     article = service.get_uesr_last_article(user_id)
-    return article
+    title = article.title if article else "최근 아티클 없음"
+    content = article.content if article else {}
+    text = content.get('text', '')
+    script = content.get('script', '')
+
+    # 결과를 문자열로 조합
+    result_str = f"제목: {title}\n"
+    if text:
+        result_str += f"내용: {text}\n"
+    if script:
+        result_str += f"스크립트: {script}"
+        
+    return result_str.strip()
+
 
 @tool
 def search_similar_messages(query: str, top_k: int = 5) -> str:
@@ -40,5 +54,6 @@ def search_similar_messages(query: str, top_k: int = 5) -> str:
         raise ValueError('user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.')
     from app.services.message_service import MessageService
     message_service = MessageService()
-    results = message_service.search_similar_messages_pgvector(user_id, query, top_k)
+    results = message_service.search_similar_messages_pgvector(
+        user_id, query, top_k)
     return json.dumps(results, ensure_ascii=False)
