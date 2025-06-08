@@ -21,6 +21,9 @@ class UserBriefing(Resource):
     def get(self, user_id):
         """특정 사용자의 오늘 브리핑 조회"""
         try:
+            briefing = briefing_service.get_user_today_briefing(user_id)
+            briefing_service.update_briefing(briefing['id'])
+
             return briefing_service.get_user_today_briefing(user_id)
         except ValueError as e:
             ns.abort(404, str(e))
