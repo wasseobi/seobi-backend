@@ -139,6 +139,14 @@ class SessionClose(Resource):
         session = None
 
         try:
+            # NOTE(GideokKim): session을 닫을 때 많은 작업을 수행하지만 DB에 session을 반드시 닫아야 하므로 가장 앞에 위치함
+            try:
+                session = session_service.finish_session(session_id)
+            except Exception as e:
+                error_msg = f"Failed to finish session: {str(e)}"
+                log.error(error_msg)
+                errors.append({"step": "session_finish", "error": error_msg})
+
             # 1-1. 전체 메시지 기반 요약 생성
             try:
                 messages = message_service.get_session_messages(session_id)
@@ -186,14 +194,6 @@ class SessionClose(Resource):
                     log.error(error_msg)
                     errors.append({"step": "auto_task_creation", "error": error_msg})
             
-            # 2. finish_at 저장
-            try:
-                session = session_service.finish_session(session_id)
-            except Exception as e:
-                error_msg = f"Failed to finish session: {str(e)}"
-                log.error(error_msg)
-                errors.append({"step": "session_finish", "error": error_msg})
-
             if not session:
                 raise ValueError("Session not found after finish")
 
