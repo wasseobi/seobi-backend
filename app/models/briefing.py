@@ -11,6 +11,7 @@ class Briefing(db.Model):
     user_id = db.Column(UUID(as_uuid=True),
                         ForeignKey('user.id'), nullable=False)
     content = db.Column(Text, nullable=False)
+    script = db.Column(Text, nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', back_populates='briefings')
