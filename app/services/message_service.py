@@ -1,27 +1,20 @@
 from app.dao.message_dao import MessageDAO
 from app.models import Session
 from app.utils.message.message_context import MessageContext
-from app.utils.prompt.service_prompts import EXTRACT_KEYWORDS_SYSTEM_PROMPT
 
 from app.utils.openai_client import get_embedding, get_completion
 from app.utils.message.processor import MessageProcessor
 from app.langgraph.agent.executor import create_agent_executor
 from app.langgraph.agent.graph import build_graph
 from app.utils.agent_state_store import AgentStateStore
-from app.langgraph.agent.agent_state import AgentState
 
 from langchain.schema import HumanMessage, AIMessage
-from langchain_core.messages import BaseMessage, ToolMessage
-from typing import List, Dict, Any, Generator, Union, Optional
+from langchain_core.messages import ToolMessage
+from typing import List, Dict, Any, Generator
 import uuid
 from datetime import datetime, timezone
 import json
 import numpy as np
-import logging
-
-# cleanup 로거 설정
-log = logging.getLogger("langgraph_debug")
-
 
 class MessageService:
     def __init__(self):
