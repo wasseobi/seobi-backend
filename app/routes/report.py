@@ -58,7 +58,7 @@ class ReportList(Resource):
         return service.get_user_reports(user_id)
 
 
-@ns.route('/report/d')
+@ns.route('/d')
 class DailyReport(Resource):
     @ns.marshal_list_with(report_response)
     @ns.doc('데일리 리포트 조회',
@@ -127,7 +127,7 @@ class DailyReport(Resource):
         return content, 201
 
 
-@ns.route('/report/w')
+@ns.route('/w')
 class WeeklyReport(Resource):
     @ns.marshal_list_with(report_response)
     @ns.doc('위클리 리포트 조회',
@@ -195,7 +195,7 @@ class WeeklyReport(Resource):
 
         return content, 201
 
-# @ns.route('/report/m')
+# @ns.route('/m')
 # class MonthlyReport(Resource):
 #     @ns.marshal_list_with(report_response)
 #     @require_auth
