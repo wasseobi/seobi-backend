@@ -112,6 +112,7 @@ def create_app(config_name=None):
     from app.routes.debug.report import ns as debug_report_ns
     from app.routes.debug.auto_task import ns as debug_auto_task_ns
     from app.routes.debug.background import ns as debug_background_ns
+    from app.routes.debug.insight import ns as debug_insight_ns
 
     # Add production namespaces
     api.add_namespace(auth_ns)  # /sign, /verify
@@ -130,5 +131,6 @@ def create_app(config_name=None):
     api.add_namespace(debug_report_ns, path='/debug/reports')
     api.add_namespace(debug_auto_task_ns, path='/debug/autotask')
     api.add_namespace(debug_background_ns, path='/debug/background')
+    api.add_namespace(debug_insight_ns, path='/debug/insights')
 
     return app

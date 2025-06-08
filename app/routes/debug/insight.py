@@ -7,9 +7,10 @@ from app.utils.auth_middleware import require_auth
 from app import api
 import uuid
 
-# Create namespace
 ns = Namespace(
-    'insights', description='Insight operations for AI-generated articles')
+    'debug/insights',
+    description='[DEBUG] 인사이트 아티클 디버깅용 API 엔드포인트입니다. 개발 환경에서만 사용해주세요.'
+)
 
 # Register models for documentation
 insight_model, insight_create, insight_detail = register_models(ns)

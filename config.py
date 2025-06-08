@@ -1,6 +1,7 @@
 import os
 from urllib.parse import quote_plus
 
+
 class Config:
     # Development mode configuration
     DEV_MODE = os.getenv("DEV_MODE", "True").lower() == "true"
@@ -23,8 +24,9 @@ class Config:
     AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
     AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
     AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-    AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
-    
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME = os.getenv(
+        "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
+
     # Google Search API Configuration
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID")
@@ -34,18 +36,22 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev_flask_secret_key")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES"))
     GOOGLE_WEB_CLIENT_ID = os.getenv("GOOGLE_WEB_CLIENT_ID")
+
     # Redis Configuration
     REDIS_URL = os.getenv("REDIS_URL")
     REDIS_KEY = os.getenv("REDIS_KEY")
     REDIS_PORT = int(os.getenv("REDIS_PORT"))
-    
+
+    # MCP Configuration
+    ACCUWEATHER_API_KEY = os.getenv("ACCUWEATHER_API_KEY")
+
+
 class TestConfig(Config):
     """Test configuration."""
     TESTING = True
-    
+
     # Override database URI for testing to disable SSL
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASS}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
         f"?sslmode=disable"
     )
-    
