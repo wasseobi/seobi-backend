@@ -9,7 +9,7 @@ from app import api
 
 ns = Namespace('debug/autotask', description='자동 업무 API')
 
-auto_task_model, create_auto_task_model = register_models(ns)
+auto_task_model, create_auto_task_model, auto_task_response = register_models(ns)
 auto_task_service = AutoTaskService()
 
 @ns.route('/')
