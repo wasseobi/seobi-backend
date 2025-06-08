@@ -8,7 +8,7 @@ from app.services.briefing_service import BriefingService
 from app.schemas.briefing_schema import register_models
 from app.utils.auth_middleware import require_auth
 
-ns = Namespace('briefings', description='Briefing operations')
+ns = Namespace('debug/briefings', description='Briefing operations')
 
 briefing_create, briefing_update, briefing_response = register_models(ns)
 
