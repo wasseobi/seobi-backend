@@ -148,8 +148,11 @@ class SessionClose(Resource):
             # 1-1. 전체 메시지 기반 요약 생성
             try:
                 messages = message_service.get_session_messages(session_id)
+                # NOTE(GideokKim): 메시지 중 assistant 메시지는 제외하고 요약하도록 변경함.
+                #                  간헐적으로 assistant 메시지가 포함되면 OpenAI 정책을 위반하는 케이스가 발생함.
+                # TODO(GideokKim): 나중에 정책 위반 방지를 위한 필터 기능을 구현하고 assistant 메시지도 포함하도록 구현해야 함.
                 dialogue = "\n".join(
-                    f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
+                    f"{m['role']}: {m['content']}" for m in messages if m['role'] in 'user' and m.get('content')
                 )
                 context_messages = [
                     {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
