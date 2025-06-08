@@ -7,7 +7,7 @@ from app.schemas.auto_task_schema import register_models
 from app.utils.auth_middleware import require_auth
 from app import api
 
-ns = Namespace('autotask', description='자동 업무 API')
+ns = Namespace('debug/autotask', description='자동 업무 API')
 
 auto_task_model, create_auto_task_model = register_models(ns)
 auto_task_service = AutoTaskService()
