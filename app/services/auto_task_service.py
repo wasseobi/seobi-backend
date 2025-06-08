@@ -53,12 +53,32 @@ class AutoTaskService:
             raise ValueError('No auto_tasks found in range')
         return [self._serialize_auto_task(auto_task) for auto_task in auto_tasks]
 
+    # NOTE(GideokKim): 업무가 없을 수도 있으므로 예외처리 안함.
+    def get_user_auto_tasks_by_active_option(self, user_id, active) -> List[Dict]:
+        """사용자의 비활성화된 자동 업무 목록을 반환합니다."""
+        auto_tasks = self.auto_task_dao.get_user_auto_tasks(user_id)
+        auto_tasks = [task for task in auto_tasks if task.active == active]
+        return [self._serialize_auto_task(auto_task) for auto_task in auto_tasks]
+
     def create(self, user_id, **data) -> Dict:
         auto_task = self.auto_task_dao.create(user_id=user_id, **data)
         return self._serialize_auto_task(auto_task)
 
     def update(self, auto_task_id, **kwargs) -> Dict:
         auto_task = self.auto_task_dao.update(auto_task_id, **kwargs)
+        if not auto_task:
+            raise ValueError('auto_task not found')
+        return self._serialize_auto_task(auto_task)
+
+    def update_active(self, auto_task_id, active) -> Dict:
+        if active == 'True' or active == 'true':
+            active = True
+        elif active == 'False' or active == 'false':
+            active = False
+        else:
+            raise ValueError('active는 True 또는 False이어야 합니다.')
+        
+        auto_task = self.auto_task_dao.update(auto_task_id, active=active)
         if not auto_task:
             raise ValueError('auto_task not found')
         return self._serialize_auto_task(auto_task)
