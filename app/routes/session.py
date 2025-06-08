@@ -14,10 +14,8 @@ from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )
-from config import Config
 import uuid
 import json
-from datetime import datetime
 import logging
 
 # cleanup 로거 설정
@@ -135,40 +133,71 @@ class SessionClose(Resource):
     @require_auth
     def post(self, session_id):
         """채팅 세션을 종료하고 요약 정보를 생성합니다."""
+        errors = []
+        session = None
+
         try:
+            # NOTE(GideokKim): session을 닫을 때 많은 작업을 수행하지만 DB에 session을 반드시 닫아야 하므로 가장 앞에 위치함
+            try:
+                session = session_service.finish_session(session_id)
+            except Exception as e:
+                error_msg = f"Failed to finish session: {str(e)}"
+                log.error(error_msg)
+                errors.append({"step": "session_finish", "error": error_msg})
+
             # 1-1. 전체 메시지 기반 요약 생성
-            messages = message_service.get_session_messages(session_id)
-            dialogue = "\n".join(
-                f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
-            )
-            context_messages = [
-                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
-                {"role": "user", "content": dialogue}
-            ]
-            session_service.update_session_summary(session_id, context_messages)
+            try:
+                messages = message_service.get_session_messages(session_id)
+                dialogue = "\n".join(
+                    f"{m['role']}: {m['content']}" for m in messages if m['role'] in ('user', 'assistant') and m.get('content')
+                )
+                context_messages = [
+                    {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
+                    {"role": "user", "content": dialogue}
+                ]
+                session_service.update_session_summary(session_id, context_messages)
+            except Exception as e:
+                error_msg = f"Failed to generate session summary: {str(e)}"
+                log.error(error_msg)
+                errors.append({"step": "summary_generation", "error": error_msg})
 
             # 1-2. 관심사 추출
-            interest_service.extract_interests_keywords(session_id)
+            try:
+                interest_service.extract_interests_keywords(session_id)
+            except Exception as e:
+                error_msg = f"Failed to extract interests: {str(e)}"
+                log.error(error_msg)
+                errors.append({"step": "interest_extraction", "error": error_msg})
             
             # 1-3. 세션 cleanup 실행
-            cleanup_result = cleanup_service.cleanup_session(session_id)
+            cleanup_result = None
+            try:
+                cleanup_result = cleanup_service.cleanup_session(session_id)
+            except Exception as e:
+                error_msg = f"Failed to cleanup session: {str(e)}"
+                log.error(error_msg)
+                errors.append({"step": "session_cleanup", "error": error_msg})
             
             # 1-4. cleanup 결과로부터 auto task 생성
-            if not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
-                session = session_service.get_session(session_id)
-                if session:
-                    auto_task_service.create_from_cleanup_result(
-                        user_id=session["user_id"],
-                        cleanup_result=cleanup_result
-                    )
+            if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
+                try:
+                    session = session_service.get_session(session_id)
+                    if session:
+                        auto_task_service.create_from_cleanup_result(
+                            user_id=session["user_id"],
+                            cleanup_result=cleanup_result
+                        )
+                except Exception as e:
+                    error_msg = f"Failed to create auto tasks: {str(e)}"
+                    log.error(error_msg)
+                    errors.append({"step": "auto_task_creation", "error": error_msg})
             
-            # 2. finish_at 저장
-            session = session_service.finish_session(session_id)
+            if not session:
+                raise ValueError("Session not found after finish")
 
             user_id = str(session["user_id"])
 
             # 세션 종료 시 AgentState에서 user_memory 업데이트
-            # AgentState 처리 개선
             try:
                 agent_state = AgentStateStore.get(user_id)
                 if agent_state:
@@ -177,10 +206,11 @@ class SessionClose(Resource):
                 else:
                     log.warning(f"AgentState not found for user {user_id} during session close")
             except Exception as mem_error:
-                log.error(f"Failed to save user memory: {str(mem_error)}")
-                # 주요 기능은 계속 진행
+                error_msg = f"Failed to save user memory: {str(mem_error)}"
+                log.error(error_msg)
+                errors.append({"step": "user_memory_update", "error": error_msg})
 
-            return {
+            response = {
                 'id': str(session["id"]),
                 'user_id': str(session["user_id"]),
                 'start_at': session["start_at"],
@@ -188,9 +218,20 @@ class SessionClose(Resource):
                 'title': session["title"],
                 'description': session["description"]
             }
+
+            # 에러가 있더라도 세션이 정상적으로 종료되었다면 200 응답
+            if errors:
+                response['warnings'] = errors
+                return response, 200
+            return response, 200
         
         except Exception as e:
-            ns.abort(400, f"Failed to close session: {str(e)}")
+            error_msg = f"Failed to close session: {str(e)}"
+            log.error(error_msg)
+            if errors:
+                errors.append({"step": "session_close", "error": error_msg})
+                return {"errors": errors}, 400
+            return {"error": error_msg}, 400
 
 
 @ns.route('/<uuid:session_id>/send')
