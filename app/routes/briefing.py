@@ -5,7 +5,7 @@ from app.services.briefing_service import BriefingService
 from app.schemas.briefing_schema import register_models
 from app.utils.auth_middleware import require_auth
 
-ns = Namespace('briefing', description='Briefing operations')
+ns = Namespace('briefing', description='브리핑 조회')
 
 briefing_create, briefing_update, briefing_response = register_models(ns)
 
@@ -19,9 +19,9 @@ class UserBriefing(Resource):
     @ns.marshal_list_with(briefing_response)
     @require_auth
     def get(self, user_id):
-        """Get all briefings for a specific user"""
+        """특정 사용자의 오늘 브리핑 조회"""
         try:
-            return briefing_service.get_user_briefings(user_id)
+            return briefing_service.get_user_today_briefing(user_id)
         except ValueError as e:
             ns.abort(404, str(e))
         except Exception as e:
