@@ -18,9 +18,14 @@ class AutoTaskService:
             'created_at': auto_task.created_at.isoformat() if auto_task.created_at else None,
             'start_at': auto_task.start_at.isoformat() if auto_task.start_at else None,
             'finish_at': auto_task.finish_at.isoformat() if auto_task.finish_at else None,
+            'preferred_at': auto_task.preferred_at.isoformat() if auto_task.preferred_at else None,
+            'active': auto_task.active,
             'tool': auto_task.tool,
+            'linked_service': auto_task.linked_service,
+            'current_step': auto_task.current_step,
             'status': auto_task.status,
-            'linked_service': auto_task.linked_service
+            'output': auto_task.output,
+            'meta': auto_task.meta
         }
 
     def get_all_auto_tasks(self) -> List[Dict]:
@@ -89,7 +94,6 @@ class AutoTaskService:
                 'title': task['title'],
                 'description': task['description'],
                 'task_list': task['dependencies'],  # dependencies를 task_list로 저장
-                'tool': 'cleanup',  # TODO(GideokKim): 나중에 적절한 MCP 도구로 변경해야 함.
                 'status': 'undone',
             }
             created_task = self.create(**auto_task_data)
