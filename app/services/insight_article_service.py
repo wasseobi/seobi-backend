@@ -32,6 +32,15 @@ class InsightArticleService:
     
     def get_user_articles_in_range(self, user_id, start, end):
         return self.insight_article_dao.get_all_by_user_id_in_range(user_id, start, end)
+    
+    def get_uesr_last_article(self, user_id):
+        """
+        사용자의 가장 최근 아티클을 가져옵니다.
+        """
+        articles = self.insight_article_dao.get_all_by_user_id(user_id)
+        if not articles:
+            return None
+        return sorted(articles, key=lambda a: a.created_at, reverse=True)[0]
 
     def create_article(self, user_id, type):
         """

@@ -3,28 +3,15 @@ import json
 from flask import request, g
 
 @tool
-def run_insight_graph() -> dict:
+def insight_article() -> dict:
     """
-    인사이트 그래프를 실행하여 DB에 저장하고, 전체 인사이트 json(dict) 결과를 반환합니다. user_id는 백엔드에서 자동 추출합니다.
+    사용자의 가장 최근 아티클을 가져옵니다.
     """
     user_id = getattr(g, 'user_id', None) or request.headers.get('user_id')
-    if not user_id:
-        raise ValueError("user_id를 찾을 수 없습니다. 인증 또는 세션 정보를 확인하세요.")
     from app.services.insight_article_service import InsightArticleService
     service = InsightArticleService()
-    article = service.create_article(user_id, type="chat")
-    result = {
-        "id": str(article.id),
-        "title": article.title,
-        "content": article.content,
-        "tags": article.tags,
-        "source": article.source,
-        "type": article.type,
-        "created_at": article.created_at.isoformat() if article.created_at else None,
-        "keywords": article.keywords,
-        "interest_ids": article.interest_ids
-    }
-    return result
+    article = service.get_uesr_last_article(user_id)
+    return article
 
 @tool
 def search_similar_messages(query: str, top_k: int = 5) -> str:
