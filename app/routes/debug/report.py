@@ -41,7 +41,7 @@ class ReportList(Resource):
         schedule_id = data['schedule_id']
         report_type = data.get('type', 'daily')
         tz_str = data.get('tz_str', 'Asia/Seoul')   # 필요시 프론트에서 전달
-        return service.generate_and_create_report(
+        return service.create_report(
             user_id=user_id,
             schedule_id=schedule_id,
             tz_str=tz_str,
