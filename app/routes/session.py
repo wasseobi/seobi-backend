@@ -14,10 +14,8 @@ from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
     SESSION_SUMMARY_USER_PROMPT
 )
-from config import Config
 import uuid
 import json
-from datetime import datetime
 import logging
 
 # cleanup 로거 설정
