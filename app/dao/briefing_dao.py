@@ -15,8 +15,8 @@ class BriefingDAO(BaseDAO[Briefing]):
     def get_all_by_user_id(self, user_id: uuid.UUID) -> List[Briefing]:
         return self.query().filter_by(user_id=user_id).order_by(Briefing.created_at.desc()).all()
 
-    def create(self, user_id: uuid.UUID, content: str) -> Briefing:
-        return super().create(user_id=user_id, content=content)
+    def create(self, user_id: uuid.UUID, **kwargs) -> Briefing:
+        return super().create(user_id=user_id, **kwargs)
 
     def update(self, briefing_id: uuid.UUID, **kwargs) -> Optional[Briefing]:
         return super().update(str(briefing_id), **kwargs)
