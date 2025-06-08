@@ -25,6 +25,17 @@ class GenerateTasksNode:
                 state["error"] = "No analysis result available for task generation"
                 return state
                 
+            # Check if analysis result is empty
+            analysis = state["analysis_result"]
+            if (not analysis.get("topics") and 
+                not analysis.get("action_items") and 
+                not analysis.get("decisions") and 
+                not analysis.get("follow_ups")):
+                # If all arrays are empty, set generated_tasks to empty list and end
+                state["generated_tasks"] = []
+                state["end_time"] = datetime.now()
+                return state
+                
             # Get tasks from LLM
             response = self.model.invoke([
                 HumanMessage(content=TASK_GENERATION_PROMPT.format(
