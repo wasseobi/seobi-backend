@@ -5,7 +5,7 @@ from app.services.cleanup_service import CleanupService
 from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
-from app.services.user_service import UserService
+from app.services.user_memory_llm_service import UserMemoryLLMService
 from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
@@ -73,9 +73,9 @@ session_message_response = ns.model('SessionMessage', {
 session_service = SessionService()
 message_service = MessageService()
 interest_service = InterestService()
-user_service = UserService()
 cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
+user_memory_llm_service = UserMemoryLLMService()
 
 
 @ns.route('/open')
@@ -108,7 +108,7 @@ class SessionOpen(Resource):
 
         try:
             session = session_service.create_session(uuid.UUID(user_id))
-            agent_state = user_service.initialize_agent_state(user_id)
+            agent_state = user_memory_llm_service.initialize_agent_state(user_id)
             AgentStateStore.set(user_id, agent_state)
             return {"session_id": str(session["id"])} , 201
         except Exception as e:
@@ -201,7 +201,7 @@ class SessionClose(Resource):
             try:
                 agent_state = AgentStateStore.get(user_id)
                 if agent_state:
-                    user_service.save_user_memory_from_state(user_id, agent_state)
+                    user_memory_llm_service.save_user_memory_from_state(user_id, agent_state)
                     AgentStateStore.delete(user_id)
                 else:
                     log.warning(f"AgentState not found for user {user_id} during session close")
