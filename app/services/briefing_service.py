@@ -1,12 +1,17 @@
 import uuid
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.dao.briefing_dao import BriefingDAO
+from app.services.reports.daily.generate_daily_report import GenerateDailyReport
+from app.utils.time_utils import TimeUtils
 
 class BriefingService:
     def __init__(self):
         self.briefing_dao = BriefingDAO()
+        self.daily_report_generator = GenerateDailyReport()
+        self.time_utils = TimeUtils()
+        self.kst = timezone(timedelta(hours=9))
 
     def _serialize_briefing(self, briefing) -> Dict[str, Any]:
         return {
@@ -52,6 +57,15 @@ class BriefingService:
         return self._serialize_briefing(briefing)
 
     def update_briefing(self, briefing_id: uuid.UUID, **kwargs) -> Optional[Dict]:
+        # First get the existing briefing
+        existing_briefing = self.briefing_dao.get_by_id(briefing_id)
+        if not existing_briefing:
+            raise ValueError('Briefing not found')
+            
+        # Update the script with current time if it exists
+        if existing_briefing.script:
+            kwargs['script'] = self.time_utils.update_script_time(existing_briefing.script)
+            
         briefing = self.briefing_dao.update(briefing_id, **kwargs)
         if not briefing:
             raise ValueError('Briefing not found')
