@@ -2,7 +2,7 @@ from flask_restx import Namespace, Resource, fields
 from app.services.reports.report_service import ReportService
 from app.utils.auth_middleware import require_auth
 
-ns = Namespace('report', description='리포트 API')
+ns = Namespace('debug/report', description='리포트 API')
 
 report_model = ns.model('Report', {
     'id': fields.String,
