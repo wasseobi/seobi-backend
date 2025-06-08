@@ -60,8 +60,6 @@ class MessageService:
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
-        if session.finish_at:
-            raise ValueError('Cannot get messages from finished session')
 
         messages = self.message_dao.get_all_by_session_id(session_id)
         serialized = [self._serialize_message(msg) for msg in messages]
@@ -72,8 +70,6 @@ class MessageService:
         session = Session.query.get(session_id)
         if not session:
             raise ValueError('Session not found')
-        if session.finish_at:
-            raise ValueError('Cannot get messages from finished session')
 
         messages = self.message_dao.get_all_by_session_id(session_id)
         return [
