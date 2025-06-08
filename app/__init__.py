@@ -100,6 +100,7 @@ def create_app(config_name=None):
     from app.routes.session import ns as session_ns
     from app.routes.message import ns as message_ns
     from app.routes.briefing import ns as briefing_ns
+    from app.routes.auto_task import ns as auto_task_ns
 
     # Register debug namespaces
     from app.routes.debug.user import ns as debug_user_ns
@@ -117,7 +118,8 @@ def create_app(config_name=None):
     api.add_namespace(session_ns)  # /s/*
     api.add_namespace(message_ns)  # /m/*
     api.add_namespace(briefing_ns)
-
+    api.add_namespace(auto_task_ns)
+    
     # Add debug namespaces with prefix
     api.add_namespace(debug_user_ns, path='/debug/users')
     api.add_namespace(debug_session_ns, path='/debug/sessions')
