@@ -4,6 +4,7 @@ from flask_restx import Resource, Namespace, fields
 from app.services.reports.report_service import ReportService
 from app.utils.auth_middleware import require_auth
 from app.utils.app_config import is_dev_mode
+from app.services.briefing_service import BriefingService
 from app import api
 import uuid
 import json
@@ -26,6 +27,7 @@ report_content_response = ns.model('ReportContentResponse', {
 })
 
 service = ReportService()
+briefing_service = BriefingService()
 
 
 @ns.route('/<uuid:user_id>')
@@ -115,6 +117,12 @@ class DailyReport(Resource):
             user_id=user_id,
             tz_str=tz_str,
             report_type='daily'
+        )
+
+        briefing_service.create_briefing(
+            user_id=user_id,
+            content=content['text'],
+            script=content['script']
         )
 
         # 2. 생성된 리포트를 DB에 저장
