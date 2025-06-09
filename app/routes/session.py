@@ -17,6 +17,9 @@ from app.utils.prompt.service_prompts import (
 import uuid
 import json
 import logging
+import time
+from datetime import datetime
+import threading
 
 # cleanup 로거 설정
 log = logging.getLogger("langgraph_debug")
@@ -179,58 +182,111 @@ class SessionClose(Resource):
                     {"step": "summary_generation", "error": error_msg})
 
             # 1-2. 관심사 추출
-            try:
-                interest_service.extract_interests_keywords(session_id)
-            except Exception as e:
-                error_msg = f"Failed to extract interests: {str(e)}"
-                log.error(error_msg)
-                errors.append(
-                    {"step": "interest_extraction", "error": error_msg})
+            log.info(f"[{datetime.now()}] 관심사 추출 시작")
 
-            # 1-3. 세션 cleanup 실행
-            cleanup_result = None
-            try:
-                cleanup_result = cleanup_service.cleanup_session(session_id)
-            except Exception as e:
-                error_msg = f"Failed to cleanup session: {str(e)}"
-                log.error(error_msg)
-                errors.append({"step": "session_cleanup", "error": error_msg})
-
-            # 1-4. cleanup 결과로부터 auto task 생성
-            if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
+            def run_interest_extraction():
                 try:
-                    session = session_service.get_session(session_id)
-                    if session:
-                        auto_task_service.create_from_cleanup_result(
-                            user_id=session["user_id"],
-                            cleanup_result=cleanup_result
-                        )
+                    log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 스레드 시작")
+                    start_time = time.time()
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        interest_service.extract_interests_keywords(session_id)
+                    end_time = time.time()
+                    log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
                 except Exception as e:
-                    error_msg = f"Failed to create auto tasks: {str(e)}"
+                    error_msg = f"Failed to extract interests: {str(e)}"
                     log.error(error_msg)
                     errors.append(
-                        {"step": "auto_task_creation", "error": error_msg})
+                        {"step": "interest_extraction", "error": error_msg})
+                
+            interest_thread = threading.Thread(target=run_interest_extraction)
+            interest_thread.daemon = True
+            interest_thread.start()
+            
+            log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 시작됨 - API 응답 즉시 반환")
 
-            if not session:
-                raise ValueError("Session not found after finish")
+            # 1-3. 세션 cleanup 실행
+            log.info(f"[{datetime.now()}] Cleanup 시작")
+
+            def run_cleanup():
+                try:
+                    log.info(f"[{datetime.now()}] Cleanup 백그라운드 스레드 시작")
+                    start_time = time.time()
+                    
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        cleanup_result = cleanup_service.cleanup_session(session_id)
+                    
+                    end_time = time.time()
+                    log.info(f"[{datetime.now()}] Cleanup 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                    
+                    # cleanup 완료 후 auto task 생성도 백그라운드에서 실행
+                    if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
+                        run_auto_task_creation(cleanup_result)
+                        
+                except Exception as e:
+                    log.error(f"[{datetime.now()}] Cleanup 백그라운드 에러: {str(e)}")
+
+            def run_auto_task_creation(cleanup_result):
+                try:
+                    log.info(f"[{datetime.now()}] Auto task 백그라운드 스레드 시작")
+                    start_time = time.time()
+                    
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        session = session_service.get_session(session_id)
+                        if session:
+                            auto_task_service.create_from_cleanup_result(
+                                session["user_id"],
+                                cleanup_result
+                            )
+                    
+                    end_time = time.time()
+                    log.info(f"[{datetime.now()}] Auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                except Exception as e:
+                    log.error(f"[{datetime.now()}] Auto task 백그라운드 에러: {str(e)}")
+
+            # 백그라운드에서 cleanup 실행 (join 없이)
+            cleanup_thread = threading.Thread(target=run_cleanup)
+            cleanup_thread.daemon = True  # 메인 프로세스 종료 시 함께 종료
+            cleanup_thread.start()
+
+            log.info(f"[{datetime.now()}] Cleanup 백그라운드 시작됨 - API 응답 즉시 반환")
 
             user_id = str(session["user_id"])
 
             # 세션 종료 시 AgentState에서 user_memory 업데이트
-            try:
-                agent_state = AgentStateStore.get(user_id)
-                if agent_state:
-                    user_service.save_user_memory_from_state(
-                        user_id, agent_state)
-                    AgentStateStore.delete(user_id)
-                else:
-                    log.warning(
-                        f"AgentState not found for user {user_id} during session close")
-            except Exception as mem_error:
-                error_msg = f"Failed to save user memory: {str(mem_error)}"
-                log.error(error_msg)
-                errors.append(
-                    {"step": "user_memory_update", "error": error_msg})
+            def run_user_memory_update():
+                try:
+                    log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 스레드 시작")
+                    start_time = time.time()
+                    
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        agent_state = AgentStateStore.get(user_id)
+                        if agent_state:
+                            user_service.save_user_memory_from_state(user_id, agent_state)
+                            AgentStateStore.delete(user_id)
+                            log.info(f"[{datetime.now()}] User memory 업데이트 완료")
+                        else:
+                            log.warning(f"AgentState not found for user {user_id} during session close")
+                    
+                    end_time = time.time()
+                    log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                        
+                except Exception as e:
+                    log.error(f"[{datetime.now()}] User memory 업데이트 백그라운드 에러: {str(e)}")
+            
+            # 백그라운드에서 user memory 업데이트 실행 (join 없이)
+            memory_thread = threading.Thread(target=run_user_memory_update)
+            memory_thread.daemon = True
+            memory_thread.start()
+            
+            log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 시작됨 - API 응답 즉시 반환")
 
             response = {
                 'id': str(session["id"]),
