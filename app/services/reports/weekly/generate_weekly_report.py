@@ -29,12 +29,16 @@ class GenerateWeeklyReport():
         
         # 이번 달의 첫 날
         first_day = now.replace(day=1)
-        # 첫 주의 월요일부터 시작
-        while first_day.weekday() != 0:  # 0: 월요일
-            first_day -= timedelta(days=1)
-            
-        # 현재 날짜가 몇 번째 주인지 계산
-        week = ((now - first_day).days // 7) + 1
+        
+        # 첫 주에 포함되지 않는 이전 달의 날짜 수를 계산
+        prev_month_days = first_day.weekday()
+        if prev_month_days > 3:  # 목요일 이후라면 다음 주 월요일부터 1주차
+            prev_month_days = -(7 - prev_month_days)
+        
+        # 현재 날짜의 주차 계산
+        adjusted_day = now.day + prev_month_days
+        week = (adjusted_day - 1) // 7 + 1
+        
         return month, week
 
     def generate_weekly_report(self, user_id, tz):
