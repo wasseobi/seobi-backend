@@ -1,5 +1,9 @@
 from app.langgraph.background.bg_state import BGState, PlanStep
+from app.utils.auto_task_utils import get_current_step_message
+from app.services.auto_task_service import AutoTaskService
 from typing import Dict
+
+auto_task_service = AutoTaskService()
 
 def dequeue_ready_step(state: BGState) -> BGState:
     """
@@ -22,12 +26,9 @@ def dequeue_ready_step(state: BGState) -> BGState:
         return state
 
     step_id = ready_queue[0]
-    print(f"[DEBUG][dequeue_ready_step] ready_queue[0] step_id: {step_id}")
     step = plan.get(step_id)
-    print(f"[DEBUG][dequeue_ready_step] plan.get(step_id): {step}")
 
     if not step:
-        print(f"[DEBUG][dequeue_ready_step] step {step_id} not found in plan!")
         state["error"] = f"Step {step_id} not found in plan"
         state["finished"] = True
         state["step"] = None
@@ -35,9 +36,14 @@ def dequeue_ready_step(state: BGState) -> BGState:
 
     step["status"] = "running"
     task["plan"][step_id] = step
-    print(f"[DEBUG][dequeue_ready_step] step[{step_id}] status set to 'running'")
+
+    # auto task current_step update + 디버그 메시지
+    tool = step.get("tool")
+    status = step.get("status")
+    msg = get_current_step_message(tool, status)
+    auto_task_id = str(task["task_id"])
+    print(f"[DEBUG][dequeue_ready_step] current_step update: tool={tool}, status={status}, msg={msg}, auto_task_id={auto_task_id}")
+    auto_task_service.update(auto_task_id, current_step=msg)
 
     state["step"] = step
-    print(f"[DEBUG][dequeue_ready_step] state['step'] set: {state['step']}")
-    print(f"[DEBUG][dequeue_ready_step] state 반환 직전: {state}")
     return state
