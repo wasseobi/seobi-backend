@@ -181,6 +181,7 @@ class TestInsightArticleDAO:
         new_source = "Updated Source"
         new_keywords = ["updated_keyword1", "updated_keyword2"]
         new_interest_ids = [str(uuid.uuid4())]
+        new_tags = ["updated_tag1", "updated_tag2"]
 
         # When
         updated_article = insight_article_dao.update(
