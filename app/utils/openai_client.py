@@ -34,7 +34,7 @@ def _get_openai_client():
     )
     return client
 
-def get_completion(messages, max_completion_tokens=2000):
+def get_completion(messages, max_completion_tokens=3000):
     """Generate chat completion using Azure OpenAI."""
     client = _get_openai_client()
     try:
