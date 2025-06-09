@@ -64,22 +64,11 @@ class UserService:
     def delete_user(self, user_id: uuid.UUID) -> bool:
         return self.user_dao.delete(str(user_id))
 
-    # TODO(GideokKim): Test 코드 작성 필요
-    def get_user_memory(self, user_id: uuid.UUID) -> Optional[str]:
-        """사용자의 장기 기억(메모리) 조회"""
-        return self.user_dao.get_memory(user_id)
-
-    # TODO(GideokKim): Test 코드 작성 필요
-    def update_user_memory(self, user_id: uuid.UUID, memory_data: str) -> Optional[str]:
-        """사용자의 장기 기억(메모리) 저장/업데이트"""
-        return self.user_dao.update_user_memory(user_id, user_memory=memory_data)
-
-    # TODO(GideokKim): User DAO가 필요 없으므로 나중에 새로 service 만들어서 관리해야 함
     def update_user_memory_with_llm(self, user_id: str, summary: Optional[str], messages: List[BaseMessage]) -> Optional[str]:
         """
         summary와 messages, 기존 user_memory를 LLM에 입력해 장기기억(user_memory)을 통합/업데이트
         """
-        prev_memory = self.get_user_memory(user_id) or ""
+        prev_memory = self.user_dao.get_memory(user_id) or ""
 
         user_prompt = (
         f"[기존 장기기억]\n{prev_memory}\n\n"
@@ -92,12 +81,11 @@ class UserService:
             {"role": "user", "content": user_prompt}
         ]
         updated_memory = get_completion(llm_messages)
-        return self.update_user_memory(user_id, memory_data=updated_memory)
+        return self.user_dao.update_user_memory(user_id, user_memory=updated_memory)
 
-    # TODO(GideokKim): User DAO가 필요 없으므로 나중에 새로 service 만들어서 관리해야 함
     def initialize_agent_state(self, user_id: str) -> dict:
         """대화 세션 시작 시 AgentState에 user_memory를 반영"""
-        user_memory = self.get_user_memory(user_id)
+        user_memory = self.user_dao.get_memory(user_id)
         return {
             "messages": [],
             "summary": None,
@@ -108,7 +96,6 @@ class UserService:
             "next_step": None
         }
 
-    # TODO(GideokKim): User DAO가 필요 없으므로 나중에 새로 service 만들어서 관리해야 함
     def save_user_memory_from_state(self, user_id: str, agent_state: dict) -> Optional[str]:
         """대화 세션 종료 시 AgentState의 summary/messages를 활용해 user_memory를 LLM으로 업데이트"""
         summary = agent_state.get("summary")

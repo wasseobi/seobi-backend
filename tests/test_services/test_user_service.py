@@ -264,4 +264,136 @@ class TestUserService:
         # Then
         assert len(all_users) >= len(users)
         for created_user in users:
-            assert any(u['id'] == created_user['id'] for u in all_users) 
+            assert any(u['id'] == created_user['id'] for u in all_users)
+
+    def test_update_user_memory_with_llm(self, user_service, sample_user_data):
+        """사용자 메모리 업데이트 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        summary = "테스트 요약"
+        messages = [{"role": "user", "content": "테스트 메시지"}]
+        
+        # When
+        updated_user = user_service.update_user_memory_with_llm(
+            user_id=created_user['id'],
+            summary=summary,
+            messages=messages
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
+
+    def test_initialize_agent_state(self, user_service, sample_user_data):
+        """에이전트 상태 초기화 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        
+        # When
+        agent_state = user_service.initialize_agent_state(created_user['id'])
+        
+        # Then
+        assert agent_state is not None
+        assert isinstance(agent_state, dict)
+        assert agent_state['user_id'] == created_user['id']
+        assert agent_state['messages'] == []
+        assert agent_state['summary'] is None
+        assert agent_state['current_input'] == ""
+        assert agent_state['scratchpad'] == []
+        assert agent_state['next_step'] is None
+        assert 'user_memory' in agent_state
+
+    def test_save_user_memory_from_state(self, user_service, sample_user_data):
+        """에이전트 상태에서 사용자 메모리 저장 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        agent_state = {
+            "messages": [{"role": "user", "content": "테스트 메시지"}],
+            "summary": "테스트 요약",
+            "user_memory": "기존 메모리",
+            "user_id": created_user['id']
+        }
+        
+        # When
+        updated_user = user_service.save_user_memory_from_state(
+            user_id=created_user['id'],
+            agent_state=agent_state
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
+
+    def test_update_user_memory_with_llm_no_previous_memory(self, user_service, sample_user_data):
+        """이전 메모리가 없는 경우의 사용자 메모리 업데이트 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        summary = "새로운 요약"
+        messages = [{"role": "user", "content": "새로운 메시지"}]
+        
+        # When
+        updated_user = user_service.update_user_memory_with_llm(
+            user_id=created_user['id'],
+            summary=summary,
+            messages=messages
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
+
+    def test_update_user_memory_with_llm_with_none_summary(self, user_service, sample_user_data):
+        """요약이 None인 경우의 사용자 메모리 업데이트 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        messages = [{"role": "user", "content": "테스트 메시지"}]
+        
+        # When
+        updated_user = user_service.update_user_memory_with_llm(
+            user_id=created_user['id'],
+            summary=None,
+            messages=messages
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
+
+    def test_save_user_memory_from_empty_state(self, user_service, sample_user_data):
+        """빈 상태에서 사용자 메모리 저장 테스트"""
+        # Given
+        created_user = user_service.create_user(
+            username=sample_user_data['username'],
+            email=sample_user_data['email']
+        )
+        empty_state = {
+            "messages": [],
+            "summary": None,
+            "user_memory": None,
+            "user_id": created_user['id']
+        }
+        
+        # When
+        updated_user = user_service.save_user_memory_from_state(
+            user_id=created_user['id'],
+            agent_state=empty_state
+        )
+        
+        # Then
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
