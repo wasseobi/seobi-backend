@@ -81,7 +81,7 @@ class UserService:
             {"role": "user", "content": user_prompt}
         ]
         updated_memory = get_completion(llm_messages)
-        return self.user_dao.update_user_memory(user_id, memory_data=updated_memory)
+        return self.user_dao.update_user_memory(user_id, user_memory=updated_memory)
 
     def initialize_agent_state(self, user_id: str) -> dict:
         """대화 세션 시작 시 AgentState에 user_memory를 반영"""
