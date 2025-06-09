@@ -362,45 +362,6 @@ class MessageSend(Resource):
                         yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
                 except Exception as e:
                     yield f"data: {json.dumps({'type': 'error', 'error': str(e)}, ensure_ascii=False)}\n\n"
-                finally:
-                    try:
-                        messages = message_service.get_session_messages(
-                            session_id)
-                        user_count = sum(
-                            1 for m in messages if m.get('role') == 'user')
-                        assistant_count = sum(
-                            1 for m in messages if m.get('role') == 'assistant')
-                        if user_count == 1 and assistant_count >= 1:
-                            user_msg = next((m['content'] for m in messages if m.get(
-                                'role') == 'user'), user_message)
-                            assistant_msg = next(
-                                (
-                                    m['content']
-                                    for m in messages
-                                    if m.get('role') == 'assistant'
-                                    and m.get('metadata')
-                                    and 'tools_used' in m.get('metadata')
-                                    and m.get('content')
-                                ),
-                                None
-                            )
-                            if not assistant_msg:
-                                assistant_msg = next((m['content'] for m in messages if m.get(
-                                    'role') == 'assistant' and m.get('content')), '')
-                            context_messages = [
-                                {"role": "system",
-                                    "content": SESSION_SUMMARY_SYSTEM_PROMPT},
-                                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT +
-                                 f"user: {user_msg}\n"
-                                 f"assistant: {assistant_msg}"}
-                            ]
-                            session_service.update_session_summary(
-                                session_id,
-                                context_messages
-                            )
-                    except Exception:
-                        pass
-                    yield "data: [DONE]\n\n"
 
             return Response(
                 stream_with_context(generate()),
