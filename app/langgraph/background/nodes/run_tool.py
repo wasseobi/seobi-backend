@@ -3,11 +3,10 @@ from app.langgraph.background.bg_state import BGState, PlanStep
 from app.langgraph.background.planners.tool_registry import get_tool_by_name
 from app.langgraph.background.planners.format_tool_input import format_tool_input
 from app.utils.summarize_output import gpt_summarize_output
-from app.utils.auto_task_utils import get_current_step_message
-from app.services.auto_task_service import AutoTaskService
 import re
 
-auto_task_service = AutoTaskService()
+# auto_task_service = AutoTaskService()
+# auto_task_dao = AutoTaskDAO()
 
 def run_tool(state: BGState) -> BGState:
     """
@@ -77,22 +76,10 @@ def run_tool(state: BGState) -> BGState:
         step["status"] = "done"
         print(f"[run_tool] output before evaluation: {step.get('output')}")
 
-        # auto task current_step update + 디버그 메시지
-        tool = step.get("tool")
-        status = step.get("status")
-        msg = get_current_step_message(tool, status)
-        auto_task_id = str(task["task_id"])
-        print(f"[DEBUG][run_tool] current_step update: tool={tool}, status={status}, msg={msg}, auto_task_id={auto_task_id}")
-        auto_task_service.update(auto_task_id, current_step=msg)
-
     except Exception as e:
         print(f"[run_tool] Error: {e}")
         step["status"] = "failed"
-        # current_step update (실패)
-        status = step.get("status")
-        msg = get_current_step_message(tool, status)
-        print(f"[DEBUG][run_tool] current_step update: tool={tool}, status={status}, msg={msg}, auto_task_id={auto_task_id}")
-        auto_task_service.update(auto_task_id, current_step=msg)
+
         step["output"] = {"error": str(e)}
         state["error"] = f"[{step['step_id']}] {str(e)}"
 
