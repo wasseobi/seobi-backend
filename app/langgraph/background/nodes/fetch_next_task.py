@@ -41,8 +41,6 @@ def fetch_next_task(state: BGState) -> BGState:
         state["finished"] = True
         return state
 
-    # TODO: task_list 에 적인 작업명이 done 인 작업을 선택하도록 수정
-
     # 디버깅: 전체 task 현황 출력
     for t in auto_tasks:
         print(f"[DEBUG][auto_tasks] title: {t['title']}, status: {t['status']}, task_list: {t.get('task_list')} -> {get_task_list_title(t)}")
@@ -60,7 +58,15 @@ def fetch_next_task(state: BGState) -> BGState:
     print(f"[DEBUG] sub_candidates: {[t['title'] for t in sub_candidates]}")
     if sub_candidates:
         selected = sub_candidates[0]
-        print(f"[DEBUG] 선택된 sub_task: {selected['title']} (선행작업: {get_task_list_title(selected)})")
+        now = datetime.now(timezone.utc)
+        try:
+            result = auto_task_service.update(
+                selected["id"],
+                start_at=now
+            )
+            print(f"[DEBUG] update 결과: {result}")
+        except Exception as e:
+            print(f"[ERROR] update 호출 실패: {e}")
         state["task"] = TaskRuntime(
             task_id=uuid.UUID(selected["id"]),
             title=selected["title"],
@@ -70,7 +76,7 @@ def fetch_next_task(state: BGState) -> BGState:
             ready_queue=[],
             completed_ids=[],
             task_result=None,
-            start_at=datetime.now(timezone.utc),
+            start_at=now,
             finish_at=None
         )
         return state
@@ -83,7 +89,19 @@ def fetch_next_task(state: BGState) -> BGState:
     print(f"[DEBUG] main_candidates: {[t['title'] for t in main_candidates]}")
     if main_candidates:
         selected = main_candidates[0]
-        print(f"[DEBUG] 선택된 main_task: {selected['title']}")
+        now = datetime.now(timezone.utc)
+        auto_task_service.update(
+            selected["id"],
+            start_at=now
+        )
+        try:
+            result = auto_task_service.update(
+                selected["id"],
+                start_at=now
+            )
+            print(f"[DEBUG] update 결과: {result}")
+        except Exception as e:
+            print(f"[ERROR] update 호출 실패: {e}")
         state["task"] = TaskRuntime(
             task_id=uuid.UUID(selected["id"]),
             title=selected["title"],
@@ -93,7 +111,7 @@ def fetch_next_task(state: BGState) -> BGState:
             ready_queue=[],
             completed_ids=[],
             task_result=None,
-            start_at=datetime.now(timezone.utc),
+            start_at=now,
             finish_at=None
         )
         return state
