@@ -11,6 +11,7 @@ from .get_weekly_report import GetWeeklyReport
 from ..summarize_report import SummarizeReport
 from app.utils.time import TimeUtils
 
+
 class SummarizeWeeklyReport(SummarizeReport):
     def __init__(self):
         super().__init__()
@@ -20,18 +21,44 @@ class SummarizeWeeklyReport(SummarizeReport):
         """주간 성과 요약"""
         from app.services.reports.report_service import ReportService
         self.report_service = ReportService()
-        self.report_service = ReportService()
         week_start, week_end = TimeUtils.get_week_range(tz)
+
         schedules = self.schedule_service.get_schedule_by_date_range_status(
             user_id, start=week_start, end=week_end, status='done')
-        daily_reports = self.report_service.get_reports_by_date_range(user_id, start=week_start, end=week_end, report_type='daily')
+        daily_reports = self.report_service.get_reports_by_date_range(
+            user_id, start=week_start, end=week_end, report_type='daily')
 
         schedule_count = len(schedules)
         report_count = len(daily_reports)
 
+        # 모델 객체를 dict로 변환
+        schedules_list = [
+            {
+                'id': str(schedule.id),
+                'description': schedule.description,
+                'title': schedule.title,
+                'repeat': schedule.repeat,
+                'start_at': str(schedule.start_at),
+                'finish_at': str(schedule.finish_at),
+                'location': schedule.location,
+                'status': schedule.status,
+                'memo': schedule.memo,
+                'linked_service': schedule.linked_service,
+                'created_at': str(schedule.created_at)
+            } for schedule in schedules
+        ]
+
+        daily_reports_list = [
+            {
+                'id': str(report.id),
+                'content': report.content,
+                'created_at': str(report.created_at)
+            } for report in daily_reports
+        ]
+
         data = {
-            "schedules": schedules,
-            "daily_reports": daily_reports
+            "schedules": schedules_list,
+            "daily_reports": daily_reports_list
         }
         data_json = json.dumps(data, ensure_ascii=False)
 
@@ -97,9 +124,9 @@ class SummarizeWeeklyReport(SummarizeReport):
         )
 
         messages = self._create_messages(
-        "다음 주 예정된 일정들을 마크다운으로 요약해주세요.",
-        prompt,
-        tasks_json
+            "다음 주 예정된 일정들을 마크다운으로 요약해주세요.",
+            prompt,
+            tasks_json
         )
 
         return self._call_llm(messages, "다음 주 할 일", count)

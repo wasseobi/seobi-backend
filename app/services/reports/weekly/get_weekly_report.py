@@ -35,8 +35,9 @@ class GetWeeklyReport():
         return [
             {
                 "id": str(interest.id),
-                "keyword": interest.keyword,
-                "weight": interest.weight,
+                "content": interest.content,
+                'source_message': interest.source_message,
+                "importance": interest.importance,
                 "created_at": TimeUtils.to_local(interest.created_at, tz)
             }
             for interest in interests
