@@ -13,6 +13,7 @@ class AgentState:
     messages: List[BaseMessage] = field(default_factory=list)
     summary: Optional[str] = None  # 대화 요약
     user_id: Optional[str] = None  # 사용자 식별자
+    user_location: Optional[str] = None  # 사용자 위치 정보
     current_input: str = ""  # 현재 입력값
     scratchpad: List[BaseMessage] = field(default_factory=list)  # Agent의 작업 메모
     next_step: Union[str, None] = None  # 다음 단계 (계속/종료)
@@ -71,6 +72,7 @@ class AgentState:
             "messages": self.messages,
             "summary": self.summary,
             "user_id": self.user_id,
+            "user_location": self.user_location,
             "current_input": self.current_input,
             "scratchpad": self.scratchpad,
             "next_step": self.next_step,

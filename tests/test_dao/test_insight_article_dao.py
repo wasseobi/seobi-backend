@@ -57,7 +57,6 @@ def sample_article(app, insight_article_dao, sample_user):
             title="Test Article",
             content={"sections": ["Test Content"]},
             source="Test Source",
-            type="chat",
             tags=["tag1", "tag2"],
             keywords=["keyword1", "keyword2"],
             interest_ids=[str(uuid.uuid4())],
@@ -98,7 +97,7 @@ class TestInsightArticleDAO:
             title="Article 1",
             content={"sections": ["Content 1"]},
             source="Test Source 1",
-            type="chat",
+
             tags=["tag1"],
             keywords=["keyword1"],
             interest_ids=[str(uuid.uuid4())],
@@ -109,7 +108,6 @@ class TestInsightArticleDAO:
             title="Article 2",
             content={"sections": ["Content 2"]},
             source="Test Source 2",
-            type="report",
             tags=["tag2"],
             keywords=["keyword2"],
             interest_ids=[str(uuid.uuid4())],
@@ -120,7 +118,6 @@ class TestInsightArticleDAO:
             title="Other User Article",
             content={"sections": ["Other Content"]},
             source="Other Source",
-            type="chat",
             tags=["other_tag"],
             keywords=["other_keyword"],
             interest_ids=[str(uuid.uuid4())],
@@ -147,7 +144,6 @@ class TestInsightArticleDAO:
         title = "New Article"
         content = {"sections": ["New Content"]}
         source = "Test Source"
-        type = "chat"
         tags = ["tag1", "tag2"]
         keywords = ["keyword1", "keyword2"]
         interest_ids = [str(uuid.uuid4())]
@@ -158,7 +154,6 @@ class TestInsightArticleDAO:
             title=title,
             content=content,
             source=source,
-            type=type,
             tags=tags,
             keywords=keywords,
             interest_ids=interest_ids,
@@ -172,7 +167,6 @@ class TestInsightArticleDAO:
         assert article.title == title
         assert article.content == content
         assert article.source == source
-        assert article.type == type
         assert article.tags == tags
         assert article.keywords == keywords
         assert article.interest_ids == interest_ids
@@ -185,10 +179,9 @@ class TestInsightArticleDAO:
         new_title = "Updated Article"
         new_content = {"sections": ["Updated Content"]}
         new_source = "Updated Source"
-        new_type = "report"
-        new_tags = ["updated_tag1", "updated_tag2"]
         new_keywords = ["updated_keyword1", "updated_keyword2"]
         new_interest_ids = [str(uuid.uuid4())]
+        new_tags = ["updated_tag1", "updated_tag2"]
 
         # When
         updated_article = insight_article_dao.update(
@@ -196,7 +189,6 @@ class TestInsightArticleDAO:
             title=new_title,
             content=new_content,
             source=new_source,
-            type=new_type,
             tags=new_tags,
             keywords=new_keywords,
             interest_ids=new_interest_ids
@@ -208,7 +200,6 @@ class TestInsightArticleDAO:
         assert updated_article.title == new_title
         assert updated_article.content == new_content
         assert updated_article.source == new_source
-        assert updated_article.type == new_type
         assert updated_article.tags == new_tags
         assert updated_article.keywords == new_keywords
         assert updated_article.interest_ids == new_interest_ids
@@ -236,7 +227,6 @@ class TestInsightArticleDAO:
         assert updated_article.content == new_content
         assert updated_article.tags == new_tags
         assert updated_article.source == sample_article.source
-        assert updated_article.type == sample_article.type
         assert updated_article.keywords == sample_article.keywords
         assert updated_article.interest_ids == sample_article.interest_ids
         assert updated_article.user_id == sample_article.user_id
@@ -265,7 +255,6 @@ class TestInsightArticleDAO:
         assert updated_article.tags == new_tags
         # 다른 필드들은 변경되지 않아야 함
         assert updated_article.source == sample_article.source
-        assert updated_article.type == sample_article.type
         assert updated_article.keywords == sample_article.keywords
         assert updated_article.interest_ids == sample_article.interest_ids
 

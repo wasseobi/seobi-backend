@@ -42,13 +42,13 @@ class InsightArticleService:
             return None
         return sorted(articles, key=lambda a: a.created_at, reverse=True)[0]
 
-    def create_article(self, user_id, type):
+    def create_article(self, user_id):
         """
         insight 그래프를 실행하고, 결과 context를 받아 DB에 저장
         content는 {text, script} 형태의 json으로 저장
         """
         graph = build_insight_graph()
-        context = {"user_id": user_id, "type": type}
+        context = {"user_id": user_id}
         result = graph.compile().invoke(context)
         content_json = {
             "text": result.get("text", ""),
@@ -60,7 +60,6 @@ class InsightArticleService:
             "content": content_json,
             "tags": result.get("tags", []),
             "source": result.get("source", []),
-            "type": type,
             "created_at": datetime.now(timezone.utc),
             "keywords": result.get("keywords", []),
             "interest_ids": result.get("interest_ids", [])
