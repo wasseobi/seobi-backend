@@ -131,16 +131,36 @@ class AutoTaskService:
         created_tasks = []
         tasks = cleanup_result.get('generated_tasks', [])
         
+        # for task in tasks:
+        #     auto_task_data = {
+        #         'user_id': user_id,
+        #         'title': task['title'],
+        #         'description': task['description'],
+        #         'task_list': task['dependencies'],  # dependencies를 task_list로 저장
+        #         'repeat': task['repeat'],
+        #         'preferred_at': task['preferred_at'],
+        #         'status': 'undone',
+        #         'meta': task['category']
+        #     }
+        #     created_task = self.create(**auto_task_data)
+        #     created_tasks.append(created_task)
         for task in tasks:
             auto_task_data = {
                 'user_id': user_id,
                 'title': task['title'],
                 'description': task['description'],
-                'task_list': task['dependencies'],  # dependencies를 task_list로 저장
+                'task_list': task['dependencies'],
+                'repeat': task['repeat'],
+                'preferred_at': task['preferred_at'],
                 'status': 'undone',
+                'meta': task['category']
             }
-            created_task = self.create(**auto_task_data)
-            created_tasks.append(created_task)
+            try:
+                created_task = self.create(**auto_task_data)
+                print(f"[DEBUG] 생성된 태스크: {created_task}")
+                created_tasks.append(created_task)
+            except Exception as e:
+                print(f"[ERROR] 태스크 생성 중 에러: {e}")
             
         return created_tasks
 

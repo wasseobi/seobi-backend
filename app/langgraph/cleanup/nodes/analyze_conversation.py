@@ -1,6 +1,5 @@
 from langchain_core.messages import HumanMessage, AIMessage
 import json
-
 from app.langgraph.cleanup.cleanup_state import CleanupState
 from app.utils.openai_client import init_langchain_llm
 from app.utils.prompt.cleanup_prompts import ANALYSIS_PROMPT
@@ -33,7 +32,7 @@ class AnalyzeConversationNode:
                 HumanMessage(content=ANALYSIS_PROMPT),
                 *messages
             ])
-            
+
             # Extract JSON content from code block if present
             content = response.content.strip()
             
@@ -45,7 +44,7 @@ class AnalyzeConversationNode:
             if content.endswith("```"):
                 content = content[:-3]  # Remove trailing ```
             content = content.strip()  # Remove any extra whitespace
-            
+
             # Parse the response
             try:
                 analysis_result = json.loads(content)

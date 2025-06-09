@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 from datetime import datetime
 import json
+import re
 
 from app.langgraph.cleanup.cleanup_state import CleanupState
 from app.utils.openai_client import init_langchain_llm
@@ -27,25 +28,35 @@ class GenerateTasksNode:
                 
             # Check if analysis result is empty
             analysis = state["analysis_result"]
-            if (not analysis.get("topics") and 
-                not analysis.get("action_items") and 
-                not analysis.get("decisions") and 
-                not analysis.get("follow_ups")):
+            print(f"[GenerateTasksNode] analysis: {analysis}")
+                # If all arrays are empty, set generated_tasks to empty list and end
+            if not analysis.get("content") :
                 # If all arrays are empty, set generated_tasks to empty list and end
                 state["generated_tasks"] = []
                 state["end_time"] = datetime.now()
                 return state
                 
-            # Get tasks from LLM
-            response = self.model.invoke([
-                HumanMessage(content=TASK_GENERATION_PROMPT.format(
-                    analysis_result=json.dumps(state["analysis_result"], indent=2)
-                ))
-            ])
-            
+            try:
+                analysis_json = json.dumps(state["analysis_result"], indent=2)
+            except Exception as e:
+                print(f"[GenerateTasksNode] analysis_result 직렬화 에러: {str(e)}")
+                state["error"] = f"Error in analysis_result serialization: {str(e)}"
+                return state
+
+            prompt = TASK_GENERATION_PROMPT.format(
+                analysis_result=analysis_json
+            )
+
+            try:
+                response = self.model.invoke([HumanMessage(content=prompt)])
+            except Exception as e:
+                print(f"[GenerateTasksNode] LLM 호출 에러: {str(e)}")
+                state["error"] = f"Error in LLM call: {str(e)}"
+                return state
+
             # Extract JSON content from code block if present
             content = response.content.strip()
-            
+
             # Remove code block markers if present
             if content.startswith("```json"):
                 content = content[7:]  # Remove ```json
@@ -55,9 +66,18 @@ class GenerateTasksNode:
                 content = content[:-3]  # Remove trailing ```
             content = content.strip()  # Remove any extra whitespace
 
-            # Parse the response
-            tasks = json.loads(content)
-            
+            try:
+                tasks = json.loads(content)
+                if not isinstance(tasks, list):
+                    raise ValueError("LLM 응답이 리스트가 아님")
+                for task in tasks:
+                    if not isinstance(task, dict) or "title" not in task:
+                        raise ValueError(f"잘못된 task 형식: {task}")
+            except Exception as e:
+                print(f"[GenerateTasksNode] tasks 파싱/검증 에러: {str(e)}")
+                state["error"] = f"Error in task parsing/validation: {str(e)}"
+                return state
+
             # Update state
             state["generated_tasks"] = tasks
             state["end_time"] = datetime.now()
