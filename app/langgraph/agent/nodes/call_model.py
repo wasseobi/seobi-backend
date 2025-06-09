@@ -70,8 +70,10 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         # 기본 state 구조 확인 및 초기화
         if is_dict:
             messages = state["messages"]
+            user_location = state.get("user_location")
         else:               
-            messages = state.messages        
+            messages = state.messages
+            user_location = state.user_location
 
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
@@ -104,7 +106,8 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
-            messages=messages
+            messages=messages,
+            user_location=user_location or "위치 정보 없음"
         )
         
         # OpenAI 형식으로 메시지 변환

@@ -25,6 +25,12 @@ log = logging.getLogger("langgraph_debug")
 ns = Namespace('s', description='채팅 세션 및 메시지 작업')
 
 # Define models for documentation
+session_open_input = ns.model('SessionOpenInput', {
+    'user_location': fields.String(required=False,
+                                   description='사용자의 위치 정보 (선택사항)',
+                                   example='서울')
+})
+
 session_response = ns.model('SessionResponse', {
     'session_id': fields.String(description='생성된 세션의 UUID',
                                 example='123e4567-e89b-12d3-a456-426614174000')
@@ -92,13 +98,13 @@ class SessionOpen(Resource):
                 },
                 'user-id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
             })
+    @ns.expect(session_open_input)
     @ns.response(201, '세션이 생성됨', session_response)
     @ns.response(400, '잘못된 요청')
     @ns.response(401, '인증 실패')
     @require_auth
     def post(self):
         """새로운 채팅 세션을 생성합니다."""
-
         user_id = (
             request.headers.get('user-id')
             or request.headers.get('User-Id')
@@ -109,8 +115,14 @@ class SessionOpen(Resource):
         try:
             session = session_service.create_session(uuid.UUID(user_id))
             agent_state = user_service.initialize_agent_state(user_id)
+            data = request.get_json() or {}
+            if 'user_location' in data:
+                agent_state['user_location'] = data['user_location']
+            else:
+                agent_state['user_location'] = None
+
             AgentStateStore.set(user_id, agent_state)
-            return {"session_id": str(session["id"])} , 201
+            return {"session_id": str(session["id"])}, 201
         except Exception as e:
             return {'error': str(e)}, 400
 
@@ -155,11 +167,13 @@ class SessionClose(Resource):
                     {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
                     {"role": "user", "content": dialogue}
                 ]
-                session_service.update_session_summary(session_id, context_messages)
+                session_service.update_session_summary(
+                    session_id, context_messages)
             except Exception as e:
                 error_msg = f"Failed to generate session summary: {str(e)}"
                 log.error(error_msg)
-                errors.append({"step": "summary_generation", "error": error_msg})
+                errors.append(
+                    {"step": "summary_generation", "error": error_msg})
 
             # 1-2. 관심사 추출
             try:
@@ -167,8 +181,9 @@ class SessionClose(Resource):
             except Exception as e:
                 error_msg = f"Failed to extract interests: {str(e)}"
                 log.error(error_msg)
-                errors.append({"step": "interest_extraction", "error": error_msg})
-            
+                errors.append(
+                    {"step": "interest_extraction", "error": error_msg})
+
             # 1-3. 세션 cleanup 실행
             cleanup_result = None
             try:
@@ -177,7 +192,7 @@ class SessionClose(Resource):
                 error_msg = f"Failed to cleanup session: {str(e)}"
                 log.error(error_msg)
                 errors.append({"step": "session_cleanup", "error": error_msg})
-            
+
             # 1-4. cleanup 결과로부터 auto task 생성
             if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
                 try:
@@ -190,8 +205,9 @@ class SessionClose(Resource):
                 except Exception as e:
                     error_msg = f"Failed to create auto tasks: {str(e)}"
                     log.error(error_msg)
-                    errors.append({"step": "auto_task_creation", "error": error_msg})
-            
+                    errors.append(
+                        {"step": "auto_task_creation", "error": error_msg})
+
             if not session:
                 raise ValueError("Session not found after finish")
 
@@ -201,14 +217,17 @@ class SessionClose(Resource):
             try:
                 agent_state = AgentStateStore.get(user_id)
                 if agent_state:
-                    user_service.save_user_memory_from_state(user_id, agent_state)
+                    user_service.save_user_memory_from_state(
+                        user_id, agent_state)
                     AgentStateStore.delete(user_id)
                 else:
-                    log.warning(f"AgentState not found for user {user_id} during session close")
+                    log.warning(
+                        f"AgentState not found for user {user_id} during session close")
             except Exception as mem_error:
                 error_msg = f"Failed to save user memory: {str(mem_error)}"
                 log.error(error_msg)
-                errors.append({"step": "user_memory_update", "error": error_msg})
+                errors.append(
+                    {"step": "user_memory_update", "error": error_msg})
 
             response = {
                 'id': str(session["id"]),
@@ -224,7 +243,7 @@ class SessionClose(Resource):
                 response['warnings'] = errors
                 return response, 200
             return response, 200
-        
+
         except Exception as e:
             error_msg = f"Failed to close session: {str(e)}"
             log.error(error_msg)
@@ -310,8 +329,9 @@ class MessageSend(Resource):
                                 assistant_msg = next((m['content'] for m in messages if m.get(
                                     'role') == 'assistant' and m.get('content')), '')
                             context_messages = [
-                                {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
-                                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT + 
+                                {"role": "system",
+                                    "content": SESSION_SUMMARY_SYSTEM_PROMPT},
+                                {"role": "user", "content": SESSION_SUMMARY_USER_PROMPT +
                                  f"user: {user_msg}\n"
                                  f"assistant: {assistant_msg}"}
                             ]
