@@ -16,7 +16,7 @@ ANALYSIS_PROMPT ="""
 - 반드시 위 JSON 딕셔너리(객체) 구조로만 응답하세요.
 - content에는 자동화 업무로 전환할 수 있는 user 메시지만 남기고, 나머지는 포함하지 마세요.
 - 중복, 유사 메시지는 하나의 content로 합쳐서 작성하세요.
-- automation_requests 배열이 비어 있으면 "automation_requests": []로 응답하세요.
+- content 배열이 비어 있으면 "content": []로 응답하세요.
 
 """
 

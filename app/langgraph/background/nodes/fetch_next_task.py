@@ -5,6 +5,16 @@ import uuid
 
 auto_task_service = AutoTaskService()
 
+# NOTE: (juaa) auto_task의 task_list 가 1개만 들어가는 거면 text 여도 좋을 거 같아요.
+def get_task_list_title(task):
+    """
+    task_list가 리스트이면 첫 번째 값 반환 (없으면 None)
+    """
+    task_list = task.get("task_list")
+    if isinstance(task_list, list):
+        return task_list[0] if task_list else None
+    return None  # 혹시라도 None이면
+
 def fetch_next_task(state: BGState) -> BGState:
     """
     다음 실행할 AutoTask를 선택한다.
@@ -23,7 +33,6 @@ def fetch_next_task(state: BGState) -> BGState:
         state["finished"] = True
         return state
 
-    # NOTE: (juaa) user_id로 auto_task 가져오는 부분 service로 옮길 예정 
     try:
         auto_tasks = auto_task_service.get_user_auto_tasks(user_id)  # 최신순 DESC 정렬된 상태로 반환
     except Exception as e:
@@ -32,38 +41,26 @@ def fetch_next_task(state: BGState) -> BGState:
         state["finished"] = True
         return state
 
-    # 가장 최근에 완료한 main task title
-    last_title = state.get("last_completed_title")
-    print(f"[DEBUG] fetch_next_task - last_completed_title: {last_title}")
+    # TODO: task_list 에 적인 작업명이 done 인 작업을 선택하도록 수정
 
-    selected = None
+    # 디버깅: 전체 task 현황 출력
+    for t in auto_tasks:
+        print(f"[DEBUG][auto_tasks] title: {t['title']}, status: {t['status']}, task_list: {t.get('task_list')} -> {get_task_list_title(t)}")
 
-    if last_title:
-        # ✅ 1. sub_task 실행: 해당 main_task의 sub_task 중 undone이 있는지 확인
-        sub_tasks = [
-            t for t in auto_tasks
-            if t["status"] == "undone" and t["task_list"] == last_title
-        ]
-        if sub_tasks:
-            selected = sub_tasks[-1]
-        else:
-            # ✅ 모든 sub_task 완료됨 → 병합 노드로 가야 하는 시점
-            print(f"[fetch_next_task] 모든 sub_task 완료됨: {last_title}")
-            state["last_completed_title"] = None
-            state["task"] = None
-            state["finished"] = True
-            return state
-
-    if selected is None:
-        # ✅ 2. 아직 시작한 main_task가 없거나 sub_task 다 끝났을 때 → 새 main_task 선택
-        main_tasks = [
-            t for t in auto_tasks
-            if t["status"] == "undone" and (t["task_list"] is None or t["task_list"] == [])
-        ]
-        selected = main_tasks[-1] if main_tasks else None
-
-    if selected:
-        print(f"[DEBUG] fetch_next_task - 선택된 task: {selected}")
+    # 1️⃣ 실행 가능한 서브 작업
+    sub_candidates = [
+        t for t in auto_tasks
+        if t["status"] == "undone"
+        and get_task_list_title(t)
+        and any(
+            prev["title"] == get_task_list_title(t) and prev["status"] == "done"
+            for prev in auto_tasks
+        )
+    ]
+    print(f"[DEBUG] sub_candidates: {[t['title'] for t in sub_candidates]}")
+    if sub_candidates:
+        selected = sub_candidates[0]
+        print(f"[DEBUG] 선택된 sub_task: {selected['title']} (선행작업: {get_task_list_title(selected)})")
         state["task"] = TaskRuntime(
             task_id=uuid.UUID(selected["id"]),
             title=selected["title"],
@@ -76,11 +73,30 @@ def fetch_next_task(state: BGState) -> BGState:
             start_at=datetime.now(timezone.utc),
             finish_at=None
         )
-    else:
-        # ✅ 모든 main_task + sub_task 처리 완료
-        print("[fetch_next_task] 모든 AutoTask 완료됨. 처리할 Task 없음.")
-        # state["error"] = "No remaining AutoTask to process"
-        # state["task"] = None
-        # state["finished"] = True
+        return state
 
+    # 2️⃣ 실행 가능한 메인 작업 (task_list가 빈 리스트)
+    main_candidates = [
+        t for t in auto_tasks
+        if t["status"] == "undone" and not get_task_list_title(t)
+    ]
+    print(f"[DEBUG] main_candidates: {[t['title'] for t in main_candidates]}")
+    if main_candidates:
+        selected = main_candidates[0]
+        print(f"[DEBUG] 선택된 main_task: {selected['title']}")
+        state["task"] = TaskRuntime(
+            task_id=uuid.UUID(selected["id"]),
+            title=selected["title"],
+            description=selected["description"],
+            task_list=selected.get("task_list"),
+            plan={},
+            ready_queue=[],
+            completed_ids=[],
+            task_result=None,
+            start_at=datetime.now(timezone.utc),
+            finish_at=None
+        )
+        return state
+
+    print("[DEBUG] 실행할 AutoTask 없음. 모든 작업 완료!")
     return state
