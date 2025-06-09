@@ -3,6 +3,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 AGENT_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의 질문에 답하기 위해 도구 사용이 필요할 때 적절한 도구를 사용하세요.
 
+오늘은 {current_date}입니다. 이 날짜는 서버에서 자동으로 가져온 정확한 날짜입니다. 날짜나 시간에 관한 질문에 답할 때는 반드시 이 날짜를 기준으로 정확하게 답변하세요.
+
 사용자의 현재 위치: {user_location}
 사용자가 날씨나 지역과 관련된 질문을 할 때 특정 위치를 언급하지 않을 경우, 현재 사용자의 위치 정보를 기반으로 답변해주세요.
 
@@ -34,4 +36,4 @@ AGENT_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의 
 prompt = ChatPromptTemplate.from_messages([
     ("system", AGENT_PROMPT),  # user_location은 format_prompt() 호출 시 제공됨
     MessagesPlaceholder(variable_name="messages"),  # 이전 대화 기록과 현재 입력을 포함
-]).partial(user_location="{user_location}")
+]).partial(user_location="{user_location}", current_date="{current_date}")

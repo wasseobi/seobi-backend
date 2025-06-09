@@ -1,9 +1,10 @@
 """LLM 호출 및 응답 생성 모듈."""
-from typing import Dict, List, Any, Union
-from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
 import json
 import logging
 import os
+from typing import Dict, List, Any, Union
+from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
+from datetime import datetime
 
 from app.utils.openai_client import init_langchain_llm
 from app.utils.message.converter import convert_to_openai_messages
@@ -104,10 +105,12 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             else:
                 state.clear_tool_state()
             
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
             messages=messages,
-            user_location=user_location or "위치 정보 없음"
+            user_location=user_location or "위치 정보 없음",
+            current_date=current_date
         )
         
         # OpenAI 형식으로 메시지 변환
