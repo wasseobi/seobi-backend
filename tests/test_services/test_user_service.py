@@ -277,15 +277,15 @@ class TestUserService:
         messages = [{"role": "user", "content": "테스트 메시지"}]
         
         # When
-        updated_memory = user_service.update_user_memory_with_llm(
+        updated_user = user_service.update_user_memory_with_llm(
             user_id=created_user['id'],
             summary=summary,
             messages=messages
         )
         
         # Then
-        assert updated_memory is not None
-        assert isinstance(updated_memory, str)
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
 
     def test_initialize_agent_state(self, user_service, sample_user_data):
         """에이전트 상태 초기화 테스트"""
@@ -324,14 +324,14 @@ class TestUserService:
         }
         
         # When
-        updated_memory = user_service.save_user_memory_from_state(
+        updated_user = user_service.save_user_memory_from_state(
             user_id=created_user['id'],
             agent_state=agent_state
         )
         
         # Then
-        assert updated_memory is not None
-        assert isinstance(updated_memory, str)
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
 
     def test_update_user_memory_with_llm_no_previous_memory(self, user_service, sample_user_data):
         """이전 메모리가 없는 경우의 사용자 메모리 업데이트 테스트"""
@@ -344,15 +344,15 @@ class TestUserService:
         messages = [{"role": "user", "content": "새로운 메시지"}]
         
         # When
-        updated_memory = user_service.update_user_memory_with_llm(
+        updated_user = user_service.update_user_memory_with_llm(
             user_id=created_user['id'],
             summary=summary,
             messages=messages
         )
         
         # Then
-        assert updated_memory is not None
-        assert isinstance(updated_memory, str)
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
 
     def test_update_user_memory_with_llm_with_none_summary(self, user_service, sample_user_data):
         """요약이 None인 경우의 사용자 메모리 업데이트 테스트"""
@@ -364,15 +364,15 @@ class TestUserService:
         messages = [{"role": "user", "content": "테스트 메시지"}]
         
         # When
-        updated_memory = user_service.update_user_memory_with_llm(
+        updated_user = user_service.update_user_memory_with_llm(
             user_id=created_user['id'],
             summary=None,
             messages=messages
         )
         
         # Then
-        assert updated_memory is not None
-        assert isinstance(updated_memory, str)
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
 
     def test_save_user_memory_from_empty_state(self, user_service, sample_user_data):
         """빈 상태에서 사용자 메모리 저장 테스트"""
@@ -389,11 +389,11 @@ class TestUserService:
         }
         
         # When
-        updated_memory = user_service.save_user_memory_from_state(
+        updated_user = user_service.save_user_memory_from_state(
             user_id=created_user['id'],
             agent_state=empty_state
         )
         
         # Then
-        assert updated_memory is not None
-        assert isinstance(updated_memory, str)
+        assert updated_user is not None
+        assert isinstance(updated_user, User)
