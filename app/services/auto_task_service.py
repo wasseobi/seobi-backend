@@ -26,6 +26,13 @@ class AutoTaskService:
         # meta 필드가 없으면 빈 딕셔너리로 초기화
         meta = auto_task.meta or {}
         
+        # meta가 문자열인 경우 JSON으로 파싱
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except (json.JSONDecodeError, TypeError):
+                meta = {}
+        
         # remaining_time 계산 및 meta에 추가
         remaining_time = self._calculate_remaining_time(auto_task)
         if remaining_time is not None:
