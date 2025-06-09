@@ -2,6 +2,7 @@ from flask_restx import Namespace, Resource
 from app.services.background_service import BackgroundService
 from app.schemas.background_schema import register_models
 from app.utils.auth_middleware import require_auth
+from app.utils.auto_task_utils import safe_background_response
 from app import api
 import uuid
 
@@ -10,22 +11,6 @@ ns = Namespace('background', description='백그라운드 작업 실행')
 background_model = register_models(ns)
 background_service = BackgroundService()
 
-def safe_background_response(data: dict) -> dict:
-    result = {
-        'user_id': data.get('user_id') or "",
-        'finished': bool(data.get('finished'))
-        }
-    
-    if data.get('task') is not None:
-        result['task'] = data['task']
-    if data.get('last_completed_title'):
-        result['last_completed_title'] = data['last_completed_title']
-    if data.get('error'):
-        result['error'] = data['error']
-    if data.get('step') is not None:
-        result['step'] = data['step']
-    return result
-    
 @ns.route('/auto-task/<uuid:user_id>')
 @ns.param('user_id', '사용자(user) UUID')
 class BackgroundAutoTask(Resource):
