@@ -50,7 +50,6 @@ class InsightDetail(Resource):
             "created_at": article.created_at.isoformat(),
             "keywords": article.keywords,
             "interest_ids": article.interest_ids,
-            "type": article.type,
             "tags": article.tags,
             "source": article.source
         }
@@ -65,7 +64,7 @@ class InsightGenerate(Resource):
     def post(self):
         user_id = request.json.get('user_id')
         try:
-            article = insight_service.create_article(user_id, type="report")
+            article = insight_service.create_article(user_id)
             # article이 SQLAlchemy 모델 객체라면 dict로 변환
             result = {
                 "id": str(article.id),
@@ -73,7 +72,6 @@ class InsightGenerate(Resource):
                 "content": article.content,
                 "tags": article.tags,
                 "source": article.source,
-                "type": article.type,
                 "created_at": article.created_at.isoformat() if article.created_at else None,
                 "keywords": article.keywords,
                 "interest_ids": article.interest_ids

@@ -13,7 +13,6 @@ class InsightArticle(db.Model):
     tags = db.Column(db.JSON, nullable=True)  # 관련 키워드 리스트
     source = db.Column(db.Text, nullable=False)
     created_at = db.Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    type = db.Column(Enum('chat', 'report', name='article_type'), nullable=False, default='chat')
     keywords = db.Column(db.JSON, nullable=True)      # 사용된 키워드 리스트
     interest_ids = db.Column(db.JSON, nullable=True)  # 사용된 interest id 리스트
 

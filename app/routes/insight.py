@@ -33,7 +33,6 @@ insight_detail = ns.model('InsightArticleDetail', {
     'content': fields.String(description='아티클 내용'),
     'tags': fields.List(fields.String, description='태그 목록'),
     'source': fields.String(description='데이터 소스'),
-    'type': fields.String(description='아티클 타입'),
     'created_at': fields.DateTime(description='생성 시간'),
     'keywords': fields.List(fields.String, description='키워드 목록'),
     'interest_ids': fields.List(fields.String, description='관련 관심사 ID 목록')
@@ -94,14 +93,13 @@ class UserInsights(Resource):
     def post(self, user_id):
         """사용자의 데이터를 기반으로 새로운 인사이트 아티클을 생성합니다."""
         try:
-            article = insight_service.create_article(user_id, type="report")
+            article = insight_service.create_article(user_id)
             result = {
                 "id": str(article.id),
                 "title": article.title,
                 "content": article.content,
                 "tags": article.tags,
                 "source": article.source,
-                "type": article.type,
                 "created_at": article.created_at.isoformat() if article.created_at else None,
                 "keywords": article.keywords,
                 "interest_ids": article.interest_ids
@@ -142,7 +140,6 @@ class InsightArticleDetail(Resource):
                 "content": article.content,
                 "tags": article.tags,
                 "source": article.source,
-                "type": article.type,
                 "created_at": article.created_at.isoformat() if article.created_at else None,
                 "keywords": article.keywords,
                 "interest_ids": article.interest_ids
