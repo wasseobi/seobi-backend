@@ -15,6 +15,7 @@ schedule_model = schedule_ns.model('Schedule', {
     'status': fields.String(enum=['undone', 'doing', 'done']),
     'memo': fields.String,
     'linked_service': fields.String,
+    'created_at': fields.DateTime,
 })
 
 create_schedule_model = schedule_ns.model('ScheduleCreate', {
