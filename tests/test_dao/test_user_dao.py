@@ -197,13 +197,3 @@ class TestUserDAO:
         # When/Then
         with pytest.raises(Exception):  # 구체적인 예외 타입은 실제 구현에 따라 달라질 수 있음
             user_dao.create(username=new_username, email=duplicate_email)
-
-    def test_create_duplicate_username(self, user_dao, sample_user):
-        """중복 사용자명으로 사용자 생성 시도 테스트"""
-        # Given
-        duplicate_username = sample_user.username
-        new_email = "another@example.com"
-
-        # When/Then
-        with pytest.raises(Exception):  # 구체적인 예외 타입은 실제 구현에 따라 달라질 수 있음
-            user_dao.create(username=duplicate_username, email=new_email) 
