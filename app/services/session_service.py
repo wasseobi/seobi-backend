@@ -78,7 +78,7 @@ class SessionService:
         return self._serialize_session(updated_session)
 
     def update_session_summary(self, session_id: uuid.UUID,
-                                    context_messages: List[Dict[str, str]]) -> None:
+                                    context_messages: List[Dict[str, str]]) -> Dict:
         self.get_session(session_id)
 
         # TODO(GideokKim): OpenAI API 호출과 응답을 받을 위치를 고민해볼 필요 있음.
@@ -94,20 +94,22 @@ class SessionService:
                 title = (description or response)[:20]
             if not description:
                 description = response[:100]
-            self.session_dao.update(
+            session = self.session_dao.update(
                 session_id,
                 title=title,
                 description=description
             )
+            return self._serialize_session(session)
         except Exception as e:
             # NOTE(GideokKim): 예외 발생 시에도 title과 description 모두 설정
             fallback_title = response[:20] if response else "대화 요약"
             fallback_description = response[:100] if response else "요약을 생성하는 중 오류가 발생했습니다."
-            self.session_dao.update(
+            session = self.session_dao.update(
                 session_id,
                 title=fallback_title,
                 description=fallback_description
             )
+            return self._serialize_session(session)
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
         return self.session_dao.delete(str(session_id))
