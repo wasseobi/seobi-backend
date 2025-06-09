@@ -173,7 +173,7 @@ class SessionClose(Resource):
                     {"role": "system", "content": SESSION_SUMMARY_SYSTEM_PROMPT},
                     {"role": "user", "content": dialogue}
                 ]
-                session_service.update_session_summary(
+                session = session_service.update_session_summary(
                     session_id, context_messages)
             except Exception as e:
                 error_msg = f"Failed to generate session summary: {str(e)}"
