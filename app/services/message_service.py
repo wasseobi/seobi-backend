@@ -71,30 +71,22 @@ class MessageService:
 
         try:
             vector = get_embedding(content)
-        except Exception as e:
+        except Exception:
             vector = None
 
-        # --- 키워드 추출 및 임베딩 추가 ---
         keyword_text = None
         keyword_vector = None
         try:
-            # 단일 메시지 content에서 키워드 추출 프롬프트 구성
             messages = [
                 {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
                 {"role": "user", "content": content}
             ]
             keywords_response = get_completion(messages)
-            print("[디버그] LLM 키워드 추출 응답:", keywords_response)
             keywords = json.loads(keywords_response)
             if isinstance(keywords, list) and keywords:
                 keyword_text = ", ".join(keywords)
-                # 첫 번째 키워드만 임베딩 (여러 개면 확장 가능)
                 keyword_vector = get_embedding(keywords[0])
-                print(f"[디버그] 추출 키워드: {keyword_text}, 임베딩: {keyword_vector[:5]}...")
-            else:
-                print("[디버그] 키워드 추출 결과 없음 또는 형식 오류:", keywords)
-        except Exception as e:
-            print("[에러] 키워드 추출/임베딩 실패:", e)
+        except Exception:
             keyword_text = None
             keyword_vector = None
 
