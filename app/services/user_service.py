@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 from langchain_core.messages import BaseMessage
 
 from app.dao.user_dao import UserDAO
+from app.utils.agent_state_store import AgentStateStore
 from app.utils.openai_client import get_completion
 from app.utils.prompt.service_prompts import USER_MEMORY_SYSTEM_PROMPT
 
@@ -86,14 +87,30 @@ class UserService:
     def initialize_agent_state(self, user_id: str) -> dict:
         """대화 세션 시작 시 AgentState에 user_memory를 반영"""
         user_memory = self.user_dao.get_memory(user_id)
+
+        previous_state = AgentStateStore.get(user_id) or {}
+        previous_messages = previous_state.get('messages', [])
+        previous_summary = previous_state.get('summary')
+
         return {
-            "messages": [],
-            "summary": None,
+            # 이전 상태에서 유지할 항목들
+            "messages": previous_messages,
+            "summary": previous_summary,
             "user_memory": user_memory,
+
+            # 사용자 관련 정보
             "user_id": user_id,
+            "user_location": None,  # 세션 시작 시 location은 별도로 설정
+
+            # 매 세션마다 초기화되어야 하는 항목들
             "current_input": "",
             "scratchpad": [],
-            "next_step": None
+            "next_step": None,
+            "step_count": 0,
+            "tool_results": None,
+            "current_tool_call_id": None,
+            "current_tool_name": None,
+            "current_tool_calls": None
         }
 
     def save_user_memory_from_state(self, user_id: str, agent_state: dict) -> Optional[str]:
