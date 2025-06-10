@@ -156,13 +156,10 @@ class MessageService:
         }
 
         try:
-            print(
-                f"[LangGraph] stream start: session_id={session_id}, user_id={user_id}, content={content}")
             for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
-                        # 도구 메시지 처리
                         processed_list = list(
                             processor.process_tool_message(msg_chunk))
                         for processed in processed_list:
