@@ -338,37 +338,6 @@ class MessageService:
             print(f"[Error] Failed to save context messages: {e}")
             raise ValueError(f"Failed to save messages: {str(e)}")
 
-    def search_similar_messages(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
-        """
-        user_id로 해당 사용자의 모든 메시지 벡터를 불러와 쿼리 임베딩과의 유사도를 계산, top-N 결과 반환
-        """
-        import json
-        user_uuid = uuid.UUID(user_id) if not isinstance(
-            user_id, uuid.UUID) else user_id
-        messages = self.message_dao.get_all_by_user_id(user_uuid)
-        if not messages:
-            return []
-
-        # 쿼리 임베딩 생성
-        query_vec = np.array(get_embedding(query))
-
-        # 각 메시지와의 코사인 유사도 계산
-        results = []
-        for msg in messages:
-            if msg.vector is not None:
-                msg_vec = np.array(msg.vector)
-                sim = float(np.dot(query_vec, msg_vec) /
-                            (np.linalg.norm(query_vec) * np.linalg.norm(msg_vec)))
-                results.append({
-                    "id": str(msg.id),
-                    "content": msg.content,
-                    "similarity": sim,
-                    "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
-                })
-        # 유사도 내림차순 정렬 후 top_k 반환
-        results.sort(key=lambda x: x["similarity"], reverse=True)
-        return results[:top_k]
-
     def search_similar_messages_pgvector(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
         """
         [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (DB에서 벡터 연산)
@@ -381,24 +350,6 @@ class MessageService:
                 "id": str(msg.id),
                 "content": msg.content,
                 "similarity": None,  # 필요시 SQL에서 select로 유사도 값도 받을 수 있음
-                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
-            }
-            for msg in messages
-        ]
-        return results
-
-    def search_similar_keywords_pgvector(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
-        """
-        [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (keyword_vector 기준, DB에서 벡터 연산)
-        """
-        query_vec = np.array(get_embedding(query))
-
-        messages = self.message_dao.get_keyword_pgvector(user_id, query_vec, top_k)
-        results = [
-            {
-                "id": str(msg.id),
-                "content": msg.content,
-                "keyword_text": msg.keyword_text,
                 "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
             }
             for msg in messages
