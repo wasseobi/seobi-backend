@@ -160,9 +160,8 @@ class MessageService:
                 try:
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
-                        processed_list = list(
-                            processor.process_tool_message(msg_chunk))
-                        for processed in processed_list:
+                        processed = next(processor.process_tool_message(msg_chunk), None)
+                        if processed:
                             context.add_tool_result(processed)
                             if processed.get('content'):
                                 tool_results_buffer.append({
