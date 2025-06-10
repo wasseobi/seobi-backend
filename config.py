@@ -44,6 +44,7 @@ class Config:
 
     # MCP Configuration
     ACCUWEATHER_API_KEY = os.getenv("ACCUWEATHER_API_KEY")
+    TMAP_API_KEY = os.getenv("TMAP_API_KEY")
 
 
 class TestConfig(Config):

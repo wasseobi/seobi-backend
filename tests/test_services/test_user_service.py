@@ -301,13 +301,27 @@ class TestUserService:
         # Then
         assert agent_state is not None
         assert isinstance(agent_state, dict)
+
+        # 이전 상태에서 유지할 항목들 검증
+        assert 'messages' in agent_state
+        assert isinstance(agent_state['messages'], list)
+        assert 'summary' in agent_state
+        assert 'user_memory' in agent_state
+
+        # 사용자 관련 정보 검증
         assert agent_state['user_id'] == created_user['id']
-        assert agent_state['messages'] == []
-        assert agent_state['summary'] is None
+        assert 'user_location' in agent_state
+        assert agent_state['user_location'] is None
+
+        # 매 대화마다 초기화되는 항목들 검증
         assert agent_state['current_input'] == ""
         assert agent_state['scratchpad'] == []
         assert agent_state['next_step'] is None
-        assert 'user_memory' in agent_state
+        assert agent_state['step_count'] == 0
+        assert agent_state['tool_results'] is None
+        assert agent_state['current_tool_call_id'] is None
+        assert agent_state['current_tool_name'] is None
+        assert agent_state['current_tool_calls'] is None
 
     def test_save_user_memory_from_state(self, user_service, sample_user_data):
         """에이전트 상태에서 사용자 메모리 저장 테스트"""

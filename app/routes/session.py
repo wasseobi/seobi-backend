@@ -1,40 +1,35 @@
 """세션 관련 라우트를 정의하는 모듈입니다."""
-from flask import request, Response, stream_with_context
-from flask_restx import Resource, Namespace, fields
-from app.services.cleanup_service import CleanupService
-from app.services.session_service import SessionService
-from app.services.message_service import MessageService
-from app.services.interest_service import InterestService
-from app.services.user_service import UserService
-from app.services.background_service import BackgroundService
-from app.services.auto_task_service import AutoTaskService
-from app.utils.auth_middleware import require_auth
-from app.utils.agent_state_store import AgentStateStore
-from app.utils.auto_task_utils import safe_background_response
-from app.utils.app_config import is_dev_mode
-from app.utils.prompt.service_prompts import (
-    SESSION_SUMMARY_SYSTEM_PROMPT,
-    SESSION_SUMMARY_USER_PROMPT
-)
 import uuid
 import json
 import logging
 import time
-from datetime import datetime
 import threading
+from datetime import datetime
+from flask import request, Response, stream_with_context
+from flask_restx import Resource, Namespace, fields
+
+from app.services.auto_task_service import AutoTaskService
+from app.services.background_service import BackgroundService
+from app.services.cleanup_service import CleanupService
+from app.services.interest_service import InterestService
+from app.services.message_service import MessageService
+from app.services.session_service import SessionService
+from app.services.user_service import UserService
+from app.utils.auth_middleware import require_auth
+from app.utils.agent_state_store import AgentStateStore
+from app.utils.auto_task_utils import safe_background_response
+from app.utils.app_config import is_dev_mode
+from app.utils.map import get_address_from_tmap
+from app.utils.prompt.service_prompts import (
+    SESSION_SUMMARY_SYSTEM_PROMPT,
+    SESSION_SUMMARY_USER_PROMPT
+)
 
 # cleanup 로거 설정
 log = logging.getLogger("langgraph_debug")
 
 # Create namespace
 ns = Namespace('s', description='채팅 세션 및 메시지 작업')
-
-# Define models for documentation
-session_open_input = ns.model('SessionOpenInput', {
-    'user_location': fields.String(required=False,
-                                   description='사용자의 위치 정보 (선택사항)',
-                                   example='서울')
-})
 
 session_response = ns.model('SessionResponse', {
     'session_id': fields.String(description='생성된 세션의 UUID',
@@ -59,7 +54,13 @@ session_close_response = ns.model('SessionCloseResponse', {
 message_send_input = ns.model('MessageSendInput', {
     'content': fields.String(required=True,
                              description='사용자 메시지 내용',
-                             example='안녕하세요, 도움이 필요합니다.')
+                             example='안녕하세요, 도움이 필요합니다.'),
+    'metadata': fields.Nested(ns.model('MessageMetadata', {
+        'location': fields.Nested(ns.model('LocationData', {
+            'longitude': fields.Float(description='경도 좌표', example=127.3742727),
+            'latitude': fields.Float(description='위도 좌표', example=36.3489651)
+        }))
+    }), required=False)
 })
 
 session_message_response = ns.model('SessionMessage', {
@@ -104,7 +105,6 @@ class SessionOpen(Resource):
                 },
                 'user-id': {'description': '<사용자 UUID>', 'in': 'header', 'required': True}
             })
-    @ns.expect(session_open_input)
     @ns.response(201, '세션이 생성됨', session_response)
     @ns.response(400, '잘못된 요청')
     @ns.response(401, '인증 실패')
@@ -118,16 +118,11 @@ class SessionOpen(Resource):
         if not user_id:
             return {'error': 'user-id is required'}, 400
 
+        agent_state = user_service.initialize_agent_state(user_id)
+        AgentStateStore.set(user_id, agent_state)
+
         try:
             session = session_service.create_session(uuid.UUID(user_id))
-            agent_state = user_service.initialize_agent_state(user_id)
-            data = request.get_json() or {}
-            if 'user_location' in data:
-                agent_state['user_location'] = data['user_location']
-            else:
-                agent_state['user_location'] = None
-
-            AgentStateStore.set(user_id, agent_state)
             return {"session_id": str(session["id"])}, 201
         except Exception as e:
             return {'error': str(e)}, 400
@@ -196,17 +191,18 @@ class SessionClose(Resource):
                     with app.app_context():
                         interest_service.extract_interests_keywords(session_id)
                     end_time = time.time()
-                    log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                    log.info(
+                        f"[{datetime.now()}] 관심사 추출 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
                 except Exception as e:
                     error_msg = f"Failed to extract interests: {str(e)}"
                     log.error(error_msg)
                     errors.append(
                         {"step": "interest_extraction", "error": error_msg})
-                
+
             interest_thread = threading.Thread(target=run_interest_extraction)
             interest_thread.daemon = True
             interest_thread.start()
-            
+
             log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 시작됨 - API 응답 즉시 반환")
 
             user_id = str(session["user_id"])
@@ -218,20 +214,22 @@ class SessionClose(Resource):
                 try:
                     log.info(f"[{datetime.now()}] Cleanup 백그라운드 스레드 시작")
                     start_time = time.time()
-                    
+
                     from app import create_app
                     app = create_app()
                     with app.app_context():
-                        cleanup_result = cleanup_service.cleanup_session(session_id)
-                    
+                        cleanup_result = cleanup_service.cleanup_session(
+                            session_id)
+
                     end_time = time.time()
-                    log.info(f"[{datetime.now()}] Cleanup 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
-                    
+                    log.info(
+                        f"[{datetime.now()}] Cleanup 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+
                     # cleanup 완료 후 auto task 생성도 백그라운드에서 실행
                     if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
                         run_auto_task_creation(cleanup_result)
                         run_background_auto_task(user_id)
-                        
+
                 except Exception as e:
                     log.error(f"[{datetime.now()}] Cleanup 백그라운드 에러: {str(e)}")
 
@@ -239,7 +237,7 @@ class SessionClose(Resource):
                 try:
                     log.info(f"[{datetime.now()}] Auto task 백그라운드 스레드 시작")
                     start_time = time.time()
-                    
+
                     from app import create_app
                     app = create_app()
                     with app.app_context():
@@ -249,30 +247,38 @@ class SessionClose(Resource):
                                 session["user_id"],
                                 cleanup_result
                             )
-                    
-                    end_time = time.time()
-                    log.info(f"[{datetime.now()}] Auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
-                except Exception as e:
-                    log.error(f"[{datetime.now()}] Auto task 백그라운드 에러: {str(e)}")
 
-                        # 1.4 백그라운드 자동 업무 실행
+                    end_time = time.time()
+                    log.info(
+                        f"[{datetime.now()}] Auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                except Exception as e:
+                    log.error(
+                        f"[{datetime.now()}] Auto task 백그라운드 에러: {str(e)}")
+
+                    # 1.4 백그라운드 자동 업무 실행
             def run_background_auto_task(user_id):
                 try:
-                    log.info(f"[{datetime.now()}] Background Auto task 백그라운드 스레드 시작")
+                    log.info(
+                        f"[{datetime.now()}] Background Auto task 백그라운드 스레드 시작")
                     start_time = time.time()
-                    
+
                     from app import create_app
                     app = create_app()
                     with app.app_context():
-                        background_result = background_service.background_auto_task(str(user_id))
-                        background_result = safe_background_response(background_result)
+                        background_result = background_service.background_auto_task(
+                            str(user_id))
+                        background_result = safe_background_response(
+                            background_result)
                         print("[DEBUG] background_result:", background_result)
-                        log.info(f"[{datetime.now()}] Background auto task 결과: {background_result}")
+                        log.info(
+                            f"[{datetime.now()}] Background auto task 결과: {background_result}")
 
                     end_time = time.time()
-                    log.info(f"[{datetime.now()}] Background auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                    log.info(
+                        f"[{datetime.now()}] Background auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
                 except Exception as e:
-                    log.error(f"[{datetime.now()}] Background auto task 백그라운드 에러: {str(e)}")
+                    log.error(
+                        f"[{datetime.now()}] Background auto task 백그라운드 에러: {str(e)}")
 
             # 백그라운드에서 cleanup 실행 (join 없이)
             cleanup_thread = threading.Thread(target=run_cleanup)
@@ -284,9 +290,10 @@ class SessionClose(Resource):
             # 세션 종료 시 AgentState에서 user_memory 업데이트
             def run_user_memory_update():
                 try:
-                    log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 스레드 시작")
+                    log.info(
+                        f"[{datetime.now()}] User memory 업데이트 백그라운드 스레드 시작")
                     start_time = time.time()
-                    
+
                     from app import create_app
                     app = create_app()
                     with app.app_context():
@@ -301,23 +308,27 @@ class SessionClose(Resource):
                                 'messages': messages,
                                 'summary': summary
                             })
-                            
+
                             log.info(f"[{datetime.now()}] User memory 업데이트 완료")
                         else:
-                            log.warning(f"AgentState not found for user {user_id} during session close")
-                    
+                            log.warning(
+                                f"AgentState not found for user {user_id} during session close")
+
                     end_time = time.time()
-                    log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
-                        
+                    log.info(
+                        f"[{datetime.now()}] User memory 업데이트 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+
                 except Exception as e:
-                    log.error(f"[{datetime.now()}] User memory 업데이트 백그라운드 에러: {str(e)}")
-            
+                    log.error(
+                        f"[{datetime.now()}] User memory 업데이트 백그라운드 에러: {str(e)}")
+
             # 백그라운드에서 user memory 업데이트 실행 (join 없이)
             memory_thread = threading.Thread(target=run_user_memory_update)
             memory_thread.daemon = True
             memory_thread.start()
-            
-            log.info(f"[{datetime.now()}] User memory 업데이트 백그라운드 시작됨 - API 응답 즉시 반환")
+
+            log.info(
+                f"[{datetime.now()}] User memory 업데이트 백그라운드 시작됨 - API 응답 즉시 반환")
 
             response = {
                 'id': str(session["id"]),
@@ -379,6 +390,19 @@ class MessageSend(Resource):
                 ns.abort(400, "Message content is required")
 
             user_message = data['content']
+            location_data = data.get('metadata', {}).get('location', {})
+            if location_data:
+                latitude = location_data.get('latitude')
+                longitude = location_data.get('longitude')
+                try:
+                    # 역지오코딩으로 주소 검색
+                    user_location = get_address_from_tmap(latitude, longitude)
+                except Exception as e:
+                    # 에러 발생시 기존 좌표 정보 사용
+                    user_location = f"위도: {latitude}, 경도: {longitude}"
+            else:
+                user_location = None
+
             assistant_message_chunks = []
 
             def generate():
@@ -386,7 +410,8 @@ class MessageSend(Resource):
                     for chunk in message_service.create_langgraph_completion(
                         session_id=session_id,
                         user_id=uuid.UUID(user_id),
-                        content=user_message
+                        content=user_message,
+                        user_location=user_location
                     ):
                         if 'content' in chunk:
                             assistant_message_chunks.append(chunk['content'])

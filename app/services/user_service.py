@@ -100,9 +100,9 @@ class UserService:
 
             # 사용자 관련 정보
             "user_id": user_id,
-            "user_location": None,  # 세션 시작 시 location은 별도로 설정
+            "user_location": None,
 
-            # 매 세션마다 초기화되어야 하는 항목들
+            # 매 대화마다 초기화되어야 하는 항목들
             "current_input": "",
             "scratchpad": [],
             "next_step": None,

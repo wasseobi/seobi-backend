@@ -127,7 +127,7 @@ class MessageService:
         return self.message_dao.delete(message_id)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                                    content: str) -> Generator[Dict, None, None]:
+                                    content: str, user_location) -> Generator[Dict, None, None]:
         """LangGraph를 통한 응답 생성."""
         processor = MessageProcessor(str(session_id), str(user_id))
         context = self._get_or_create_context(str(session_id), str(user_id))
@@ -139,23 +139,9 @@ class MessageService:
 
         # 1. AgentState 불러오기
         agent_state = AgentStateStore.get(str(user_id))
-        if not agent_state:
-            agent_state = {
-                "messages": [],
-                "summary": "",
-                "user_id": str(user_id),
-                "current_input": content,
-                "scratchpad": [],
-                "step_count": 0,
-                "next_step": "agent"
-            }
-        else:
-            agent_state["step_count"] = agent_state.get("step_count", 0)
-            agent_state["next_step"] = "agent"
-            agent_state["summary"] = agent_state.get("summary", "")
 
-        agent_state["user_id"] = str(user_id)
         agent_state["current_input"] = content
+        agent_state["user_location"] = user_location
         agent_state["messages"].append(HumanMessage(content=content))
 
         # 메세지 컨텍스트에 사용자 메시지 추가
@@ -171,41 +157,26 @@ class MessageService:
         }
 
         try:
-            print(
-                f"[LangGraph] stream start: session_id={session_id}, user_id={user_id}, content={content}")
             for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
-                    chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
-                        # 도구 메시지 처리
-                        processed_list = list(
-                            processor.process_ai_or_tool_message(msg_chunk))
-                        for processed in processed_list:
-                            if isinstance(processed, str):
-                                try:
-                                    if processed.startswith("data: "):
-                                        processed = processed[len("data: "):]
-                                    processed = json.loads(processed)
-                                except Exception:
-                                    continue
-                            context.add_tool_result(
-                                tool_name=processed.get("metadata", {}).get(
-                                    "tool_name", "unknown"),
-                                result=processed
-                            )
-                            if processed.get('content'):
-                                tool_results_buffer.append({
-                                    'type': 'toolmessage',
-                                    'content': processed.get('content', ""),
-                                    'metadata': {
-                                        **processed.get('metadata', {}),
-                                        "tool_response": True
-                                    }
-                                })
+                        processed = next(processor.process_tool_message(msg_chunk), None)
+                        if not processed:
+                            continue
+                            
+                        context.add_tool_result(processed)
+                        if processed.get('content'):
+                            tool_results_buffer.append({
+                                'type': 'toolmessage',
+                                'content': processed.get('content'),
+                                'metadata': {
+                                    **processed.get('metadata', {}),
+                                    "tool_response": True
+                                }
+                            })
 
                     elif isinstance(msg_chunk, AIMessage):
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
-                            # 도구 호출 처리
                             for tool_call in msg_chunk.additional_kwargs["tool_calls"]:
                                 context.add_tool_call_chunk(tool_call)
                                 tool_calls_buffer.append({
@@ -215,7 +186,6 @@ class MessageService:
                                         'tool_call_id': tool_call.get('id', '')
                                     }
                                 })
-
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
                             final_response_buffer.append({
@@ -226,39 +196,30 @@ class MessageService:
 
                     elif isinstance(msg_chunk, dict):
                         if "agent" in msg_chunk:
-                            # 에이전트 메시지 처리
                             messages_to_process = msg_chunk["agent"].get(
                                 "formatted_messages", [])
-                            for processed in processor.process_agent_messages(messages_to_process):
-                                if isinstance(processed, str) and processed.startswith("data: "):
-                                    processed = json.loads(
-                                        processed[len("data: "):])
-
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", {})
-                                    }
-                                    yield chunk_data
-
+                            processed = next(processor.process_agent_messages(messages_to_process), None)
+                            if not processed or not processed.get("content"):
+                                continue
+                            
+                            target_metadata = processed.get("metadata", {})
                         elif "content" in msg_chunk or "metadata" in msg_chunk:
-                            for processed in processor.process_dict_message(msg_chunk):
-                                if isinstance(processed, str) and processed.startswith("data: "):
-                                    processed = json.loads(
-                                        processed[len("data: "):])
+                            processed = next(processor.process_dict_message(msg_chunk), None)
+                            if not processed or not processed.get("content"):
+                                continue
 
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", metadata)
-                                    }
-                                    yield chunk_data
+                            target_metadata = processed.get("metadata", metadata)
+                        else:
+                            continue
+
+                        context.append_assistant_content(processed["content"])
+
+                        yield {
+                            'type': 'chunk',
+                            'content': processed["content"],
+                            'metadata': target_metadata
+                        }
+
                 except Exception as e:
                     print(f"[LangGraph] Exception in chunk: {e}")
                     continue

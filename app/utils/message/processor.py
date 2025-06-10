@@ -30,14 +30,14 @@ class MessageProcessor:
             formatted_msg = self._format_message(msg_content, msg_metadata, msg.get("role", "assistant"))
             yield from self._save_and_yield_message(formatted_msg)
 
-    def process_ai_or_tool_message(self, chunk: Union[AIMessage, ToolMessage]) -> Generator[str, None, None]:
+    def process_tool_message(self, chunk: Union[AIMessage, ToolMessage]) -> Generator[str, None, None]:
         """AI 또는 Tool 메시지 처리."""
         formatted_msg = format_message_content(chunk, **self.session_info)
         msg_key = self._get_message_key(formatted_msg)
         
         if msg_key not in self.seen_messages:
             self.seen_messages.add(msg_key)
-            yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
+            yield formatted_msg
 
     def process_dict_message(self, chunk: Dict) -> Generator[str, None, None]:
         """Dict 형태의 메시지 처리."""
@@ -88,7 +88,7 @@ class MessageProcessor:
             role=formatted_msg["role"],
             metadata=formatted_msg["metadata"]
         )
-        yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
+        yield formatted_msg
 
     def _get_message_key(self, msg: Dict[str, Any]) -> str:
         """메시지의 고유 키를 생성하는 함수"""
