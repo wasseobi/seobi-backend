@@ -76,19 +76,20 @@ class MessageService:
 
         keyword_text = None
         keyword_vector = None
-        try:
-            messages = [
-                {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
-                {"role": "user", "content": content}
-            ]
-            keywords_response = get_completion(messages)
-            keywords = json.loads(keywords_response)
-            if isinstance(keywords, list) and keywords:
-                keyword_text = ", ".join(keywords)
-                keyword_vector = get_embedding(keywords[0])
-        except Exception:
-            keyword_text = None
-            keyword_vector = None
+        # NOTE(GideokKim): 키워드 추출 기능을 사용하지 않아서 삭제함.
+        # try:
+        #     messages = [
+        #         {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
+        #         {"role": "user", "content": content}
+        #     ]
+        #     keywords_response = get_completion(messages)
+        #     keywords = json.loads(keywords_response)
+        #     if isinstance(keywords, list) and keywords:
+        #         keyword_text = ", ".join(keywords)
+        #         keyword_vector = get_embedding(keywords[0])
+        # except Exception:
+        #     keyword_text = None
+        #     keyword_vector = None
 
         message = self.message_dao.create(
             session_id, user_id, content, role, vector, metadata,
