@@ -162,33 +162,5 @@ class MessageVectorUpdate(Resource):
             return {'error': str(e)}, 500
 
 
-@ns.route('/vectors/search-by-time')
-class MessageVectorSearchByTime(Resource):
-    @ns.doc('search_similar_messages_pgvector_by_time',
-            description='특정 기간 내(pgvector 기반) 유사 메시지(top-k) 검색')
-    @ns.expect(vector_search_time_model, validate=True)
-    def post(self):
-        """특정 기간 내(pgvector 기반) 유사 메시지(top-k) 검색 (POST JSON body)"""
-        data = request.json
-        user_id = data.get('user_id')
-        query = data.get('query')
-        top_k = data.get('top_k', 5)
-        start_timestamp = data.get('start_timestamp')
-        end_timestamp = data.get('end_timestamp')
-        try:
-            top_k = int(top_k)
-        except Exception:
-            top_k = 5
-        if not user_id or not query:
-            return {'error': 'user_id와 query는 필수입니다.'}, 400
-        try:
-            message_service = MessageService()
-            results = message_service.search_similar_messages_pgvector_by_time(
-                user_id, query, top_k, start_timestamp, end_timestamp)
-            return results, 200
-        except Exception as e:
-            return {'error': str(e)}, 500
-
-
 # Register the namespace
 api.add_namespace(ns)
