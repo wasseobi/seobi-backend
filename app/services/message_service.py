@@ -309,24 +309,22 @@ class MessageService:
     def update_message_vectors(self, user_id: uuid.UUID = None) -> Dict[str, Any]:
         """기존 메시지들의 벡터를 업데이트합니다."""
         try:
-            # 특정 사용자 또는 전체 메시지 조회
-            if user_id:
-                messages = self.message_dao.get_all_by_user_id(user_id)
-            else:
-                messages = self.message_dao.get_all()
+            messages = self.message_dao.get_all_by_user_id(user_id)
 
             total = len(messages)
             updated = 0
             errors = 0
 
             for msg in messages:
-                if msg.vector is None:  # 벡터가 없는 메시지만 업데이트
-                    try:
-                        vector = get_embedding(msg.content)
-                        self.message_dao.update(msg.id, vector=vector)
-                        updated += 1
-                    except Exception as e:
-                        errors += 1
+                if msg.vector:
+                    continue
+                
+                try:
+                    vector = get_embedding(msg.content)
+                    self.message_dao.update(str(msg.id), vector=vector)
+                    updated += 1
+                except Exception:
+                    errors += 1
 
             result = {
                 "total": total,
