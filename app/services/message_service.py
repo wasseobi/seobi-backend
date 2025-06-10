@@ -161,21 +161,22 @@ class MessageService:
                     chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
                         processed = next(processor.process_tool_message(msg_chunk), None)
-                        if processed:
-                            context.add_tool_result(processed)
-                            if processed.get('content'):
-                                tool_results_buffer.append({
-                                    'type': 'toolmessage',
-                                    'content': processed.get('content'),
-                                    'metadata': {
-                                        **processed.get('metadata', {}),
-                                        "tool_response": True
-                                    }
-                                })
+                        if not processed:
+                            continue
+                            
+                        context.add_tool_result(processed)
+                        if processed.get('content'):
+                            tool_results_buffer.append({
+                                'type': 'toolmessage',
+                                'content': processed.get('content'),
+                                'metadata': {
+                                    **processed.get('metadata', {}),
+                                    "tool_response": True
+                                }
+                            })
 
                     elif isinstance(msg_chunk, AIMessage):
                         if hasattr(msg_chunk, "additional_kwargs") and msg_chunk.additional_kwargs.get("tool_calls"):
-                            # 도구 호출 처리
                             for tool_call in msg_chunk.additional_kwargs["tool_calls"]:
                                 context.add_tool_call_chunk(tool_call)
                                 tool_calls_buffer.append({
@@ -185,7 +186,6 @@ class MessageService:
                                         'tool_call_id': tool_call.get('id', '')
                                     }
                                 })
-
                         elif msg_chunk.content:
                             context.append_assistant_content(msg_chunk.content)
                             final_response_buffer.append({
