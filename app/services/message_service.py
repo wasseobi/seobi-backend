@@ -127,7 +127,7 @@ class MessageService:
         return self.message_dao.delete(message_id)
 
     def create_langgraph_completion(self, session_id: uuid.UUID, user_id: uuid.UUID,
-                                    content: str) -> Generator[Dict, None, None]:
+                                    content: str, user_location) -> Generator[Dict, None, None]:
         """LangGraph를 통한 응답 생성."""
         processor = MessageProcessor(str(session_id), str(user_id))
         context = self._get_or_create_context(str(session_id), str(user_id))
@@ -141,6 +141,7 @@ class MessageService:
         agent_state = AgentStateStore.get(str(user_id))
 
         agent_state["current_input"] = content
+        agent_state["user_location"] = user_location
         agent_state["messages"].append(HumanMessage(content=content))
 
         # 메세지 컨텍스트에 사용자 메시지 추가
