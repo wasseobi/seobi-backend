@@ -24,7 +24,7 @@ step_outputs는 다음과 같은 형식으로 각 단계의 정보가 정리돼 
 - 반드시 사용자의 목표(description)을 중심 기준으로 삼아야 하며, 이 목적에 부합하지 않는 정보는 제거해야 해
 - step_outputs 간의 흐름과 관계를 고려하여 연결된 내용으로 정리해
 - 목적과 관련 없는 정보는 배제하고, 핵심만 남겨
-- 단편적인 요약이 아니라, 주제를 설명하는 3~5문장의 자연스러운 단락을 작성해
+- 단편적인 요약이 아니라, 주제를 설명하는 800자 내외(7~10문장)의 칼럼형 단락으로 작성해
 - bullet 형식이나 표 형식은 사용하지 마
 - 마치 주제를 정리한 브리핑 칼럼처럼 읽히도록 해줘
 
@@ -58,6 +58,7 @@ AI 도구 실행 결과 요약 (step_outputs): {step_outputs}
 
 def finalize_task_result(state: BGState) -> BGState:
     print(f"[DEBUG][finalize_task_result] state: {state}")
+    
     task = state.get("task")
     print(f"[DEBUG][finalize_task_result] state['task']: {task}")
     if not task:
@@ -101,25 +102,20 @@ def finalize_task_result(state: BGState) -> BGState:
         title = task.get("title", "")
         description = task.get("description", "")
         joined_outputs = "\n".join(step_outputs_for_llm)
-        print(f"[DEBUG][finalize_task_result] title: {title}, description: {description}")
-        print(f"[DEBUG][finalize_task_result] step_outputs_for_llm: {joined_outputs}")
 
         prompt = TASK_RESULT_CONTENT_PROMPT.format(
             title=title,
             description=description,
             step_outputs=joined_outputs
         )
-        print(f"[DEBUG][finalize_task_result] prompt: {prompt}")
 
         messages = [
             {"role": "system", "content": "너는 전문 칼럼니스트야"},
             {"role": "user", "content": prompt}
         ]
-        print(f"[DEBUG][finalize_task_result] messages: {messages}")
 
         try:
             response = get_completion(messages)
-            print(f"[DEBUG][finalize_task_result] LLM 응답: {response}")
             match = re.search(r'```json\s*({[\s\S]*?})\s*```', response)
             if not match:
                 # ```json ... ``` 블록이 없으면 그냥 JSON 오브젝트만 추출
@@ -147,9 +143,7 @@ def finalize_task_result(state: BGState) -> BGState:
             "summary": summary,
             "steps": step_summaries
         }
-        print(f"[DEBUG][finalize_task_result] task['task_result']: {task['task_result']}")
         task["finish_at"] = datetime.now(timezone.utc)
-        print(f"[DEBUG][finalize_task_result] task['finish_at']: {task['finish_at']}")
 
         state["task"] = task
         state["finished"] = True
