@@ -387,24 +387,6 @@ class MessageService:
         ]
         return results
 
-    def search_similar_keywords_pgvector(self, user_id: str, query: str, top_k: int = 5) -> list[dict]:
-        """
-        [PGVECTOR] user_id의 메시지 중 쿼리 임베딩과 가장 유사한 top_k 메시지 반환 (keyword_vector 기준, DB에서 벡터 연산)
-        """
-        query_vec = np.array(get_embedding(query))
-
-        messages = self.message_dao.get_keyword_pgvector(user_id, query_vec, top_k)
-        results = [
-            {
-                "id": str(msg.id),
-                "content": msg.content,
-                "keyword_text": msg.keyword_text,
-                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
-            }
-            for msg in messages
-        ]
-        return results
-
     def update_message_vectors(self, user_id: uuid.UUID = None) -> Dict[str, Any]:
         """기존 메시지들의 벡터를 업데이트합니다."""
         try:
