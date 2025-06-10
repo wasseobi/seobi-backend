@@ -158,7 +158,6 @@ class MessageService:
         try:
             for msg_chunk, metadata in self.graph.stream(agent_state, stream_mode="messages"):
                 try:
-                    chunk_data = None
                     if isinstance(msg_chunk, ToolMessage):
                         processed = next(processor.process_tool_message(msg_chunk), None)
                         if not processed:
@@ -196,39 +195,30 @@ class MessageService:
 
                     elif isinstance(msg_chunk, dict):
                         if "agent" in msg_chunk:
-                            # 에이전트 메시지 처리
                             messages_to_process = msg_chunk["agent"].get(
                                 "formatted_messages", [])
-                            for processed in processor.process_agent_messages(messages_to_process):
-                                if isinstance(processed, str) and processed.startswith("data: "):
-                                    processed = json.loads(
-                                        processed[len("data: "):])
-
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", {})
-                                    }
-                                    yield chunk_data
-
+                            processed = next(processor.process_agent_messages(messages_to_process), None)
+                            if not processed or not processed.get("content"):
+                                continue
+                            
+                            target_metadata = processed.get("metadata", {})
                         elif "content" in msg_chunk or "metadata" in msg_chunk:
-                            for processed in processor.process_dict_message(msg_chunk):
-                                if isinstance(processed, str) and processed.startswith("data: "):
-                                    processed = json.loads(
-                                        processed[len("data: "):])
+                            processed = next(processor.process_dict_message(msg_chunk), None)
+                            if not processed or not processed.get("content"):
+                                continue
 
-                                if processed.get("content"):
-                                    context.append_assistant_content(
-                                        processed["content"])
-                                    chunk_data = {
-                                        'type': 'chunk',
-                                        'content': processed["content"],
-                                        'metadata': processed.get("metadata", metadata)
-                                    }
-                                    yield chunk_data
+                            target_metadata = processed.get("metadata", metadata)
+                        else:
+                            continue
+
+                        context.append_assistant_content(processed["content"])
+
+                        yield {
+                            'type': 'chunk',
+                            'content': processed["content"],
+                            'metadata': target_metadata
+                        }
+
                 except Exception as e:
                     print(f"[LangGraph] Exception in chunk: {e}")
                     continue

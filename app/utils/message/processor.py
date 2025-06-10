@@ -88,7 +88,7 @@ class MessageProcessor:
             role=formatted_msg["role"],
             metadata=formatted_msg["metadata"]
         )
-        yield f"data: {json.dumps(formatted_msg, ensure_ascii=False)}\n\n"
+        yield formatted_msg
 
     def _get_message_key(self, msg: Dict[str, Any]) -> str:
         """메시지의 고유 키를 생성하는 함수"""
