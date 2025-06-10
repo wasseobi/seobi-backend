@@ -32,3 +32,16 @@ def route_after_evaluation(state: BGState) -> Literal["success", "retry", "fail"
         return "retry"
     else:
         return "fail"
+
+def route_after_fetch(state: BGState) -> Literal["aggregate", "initialize"]:
+    """
+    fetch_next_task 실행 후 분기:
+    - state["all_task_done"]가 True면 aggregate_result_to_db 노드로 이동
+    - 아니면 initialize_task_plan 노드로 이동
+    """
+    if state.get("all_task_done", False):
+        print("[DEBUG][route_after_fetch] 모든 task 완료 → aggregate 단계로 이동")
+        return "aggregate"
+    else:
+        print("[DEBUG][route_after_fetch] 실행할 task 있음 → initialize_task_plan 단계로 이동")
+        return "initialize"
