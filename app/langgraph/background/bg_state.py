@@ -28,7 +28,7 @@ class TaskRuntime(TypedDict, total=False):
 class BGState(TypedDict):
     user_id: uuid.UUID                     # user_id
     task: Optional[TaskRuntime]
-    last_completed_title: Optional[str]
+    all_task_done: Optional[bool]
     error: Optional[str]
     finished: bool
     step: Optional[PlanStep]

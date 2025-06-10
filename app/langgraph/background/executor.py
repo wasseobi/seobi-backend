@@ -12,7 +12,7 @@ def create_background_executor() -> Callable:
         state = BGState(
             user_id=user_id,
             task=None,
-            last_completed_title=None,
+            all_task_done=None,
             error=None,
             finished=False,
             step=None

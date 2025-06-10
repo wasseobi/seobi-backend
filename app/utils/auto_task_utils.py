@@ -22,8 +22,8 @@ def safe_background_response(data: dict) -> dict:
     }
     if data.get('task') is not None:
         result['task'] = data['task']
-    if data.get('last_completed_title'):
-        result['last_completed_title'] = data['last_completed_title']
+    if data.get('all_task_done'):
+        result['all_task_done'] = data['all_task_done']
     if data.get('error'):
         result['error'] = data['error']
     if data.get('step') is not None:
