@@ -1,6 +1,6 @@
 import json
 from typing import List, Dict, Set
-from langchain_core.messages import BaseMessage, FunctionMessage, AIMessage
+from langchain_core.messages import BaseMessage, FunctionMessage, AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from app.langgraph.agent.agent_state import AgentState
 
@@ -108,6 +108,24 @@ def call_tool(state: AgentState, tools: List[BaseTool], mcp_tools: List[BaseTool
                         asyncio.set_event_loop(loop)
                         result = loop.run_until_complete(mcp_tool.ainvoke(arguments))
                         loop.close()
+                    
+                    # MCP 도구 실행 결과를 state에 저장
+                    state["tool_results"] = result
+                    state["current_tool_call_id"] = call_id
+                    state["current_tool_name"] = function_name
+                    
+                    # 결과를 ToolMessage로 변환하여 메시지 히스토리에 추가
+                    tool_message = ToolMessage(
+                        content=str(result),
+                        tool_call_id=call_id,
+                        name=function_name
+                    )
+                    state["messages"].append(tool_message)
+                    
+                    print(f"[ToolNode] MCP tool {function_name} executed successfully")
+                    print(f"[ToolNode] Result: {result}")
+                    print(f"[ToolNode] Added ToolMessage to history")
+                    
                 elif tool:
                     # 일반 도구도 동기적으로 실행
                     import asyncio
@@ -125,6 +143,35 @@ def call_tool(state: AgentState, tools: List[BaseTool], mcp_tools: List[BaseTool
                     state["tool_results"] = result
                     state["current_tool_call_id"] = call_id
                     state["current_tool_name"] = function_name
+                    
+                    # 결과를 ToolMessage로 변환하여 메시지 히스토리에 추가
+                    tool_message = ToolMessage(
+                        content=str(result),
+                        tool_call_id=call_id,
+                        name=function_name
+                    )
+                    state["messages"].append(tool_message)
+                    
+                    print(f"[ToolNode] Tool {function_name} executed successfully")
+                    print(f"[ToolNode] Result: {result}")
+                    print(f"[ToolNode] Added ToolMessage to history")
+                else:
+                    # 도구를 찾을 수 없는 경우
+                    error_result = f"Tool {function_name} not found"
+                    state["tool_results"] = error_result
+                    state["current_tool_call_id"] = call_id
+                    state["current_tool_name"] = function_name
+                    
+                    # 오류 결과도 ToolMessage로 변환하여 메시지 히스토리에 추가
+                    tool_message = ToolMessage(
+                        content=error_result,
+                        tool_call_id=call_id,
+                        name=function_name
+                    )
+                    state["messages"].append(tool_message)
+                    
+                    print(f"[ToolNode] Tool {function_name} not found")
+                    print(f"[ToolNode] Added error ToolMessage to history")
                     
             except Exception as e:
                 log.error(f"[ToolNode] Error processing tool call {function_name}: {str(e)}")

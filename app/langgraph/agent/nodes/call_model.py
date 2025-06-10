@@ -63,6 +63,56 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
         formatted_output["stdout"] = f"Error formatting tool results: {str(e)}"
         return formatted_output
 
+def clean_message_history(messages: List[BaseMessage]) -> List[BaseMessage]:
+    """메시지 히스토리에서 유효하지 않은 tool_calls를 정리합니다."""
+    cleaned_messages = []
+    pending_tool_calls = set()
+    
+    for message in messages:
+        if hasattr(message, "additional_kwargs") and "tool_calls" in message.additional_kwargs:
+            # AI 메시지에 tool_calls가 있는 경우
+            tool_calls = message.additional_kwargs["tool_calls"]
+            for tool_call in tool_calls:
+                if "id" in tool_call:
+                    pending_tool_calls.add(tool_call["id"])
+            cleaned_messages.append(message)
+        elif isinstance(message, ToolMessage) and hasattr(message, "tool_call_id"):
+            # ToolMessage인 경우
+            if message.tool_call_id in pending_tool_calls:
+                pending_tool_calls.remove(message.tool_call_id)
+                cleaned_messages.append(message)
+            # tool_call_id가 없거나 매칭되지 않는 ToolMessage는 제거
+        else:
+            # 일반 메시지인 경우
+            cleaned_messages.append(message)
+    
+    # pending_tool_calls가 남아있으면 해당 tool_calls를 제거
+    if pending_tool_calls:
+        final_messages = []
+        for message in cleaned_messages:
+            if hasattr(message, "additional_kwargs") and "tool_calls" in message.additional_kwargs:
+                # tool_calls에서 pending인 것들을 제거
+                tool_calls = message.additional_kwargs["tool_calls"]
+                filtered_tool_calls = [
+                    tc for tc in tool_calls 
+                    if "id" not in tc or tc["id"] not in pending_tool_calls
+                ]
+                
+                if filtered_tool_calls:
+                    # tool_calls가 남아있으면 메시지 유지
+                    message.additional_kwargs["tool_calls"] = filtered_tool_calls
+                    final_messages.append(message)
+                else:
+                    # tool_calls가 모두 제거되면 일반 AI 메시지로 변환
+                    from langchain_core.messages import AIMessage
+                    clean_message = AIMessage(content=message.content)
+                    final_messages.append(clean_message)
+            else:
+                final_messages.append(message)
+        return final_messages
+    
+    return cleaned_messages
+
 def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Union[Dict, AgentState]:
     """LLM을 호출하고 응답을 생성하는 노드."""
     try:
@@ -83,6 +133,15 @@ def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Uni
             user_id = state.user_id
             user_memory = state.user_memory or ""
 
+        # 메시지 히스토리 정리
+        messages = clean_message_history(messages)
+        
+        # 정리된 메시지를 state에 다시 설정
+        if is_dict:
+            state["messages"] = messages
+        else:
+            state.messages = messages
+
         search_results = []
         if messages and user_id:
             from app.services.message_service import MessageService
@@ -97,25 +156,39 @@ def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Uni
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
         
+        # tool_results가 있지만 이미 ToolMessage가 추가되었는지 확인
         if tool_results:
-            tool_output = format_tool_results(tool_results)
+            current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
             
-            if tool_output:
-                current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
-                current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
+            # 이미 해당 tool_call_id에 대한 ToolMessage가 있는지 확인
+            tool_message_exists = any(
+                isinstance(msg, ToolMessage) and hasattr(msg, "tool_call_id") and msg.tool_call_id == current_tool_call_id
+                for msg in messages
+            )
+            
+            if not tool_message_exists:
+                # ToolMessage가 없을 때만 추가 (tool_node에서 추가하지 않은 경우)
+                tool_output = format_tool_results(tool_results)
                 
-                if current_tool_call_id and current_tool_name:
-                    tool_message = ToolMessage(
-                        content=tool_output["stdout"],
-                        tool_call_id=current_tool_call_id,
-                        name=current_tool_name
-                    )
-                    messages.append(tool_message)
+                if tool_output:
+                    current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
+                    
+                    if current_tool_call_id and current_tool_name:
+                        tool_message = ToolMessage(
+                            content=tool_output["stdout"],
+                            tool_call_id=current_tool_call_id,
+                            name=current_tool_name
+                        )
+                        messages.append(tool_message)
+                        print(f"[CallModel] Added ToolMessage for {current_tool_name}")
+                    else:
+                        log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
                 else:
-                    log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
+                    log.warning("[CallModel] Tool output is empty or invalid")
             else:
-                log.warning("[CallModel] Tool output is empty or invalid")
-              # 도구 관련 상태 초기화
+                print(f"[CallModel] ToolMessage already exists for {current_tool_call_id}")
+            
+            # 도구 관련 상태 초기화
             if is_dict:
                 state["tool_results"] = None
                 state["current_tool_call_id"] = None
