@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Dict, List, Any, Union
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
+from langchain_core.tools import BaseTool
 from datetime import datetime
 
 from app.utils.openai_client import init_langchain_llm
@@ -14,7 +15,7 @@ from ..agent_state import AgentState
 from ....utils.prompt.agent_prompt import prompt
 
 # 도구가 바인딩된 모델 초기화
-model = init_langchain_llm(agent_tools)
+global_model = init_langchain_llm(agent_tools)
 
 # 로그 디렉토리 설정
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'logs')
@@ -62,7 +63,7 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
         formatted_output["stdout"] = f"Error formatting tool results: {str(e)}"
         return formatted_output
 
-def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
+def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Union[Dict, AgentState]:
     """LLM을 호출하고 응답을 생성하는 노드."""
     try:
         # state가 dict인지 AgentState인지 확인
@@ -96,25 +97,39 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
         
+        # tool_results가 있지만 이미 ToolMessage가 추가되었는지 확인
         if tool_results:
-            tool_output = format_tool_results(tool_results)
+            current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
             
-            if tool_output:
-                current_tool_call_id = state.get("current_tool_call_id") if is_dict else getattr(state, "current_tool_call_id", None)
-                current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
+            # 이미 해당 tool_call_id에 대한 ToolMessage가 있는지 확인
+            tool_message_exists = any(
+                isinstance(msg, ToolMessage) and hasattr(msg, "tool_call_id") and msg.tool_call_id == current_tool_call_id
+                for msg in messages
+            )
+            
+            if not tool_message_exists:
+                # ToolMessage가 없을 때만 추가 (tool_node에서 추가하지 않은 경우)
+                tool_output = format_tool_results(tool_results)
                 
-                if current_tool_call_id and current_tool_name:
-                    tool_message = ToolMessage(
-                        content=tool_output["stdout"],
-                        tool_call_id=current_tool_call_id,
-                        name=current_tool_name
-                    )
-                    messages.append(tool_message)
+                if tool_output:
+                    current_tool_name = state.get("current_tool_name") if is_dict else getattr(state, "current_tool_name", None)
+                    
+                    if current_tool_call_id and current_tool_name:
+                        tool_message = ToolMessage(
+                            content=tool_output["stdout"],
+                            tool_call_id=current_tool_call_id,
+                            name=current_tool_name
+                        )
+                        messages.append(tool_message)
+                        print(f"[CallModel] Added ToolMessage for {current_tool_name}")
+                    else:
+                        log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
                 else:
-                    log.warning("[CallModel] Missing tool_call_id or tool_name, cannot create ToolMessage")
+                    log.warning("[CallModel] Tool output is empty or invalid")
             else:
-                log.warning("[CallModel] Tool output is empty or invalid")
-              # 도구 관련 상태 초기화
+                print(f"[CallModel] ToolMessage already exists for {current_tool_call_id}")
+            
+            # 도구 관련 상태 초기화
             if is_dict:
                 state["tool_results"] = None
                 state["current_tool_call_id"] = None
@@ -137,8 +152,10 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         openai_messages = convert_to_openai_messages(formatted_messages)
         
         try:
+            # 전역 변수와 충돌하지 않도록 다른 변수명 사용
+            bound_llm = global_model.bind_tools(mcp_tools + agent_tools)
             # LangChain 모델 호출
-            response = model.invoke(openai_messages)
+            response = bound_llm.invoke(openai_messages)
             
             # tool_calls 확인 및 처리
             has_tool_calls = (
