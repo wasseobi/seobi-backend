@@ -32,3 +32,4 @@ class BGState(TypedDict):
     error: Optional[str]
     finished: bool
     step: Optional[PlanStep]
+    current_step: List[str]

@@ -1,9 +1,5 @@
 from app.langgraph.background.bg_state import BGState, PlanStep
 from app.utils.auto_task_utils import get_current_step_message
-from app.services.auto_task_service import AutoTaskService
-from typing import Dict
-
-auto_task_service = AutoTaskService()
 
 def dequeue_ready_step(state: BGState) -> BGState:
     """
@@ -37,13 +33,14 @@ def dequeue_ready_step(state: BGState) -> BGState:
     step["status"] = "running"
     task["plan"][step_id] = step
 
-    # auto task current_step update + 디버그 메시지
+    # BGState(current_step)에만 append + 디버그 메시지
     tool = step.get("tool")
     status = step.get("status")
     msg = get_current_step_message(tool, status)
-    auto_task_id = str(task["task_id"])
-    print(f"[DEBUG][dequeue_ready_step] current_step update: tool={tool}, status={status}, msg={msg}, auto_task_id={auto_task_id}")
-    auto_task_service.update(auto_task_id, current_step=msg)
+    history = state.get("current_step", [])
+    history.append(msg)
+    state["current_step"] = history
+    print(f"[DEBUG][dequeue_ready_step] current_step update: history={history}")
 
     state["step"] = step
     return state
