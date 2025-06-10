@@ -36,7 +36,6 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
     try:
         metadata = {}
         
-        log.debug(f"[Formatter] Starting metadata processing for message type: {type(message)}")
         
         if hasattr(message, "additional_kwargs"):
             additional_kwargs = message.additional_kwargs
@@ -44,21 +43,16 @@ def format_message_content(message: BaseMessage, session_id=None, user_id=None) 
             # 모든 키-값 쌍을 문자열로 변환하여 저장
             for k, v in additional_kwargs.items():
                 str_key = str(k) if not isinstance(k, str) else k
-                log.debug(f"[Formatter] Converting key '{k}' ({type(k)}) to string: '{str_key}'")
                 metadata[str_key] = v
             
             if "tool_calls" in metadata:
                 tool_calls = metadata["tool_calls"]
-                for tc in tool_calls:
-                    log.debug(f"[Formatter] Tool call keys and their types: {[(k, type(k)) for k in tc.keys()]}")
         
         # 메시지 유형별 특수 처리
         if isinstance(message, AIMessage):
-            log.debug("[Formatter] Processing AIMessage specific metadata")
             if "tool_calls" in metadata:
                 metadata["type"] = "tool_calls"
         elif isinstance(message, ToolMessage):
-            log.debug("[Formatter] Processing ToolMessage specific metadata")
             metadata["type"] = "tool_response"
             metadata["tool_name"] = message.tool_name if hasattr(message, "tool_name") else None
             metadata["tool_call_id"] = message.tool_call_id if hasattr(message, "tool_call_id") else None

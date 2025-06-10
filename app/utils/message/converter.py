@@ -18,7 +18,6 @@ def convert_to_openai_messages(messages: List[BaseMessage]) -> List[Dict[str, An
     last_assistant_message = None
     
     for idx, message in enumerate(messages):
-        log.debug(f"[Converter] Processing message {idx} of type: {type(message)}")
         # 기본 메시지 구조
         msg_dict = {
             "content": message.content
@@ -35,11 +34,9 @@ def convert_to_openai_messages(messages: List[BaseMessage]) -> List[Dict[str, An
             tool_call_id = None
             if hasattr(message, "tool_call_id"):
                 tool_call_id = message.tool_call_id
-                log.debug(f"[Converter] Found tool_call_id in message: {tool_call_id}")
             elif last_assistant_message and "tool_calls" in last_assistant_message.get("additional_kwargs", {}):
                 tool_call = last_assistant_message["additional_kwargs"]["tool_calls"][0]
                 tool_call_id = tool_call.get("id")
-                log.debug(f"[Converter] Inferred tool_call_id from last_assistant_message: {tool_call_id}")
             
             if tool_call_id:
                 msg_dict["tool_call_id"] = tool_call_id

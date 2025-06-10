@@ -50,7 +50,6 @@ class MessageContext:
     def add_user_message(self, content: str) -> None:
         """사용자 메시지를 추가합니다."""
         message = self._create_message(role="user", content=content)
-        log.debug(f"Adding user message: {message}")
         self.messages.append(message)
 
     def combine_tool_call_chunks(self) -> Optional[Dict[str, Any]]:
@@ -77,10 +76,8 @@ class MessageContext:
         """도구 호출 청크를 추가합니다."""
         if chunk.get("id"):
             self.flush_tool_call_chunks()
-            log.debug(f"Starting new tool call with chunk: {chunk}")
             self.current_tool_call_chunks = [chunk]
         else:
-            log.debug(f"Appending tool call chunk: {chunk}")
             self.current_tool_call_chunks.append(chunk)
 
     def flush_tool_call_chunks(self) -> None:
@@ -95,7 +92,6 @@ class MessageContext:
                 content="",
                 metadata={"tool_calls": [combined_tool_call]}
             )
-            log.debug(f"Adding combined tool call message: {message}")
             self.messages.append(message)
 
         self.current_tool_call_chunks = []
@@ -106,10 +102,6 @@ class MessageContext:
         tool_call_id = None
         if isinstance(result, dict):
             tool_call_id = str(result.get("metadata", {}).get("tool_call_id", ""))
-        
-        if tool_call_id and tool_call_id in self.tool_call_ids:
-            log.debug(f"Skipping duplicate tool result for call ID: {tool_call_id}")
-            return
             
         message = self._create_message(
             role="tool",
@@ -125,13 +117,11 @@ class MessageContext:
         if tool_call_id:
             self.tool_call_ids.add(tool_call_id)
             
-        log.debug(f"Adding tool result message: {message}")
         self.messages.append(message)
 
     def append_assistant_content(self, content: str) -> None:
         """AI 응답 청크를 누적합니다."""
         self.final_content += content
-        log.debug(f"Appended content, current final_content length: {len(self.final_content)}")
 
     def finalize_assistant_response(self) -> None:
         """완성된 AI 응답을 메시지에 추가합니다."""
@@ -148,7 +138,6 @@ class MessageContext:
             content=self.final_content,
             metadata={"tools_used": tools_used}
         )
-        log.debug(f"Adding final assistant response: {message}")
         self.messages.append(message)
 
     def get_messages_for_storage(self) -> List[Dict[str, Any]]:
@@ -181,4 +170,3 @@ class MessageContext:
         self.final_content = ""
         self.current_tool_call_chunks.clear()
         self.tool_call_ids.clear()
-        log.debug("Message context reset complete")
