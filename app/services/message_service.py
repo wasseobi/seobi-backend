@@ -164,15 +164,8 @@ class MessageService:
                     if isinstance(msg_chunk, ToolMessage):
                         # 도구 메시지 처리
                         processed_list = list(
-                            processor.process_ai_or_tool_message(msg_chunk))
+                            processor.process_tool_message(msg_chunk))
                         for processed in processed_list:
-                            if isinstance(processed, str):
-                                try:
-                                    if processed.startswith("data: "):
-                                        processed = processed[len("data: "):]
-                                    processed = json.loads(processed)
-                                except Exception:
-                                    continue
                             context.add_tool_result(
                                 tool_name=processed.get("metadata", {}).get(
                                     "tool_name", "unknown"),
