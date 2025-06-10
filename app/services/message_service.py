@@ -1,5 +1,5 @@
 from app.dao.message_dao import MessageDAO
-from app.models import Session
+from app.dao.session_dao import SessionDAO
 from app.utils.message.message_context import MessageContext
 
 from app.utils.openai_client import get_embedding, get_completion
@@ -19,6 +19,7 @@ import numpy as np
 class MessageService:
     def __init__(self):
         self.message_dao = MessageDAO()
+        self.session_dao = SessionDAO()
         self.agent_executor = create_agent_executor()
         self.graph = build_graph().compile()
         self.active_contexts: Dict[str, MessageContext] = {}  # 세션별 활성 컨텍스트
@@ -50,7 +51,7 @@ class MessageService:
 
     def get_session_messages(self, session_id: uuid.UUID) -> List[Dict]:
         """Get all messages in a session"""
-        session = Session.query.get(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
 
@@ -60,7 +61,7 @@ class MessageService:
 
     def get_conversation_history(self, session_id: uuid.UUID) -> List[Dict[str, str]]:
         """Get conversation history formatted for AI completion"""
-        session = Session.query.get(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
 
@@ -74,7 +75,7 @@ class MessageService:
                        content: str, role: str, metadata) -> Dict:
         """Create a new message (임베딩 벡터 및 키워드 벡터 포함)""" 
 
-        session = Session.query.get(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
