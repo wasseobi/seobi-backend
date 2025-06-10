@@ -40,15 +40,27 @@ def build_graph():
                 # state가 딕셔너리인 경우
                 next_step = state.get("next_step") if isinstance(state, dict) else None
                 
+            print(f"🔀 State conditional - next_step: {next_step}")
+            
             if next_step == "end":
                 return "cleanup"
             elif next_step == "tool":
                 return "tool"
+            elif next_step == "cleanup":
+                return "cleanup"
             else:
+                # 기본값: 도구 사용 여부 확인
+                messages = state.get("messages", []) if isinstance(state, dict) else getattr(state, "messages", [])
+                if messages:
+                    last_message = messages[-1]
+                    # 마지막 메시지가 AI 응답이고 tool_calls가 없으면 종료
+                    if (hasattr(last_message, "additional_kwargs") and 
+                        "tool_calls" not in last_message.additional_kwargs):
+                        return "cleanup"
                 return "tool"  # 기본값
         except Exception as e:
             log.error(f"[Graph] Error in state_conditional: {str(e)}")
-            return "tool"
+            return "cleanup"  # 오류 시 cleanup으로
 
     # Summarize는 cleanup에서 처리 후 상태에 따라 분기
     def after_cleanup(state: Union[AgentState, Dict]) -> str:

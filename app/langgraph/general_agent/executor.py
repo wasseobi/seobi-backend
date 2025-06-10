@@ -17,7 +17,7 @@ dotenv.load_dotenv()
 async def general_agent(message: str, conversation_history: List[Dict] = None, user_id: str = None):
     """메인 함수 - General Agent 실행 (MCP + 직접 구현 도구 통합)"""
     config = RunnableConfig(
-        recursion_limit=15,  # 도구 호출 횟수 제한을 늘림
+        recursion_limit=25,  # 재귀 한계 증가
         configurable={"thread_id": "1"},
         tags=["my-tag"]
     )

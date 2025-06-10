@@ -165,11 +165,12 @@ def call_tool(state: Union[Dict, AgentState], tools: List[BaseTool] = None) -> U
                     state.current_tool_call_id = call_id
                     state.current_tool_name = function_name
 
-        # 다음 단계를 model로 설정하여 결과 처리
+        # 다음 단계를 agent로 설정하여 결과 처리
         if is_dict:
-            state["next_step"] = "model"
+            state["next_step"] = "agent"
         else:
-            state.next_step = "model"
+            state.next_step = "agent"
+        print(f"🔄 Tool execution completed - moving to agent")
         return state
         
     except Exception as e:

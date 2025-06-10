@@ -91,23 +91,56 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             if not all_tools:
                 all_tools = agent_tools  # 기본 도구
 
+        # 메시지 검증
+        if not messages:
+            log.error("[CallModel] No messages in state")
+            if is_dict:
+                state["next_step"] = "cleanup"
+            else:
+                state.next_step = "cleanup"
+            return state
+
         # 도구가 바인딩된 모델 초기화
         model = init_langchain_llm(all_tools)
         
         # 도구 목록 로깅
         print(f"🔧 Available tools in call_model: {[tool.name for tool in all_tools]}")
         print(f"🔧 Total tools count: {len(all_tools)}")
+        print(f"📨 Processing message: {messages[-1].content if messages else 'No message'}")
 
         search_results = []
-        if messages and user_id:
-            from app.services.message_service import MessageService
-            message_service = MessageService()
-            latest_message = messages[-1].content if messages else ""
-            search_results = message_service.search_similar_messages_pgvector(
-                user_id=str(user_id),
-                query=latest_message,
-                top_k=3
-            )
+        # 검색 결과를 임시로 비활성화하여 이전 대화 간섭 방지
+        # if messages and user_id:
+        #     from app.services.message_service import MessageService
+        #     message_service = MessageService()
+        #     latest_message = messages[-1].content if messages else ""
+        #     
+        #     # 현재 질문과 관련된 검색만 수행
+        #     search_results = message_service.search_similar_messages_pgvector(
+        #         user_id=str(user_id),
+        #         query=latest_message,
+        #         top_k=3
+        #     )
+        #     
+        #     # 검색 결과 필터링 - 현재 질문과 너무 다른 결과는 제외
+        #     filtered_results = []
+        #     for result in search_results:
+        #         # 검색 결과의 내용이 현재 질문과 유사한지 확인
+        #         if result.get('content') and latest_message:
+        #             # 간단한 키워드 매칭으로 필터링
+        #             current_keywords = set(latest_message.split())
+        #             result_keywords = set(result['content'].split())
+        #             common_keywords = current_keywords.intersection(result_keywords)
+        #             
+        #             # 공통 키워드가 있거나 현재 질문이 위치/교통 관련이면 포함
+        #             if (len(common_keywords) > 0 or 
+        #                 any(keyword in latest_message for keyword in ['역', '지하철', '버스', '길', '위치', '어디', '가다', '오다'])):
+        #                 filtered_results.append(result)
+        #         
+        #     search_results = filtered_results
+        #     print(f"🔍 Search results: {len(search_results)} relevant results found")
+        
+        print("🔍 Search results disabled to prevent interference")
 
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
@@ -152,6 +185,11 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
 - 웹 검색이 필요하면 search_web 도구를 사용하세요
 - 일정 관리가 필요하면 schedule 관련 도구를 사용하세요
 
+**중요**: 
+- 항상 사용자의 현재 질문에만 답변하세요
+- 이전 대화 기록은 참고용이므로, 현재 질문과 직접 관련이 없으면 무시하세요
+- 검색된 이전 대화 내용이 현재 질문과 다르면 현재 질문에 집중하세요
+
 항상 한국어로 답변하고, 도구를 사용할 때는 정확한 인자를 제공하세요.""")
 
         # 시스템 메시지를 맨 앞에 추가
@@ -195,11 +233,14 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
                     state.next_step = "tool"
                     # tool 정보 설정
                     state.set_tool_info(tool_calls)
+                print(f"🔧 Tool call detected: {tool_calls[0]['function']['name']}")
             else:
+                # 도구 호출이 없으면 cleanup으로 이동
                 if is_dict:
                     state["next_step"] = "cleanup"
                 else:
                     state.next_step = "cleanup"
+                print("✅ No tool calls - moving to cleanup")
             
             # AI 응답을 messages에 추가
             messages.append(response)
@@ -209,11 +250,13 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             else:
                 state.step_count += 1
                 
+            print(f"🤖 AI Response: {response.content}")
+            print(f"📊 Step count: {state.get('step_count', 0) if is_dict else state.step_count}")
             
             # 메시지 유효성 검사 (AgentState인 경우에만)
             if not is_dict and not state.validate_messages():
                 log.error("[CallModel] Invalid message pattern after adding AI response")
-                state.next_step = "end"
+                state.next_step = "cleanup"
                 return state
             
         except Exception as e:
@@ -222,9 +265,9 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             messages.append(error_msg)
             
             if is_dict:
-                state["next_step"] = "end"
+                state["next_step"] = "cleanup"
             else:
-                state.next_step = "end"
+                state.next_step = "cleanup"
             return state
             
     except Exception as e:

@@ -90,10 +90,12 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             state["next_step"] = "summarize"
         else:
             state.next_step = "summarize"
+        print(f"📝 Messages >= 6, moving to summarize")
     else:
         if is_dict:
             state["next_step"] = "end"
         else:
             state.next_step = "end"
+        print(f"✅ Messages < 6, ending conversation")
     
     return state 
