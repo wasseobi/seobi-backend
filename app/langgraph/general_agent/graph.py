@@ -1,48 +1,102 @@
-"""Graph module for General Agent implementation."""
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph, START, END
-from langgraph.prebuilt import ToolNode, tools_condition
-from app.utils.openai_client import init_langchain_llm
+"""Graph module for General Agent implementation (MCP + 직접 구현 도구 통합)."""
+from typing import Dict, List, Optional, Sequence, TypedDict, Union
+from langgraph.graph import END, StateGraph
+from langchain_core.messages import BaseMessage
+import logging
 
-from .agent_state import State
-from .nodes.agent_node import agent_node
+from .nodes.model_node import model_node
+from .nodes.summarize_node import summarize_node
+from .nodes.cleanup_node import cleanup_node
+from .nodes.tool_node import call_tool
+from ..tools import agent_tools
+from .agent_state import AgentState
 
-memory = MemorySaver()
+# 로거 설정
+log = logging.getLogger(__name__)
 
-def mcp_graph(tools):
-    """MCP Graph 생성 함수"""
-    print("🔧 MCP Tools:", tools)
 
-    # LLM 설정
-    llm = init_langchain_llm()
+def build_graph():
+    """Build the conversation flow graph (MCP + 직접 구현 도구 통합)."""
+    # StateGraph 생성 시 초기 상태 설정
+    workflow = StateGraph(dict)  # AgentState 대신 dict 사용
 
-    # 도구 노드 생성 (기본 설정 사용)
-    tool_node = ToolNode(tools)
+    # Create tool node function that accepts state
+    def tool_node(state):
+        return call_tool(state, agent_tools)
 
-    # 그래프 생성
-    workflow = StateGraph(State)
-    
-    # agent_node를 tools와 함께 호출하는 래퍼 함수
-    def agent_node_wrapper(state):
-        return agent_node(state, tools)
-    
-    # 노드 추가
-    workflow.add_node("agent", agent_node_wrapper)
-    workflow.add_node("tools", tool_node)
-    
-    # 엣지 추가 - 조건부 구조로 복원
-    workflow.add_edge(START, "agent")
+    # Add nodes
+    workflow.add_node("agent", model_node)
+    workflow.add_node("tool", tool_node)
+    workflow.add_node("cleanup", cleanup_node)
+    workflow.add_node("summarize", summarize_node)
+
+    # Set entry point
+    workflow.set_entry_point("agent")    # 조건 분기 함수
+    def state_conditional(state: Union[AgentState, Dict]) -> str:
+        try:
+            if isinstance(state, AgentState):
+                next_step = state.get("next_step")
+            else:
+                # state가 딕셔너리인 경우
+                next_step = state.get("next_step") if isinstance(state, dict) else None
+                
+            if next_step == "end":
+                return "cleanup"
+            elif next_step == "tool":
+                return "tool"
+            else:
+                return "tool"  # 기본값
+        except Exception as e:
+            log.error(f"[Graph] Error in state_conditional: {str(e)}")
+            return "tool"
+
+    # Summarize는 cleanup에서 처리 후 상태에 따라 분기
+    def after_cleanup(state: Union[AgentState, Dict]) -> str:
+        try:
+            if isinstance(state, AgentState):
+                next_step = state.get("next_step")
+            else:
+                next_step = state.get("next_step") if isinstance(state, dict) else None
+            
+            return next_step or "end"
+        except Exception as e:
+            log.error(f"[Graph] Error in after_cleanup: {str(e)}")
+            return "end"
+
+    # 엣지 연결
     workflow.add_conditional_edges(
         "agent",
-        tools_condition,
+        state_conditional,
         {
-            "tools": "tools",
-            END: END
-        }
+            "tool": "tool",
+            "cleanup": "cleanup",
+        },
     )
-    workflow.add_edge("tools", "agent")
+
+    workflow.add_conditional_edges(
+        "cleanup",
+        after_cleanup,
+        {
+            "summarize": "summarize",
+            "end": END,
+        },
+    )
+
+    workflow.add_edge("tool", "agent")
+    workflow.add_edge("summarize", END)
+
+    return workflow
+
+
+def mcp_graph(mcp_tools):
+    """MCP Graph 생성 함수 (MCP + 직접 구현 도구 통합)"""
+    print("🔧 MCP Tools:", mcp_tools)
+    print("🔧 Direct Tools:", agent_tools)
+
+    # 통합된 그래프 생성
+    workflow = build_graph()
     
-    # 메모리 설정
-    app = workflow.compile(checkpointer=memory)
+    # 그래프 컴파일
+    app = workflow.compile()
     
     return app

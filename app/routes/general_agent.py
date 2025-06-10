@@ -121,7 +121,11 @@ class GeneralAgentChat(Resource):
                     
                     try:
                         # general_agent 함수 호출 (대화 기록과 함께)
-                        response = loop.run_until_complete(general_agent(user_message, conversation_history))
+                        response = loop.run_until_complete(general_agent(
+                            user_message, 
+                            conversation_history,
+                            user_id=request.headers.get('user-id', 'anonymous')
+                        ))
                         
                         # 응답 처리
                         if response and 'messages' in response:
@@ -235,7 +239,11 @@ class GeneralAgentChatSync(Resource):
             asyncio.set_event_loop(loop)
             
             try:
-                response = loop.run_until_complete(general_agent(user_message, conversation_history))
+                response = loop.run_until_complete(general_agent(
+                    user_message, 
+                    conversation_history,
+                    user_id=request.headers.get('user-id', 'anonymous')
+                ))
                 
                 # 응답 처리
                 if response and 'messages' in response:
