@@ -72,9 +72,26 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         if is_dict:
             messages = state["messages"]
             user_location = state.get("user_location")
-        else:               
+            summary = state.get("summary")
+            user_id = state.get("user_id")
+            user_memory = state.get("user_memory", "")
+        else:
             messages = state.messages
             user_location = state.user_location
+            summary = state.summary
+            user_id = state.user_id
+            user_memory = state.user_memory or ""
+
+        search_results = []
+        if messages and user_id:
+            from app.services.message_service import MessageService
+            message_service = MessageService()
+            latest_message = messages[-1].content if messages else ""
+            search_results = message_service.search_similar_messages_pgvector(
+                user_id=str(user_id),
+                query=latest_message,
+                top_k=3
+            )
 
         # 이전 도구 실행 결과 처리
         tool_results = state.get("tool_results") if is_dict else getattr(state, "tool_results", None)
@@ -110,7 +127,10 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         formatted_messages = prompt.format_messages(
             messages=messages,
             user_location=user_location or "위치 정보 없음",
-            current_date=current_date
+            current_date=current_date,
+            summary=summary or "이전 대화 요약 없음",
+            search_results=json.dumps(search_results, ensure_ascii=False) if search_results else "관련 대화 검색 결과 없음",
+            user_memory=user_memory or "장기기억 없음"
         )
         
         # OpenAI 형식으로 메시지 변환

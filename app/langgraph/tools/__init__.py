@@ -5,12 +5,10 @@ from .weather import weather_daily_forecast
 
 agent_tools = [
     search_web,
-    google_search,
     insight_article,
     create_schedule_llm,
     get_user_schedules,
     search_similar_messages,
-    google_search_expansion,
     google_news,
     weather_daily_forecast
 ]

@@ -292,8 +292,16 @@ class SessionClose(Resource):
                     with app.app_context():
                         agent_state = AgentStateStore.get(user_id)
                         if agent_state:
-                            user_service.save_user_memory_from_state(user_id, agent_state)
-                            AgentStateStore.delete(user_id)
+                            messages = agent_state.get('messages', [])
+                            summary = agent_state.get('summary')
+                            user_service.save_user_memory_from_state(
+                                user_id, agent_state)
+
+                            AgentStateStore.set(user_id, {
+                                'messages': messages,
+                                'summary': summary
+                            })
+                            
                             log.info(f"[{datetime.now()}] User memory 업데이트 완료")
                         else:
                             log.warning(f"AgentState not found for user {user_id} during session close")

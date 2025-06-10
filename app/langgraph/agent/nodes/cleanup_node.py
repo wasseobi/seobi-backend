@@ -82,7 +82,7 @@ def cleanup_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
     state["step_count"] = 0
     
     # summarize 체크
-    if len(cleaned_messages) > 5:
+    if len(cleaned_messages) >= 6:
         if is_dict:
             state["next_step"] = "summarize"
         else:

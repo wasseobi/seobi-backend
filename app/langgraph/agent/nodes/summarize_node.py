@@ -15,9 +15,9 @@ def delete_message(state: Union[Dict, AgentState]) -> List[BaseMessage]:
     else:
         messages = getattr(state, "messages", [])
 
-    if len(messages) > 4:
-        # 마지막 4개 메시지만 유지
-        return messages[-4:]
+    if len(messages) > 6:
+        # 마지막 6개 메시지만 유지
+        return messages[-6:]
     return messages
 
 
@@ -35,9 +35,10 @@ def summarize_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
             summary = getattr(state, "summary", "")
             messages = getattr(state, "messages", [])
 
+        messages_to_summarize = messages[:-6] if len(messages) > 6 else []
         messages_content = "\n".join([
             f"{'사용자' if isinstance(msg, HumanMessage) else 'AI'}: {msg.content}" 
-            for msg in messages[:-4]
+            for msg in messages_to_summarize
         ])
 
         # OpenAI 메시지 포맷으로 직접 구성
