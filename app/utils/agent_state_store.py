@@ -16,7 +16,16 @@ class AgentStateStore:
         data = _redis.get(f"agent_state:{user_id}")
         if data:
             return pickle.loads(data)
-        return None
+        else:
+            return {
+                "messages": [],
+                "summary": "",
+                "user_id": user_id,
+                "current_input": "",
+                "scratchpad": [],
+                "step_count": 0,
+                "next_step": "agent"
+            }
 
     @staticmethod
     def delete(user_id: str):

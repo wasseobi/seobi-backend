@@ -139,22 +139,7 @@ class MessageService:
 
         # 1. AgentState 불러오기
         agent_state = AgentStateStore.get(str(user_id))
-        if not agent_state:
-            agent_state = {
-                "messages": [],
-                "summary": "",
-                "user_id": str(user_id),
-                "current_input": content,
-                "scratchpad": [],
-                "step_count": 0,
-                "next_step": "agent"
-            }
-        else:
-            agent_state["step_count"] = agent_state.get("step_count", 0)
-            agent_state["next_step"] = "agent"
-            agent_state["summary"] = agent_state.get("summary", "")
 
-        agent_state["user_id"] = str(user_id)
         agent_state["current_input"] = content
         agent_state["messages"].append(HumanMessage(content=content))
 
