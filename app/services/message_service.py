@@ -59,18 +59,6 @@ class MessageService:
         serialized = [self._serialize_message(msg) for msg in messages]
         return serialized
 
-    def get_conversation_history(self, session_id: uuid.UUID) -> List[Dict[str, str]]:
-        """Get conversation history formatted for AI completion"""
-        session = self.session_dao.get_by_id(session_id)
-        if not session:
-            raise ValueError('Session not found')
-
-        messages = self.message_dao.get_all_by_session_id(session_id)
-        return [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]
-
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str, metadata) -> Dict:
         """Create a new message (임베딩 벡터 및 키워드 벡터 포함)""" 
