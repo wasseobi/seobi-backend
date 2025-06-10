@@ -52,7 +52,7 @@ def _validate_tool_responses(messages: List[BaseMessage]) -> Set[str]:
 
     return missing_responses
 
-def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
+def call_tool(state: AgentState, tools: List[BaseTool], mcp_tools: List[BaseTool]) -> AgentState:
     """도구를 호출하고 결과를 처리하는 노드."""
     
     try:
@@ -94,8 +94,32 @@ def call_tool(state: AgentState, tools: List[BaseTool]) -> AgentState:
 
                 # 도구 실행
                 tool = next((t for t in tools if t.name == function_name), None)
-                if tool:
-                    result = tool.invoke(arguments)
+                mcp_tool = next((t for t in mcp_tools if t.name == function_name), None)
+                
+                if mcp_tool:
+                    # MCP 도구는 동기적으로 실행
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        result = loop.run_until_complete(mcp_tool.ainvoke(arguments))
+                    except RuntimeError:
+                        # 새로운 이벤트 루프 생성
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        result = loop.run_until_complete(mcp_tool.ainvoke(arguments))
+                        loop.close()
+                elif tool:
+                    # 일반 도구도 동기적으로 실행
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        result = loop.run_until_complete(tool.ainvoke(arguments))
+                    except RuntimeError:
+                        # 새로운 이벤트 루프 생성
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        result = loop.run_until_complete(tool.ainvoke(arguments))
+                        loop.close()
                     
                     # 도구 실행 결과를 state에 저장
                     state["tool_results"] = result

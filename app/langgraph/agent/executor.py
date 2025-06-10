@@ -5,12 +5,45 @@ from .agent_state import AgentState
 
 from .graph import build_graph
 
-def create_agent_executor() -> Callable:
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_core.runnables import RunnableConfig
+import dotenv
+import os
+
+dotenv.load_dotenv()
+
+async def create_agent_executor() -> Callable:
     """Agent 실행기를 생성합니다."""
-    graph = build_graph()
+    config = RunnableConfig(
+        recursion_limit=25,  # 재귀 한계 증가
+        configurable={"thread_id": "1"},
+        tags=["my-tag"]
+    )
+
+    # 새로운 방식으로 MCP 클라이언트 사용
+    client = MultiServerMCPClient(
+        {
+            "googlemap": {
+                "url": os.getenv("GOOGLE_MAP_MCP_URL"),
+                "transport": "streamable_http",
+            }
+        }
+    )
+
+    # MCP 도구 가져오기
+    mcp_tools = []
+    try:
+        mcp_tools = await client.get_tools()
+        print(f"🔧 MCP Tools loaded: {len(mcp_tools)} tools")
+        print(f"🔧 MCP Tool names: {[tool.name for tool in mcp_tools]}")
+    except Exception as e:
+        print(f"⚠️ MCP Tools loading failed: {e}")
+        mcp_tools = []
+    
+    graph = build_graph(mcp_tools)
     compiled_graph = graph.compile()
     
-    def invoke(
+    async def invoke(
         input_text: str,
         chat_history: List[BaseMessage] = None
     ) -> Dict[str, Any]:
@@ -29,16 +62,22 @@ def create_agent_executor() -> Callable:
         
         try:
             # 그래프 실행
-            result = compiled_graph.invoke(state)
+            result = await compiled_graph.ainvoke(state, config=config)
             
             if isinstance(result, dict) and "messages" in result:
                 return result
             return state
             
         except Exception as e:
+            print(f"❌ Error in invoke: {e}")
             import traceback
             traceback.print_exc()
             state["messages"] = [AIMessage(content="죄송합니다. 처리 중 오류가 발생했습니다.")]
             return state
-    
+        finally:
+            # MCP 클라이언트 정리
+            try:
+                await client.aclose()
+            except:
+                pass 
     return invoke

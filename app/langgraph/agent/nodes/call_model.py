@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Dict, List, Any, Union
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
+from langchain_core.tools import BaseTool
 from datetime import datetime
 
 from app.utils.openai_client import init_langchain_llm
@@ -14,7 +15,7 @@ from ..agent_state import AgentState
 from ....utils.prompt.agent_prompt import prompt
 
 # 도구가 바인딩된 모델 초기화
-model = init_langchain_llm(agent_tools)
+global_model = init_langchain_llm(agent_tools)
 
 # 로그 디렉토리 설정
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'logs')
@@ -62,7 +63,7 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
         formatted_output["stdout"] = f"Error formatting tool results: {str(e)}"
         return formatted_output
 
-def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
+def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Union[Dict, AgentState]:
     """LLM을 호출하고 응답을 생성하는 노드."""
     try:
         # state가 dict인지 AgentState인지 확인
@@ -137,8 +138,10 @@ def call_model(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
         openai_messages = convert_to_openai_messages(formatted_messages)
         
         try:
+            # 전역 변수와 충돌하지 않도록 다른 변수명 사용
+            bound_llm = global_model.bind_tools(mcp_tools)
             # LangChain 모델 호출
-            response = model.invoke(openai_messages)
+            response = bound_llm.invoke(openai_messages)
             
             # tool_calls 확인 및 처리
             has_tool_calls = (

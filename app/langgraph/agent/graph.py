@@ -15,7 +15,7 @@ from .agent_state import AgentState
 log = logging.getLogger(__name__)
 
 
-def build_graph():
+def build_graph(mcp_tools):
     """Build the conversation flow graph."""
     # 상태 초기화 함수 정의
     def init_state():
@@ -31,10 +31,13 @@ def build_graph():
 
     # Create tool node function that accepts state
     def tool_node(state):
-        return call_tool(state, agent_tools)
+        return call_tool(state, agent_tools, mcp_tools)
+    
+    def model_node_wrapper(state):
+        return model_node(state, mcp_tools)
 
     # Add nodes
-    workflow.add_node("agent", model_node)
+    workflow.add_node("agent", model_node_wrapper)
     workflow.add_node("tool", tool_node)
     workflow.add_node("cleanup", cleanup_node)
     workflow.add_node("summarize", summarize_node)

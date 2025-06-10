@@ -1,13 +1,14 @@
 """모델 노드 구현."""
-from typing import Dict, Union
+from typing import Dict, Union, List
 import logging
 from langchain_core.messages import AIMessage
+from langchain_core.tools import BaseTool
 from app.langgraph.agent.agent_state import AgentState
 
 log = logging.getLogger(__name__)
 
 
-def model_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
+def model_node(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Union[Dict, AgentState]:
     """모델 노드 처리"""
     
     # 메시지 로깅
@@ -34,7 +35,7 @@ def model_node(state: Union[Dict, AgentState]) -> Union[Dict, AgentState]:
 
     try:
         from .call_model import call_model
-        result = call_model(state)
+        result = call_model(state, mcp_tools)
         
         result_messages = result.messages if isinstance(result, AgentState) else result.get('messages', [])
         if not result_messages:

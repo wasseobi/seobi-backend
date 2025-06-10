@@ -15,13 +15,104 @@ import uuid
 from datetime import datetime, timezone
 import json
 import numpy as np
+from langchain_mcp_adapters.client import MultiServerMCPClient
+import os
+import dotenv
+
+dotenv.load_dotenv()
+
+mcp_tools = None
+
+def get_mcp_tools_sync():
+    """동기적으로 MCP 도구를 가져오는 함수"""
+    global mcp_tools
+    if mcp_tools is None:
+        try:
+            # 환경 변수 확인
+            google_map_url = os.getenv("GOOGLE_MAP_MCP_URL")
+            if not google_map_url:
+                print("[경고] GOOGLE_MAP_MCP_URL 환경 변수가 설정되지 않았습니다.")
+                mcp_tools = []
+                return mcp_tools
+            
+            # MCP 클라이언트 생성 및 도구 가져오기
+            client = MultiServerMCPClient(
+                {
+                    "googlemap": {
+                        "url": google_map_url,
+                        "transport": "streamable_http",
+                    }
+                }
+            )
+            
+            # 동기적으로 도구 가져오기 (실제로는 async이지만 여기서는 간단히 처리)
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                mcp_tools = loop.run_until_complete(client.get_tools())
+            except RuntimeError:
+                # 새로운 이벤트 루프 생성
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                mcp_tools = loop.run_until_complete(client.get_tools())
+                loop.close()
+                
+            print(f"[MCP] {len(mcp_tools)}개의 MCP 도구를 로드했습니다.")
+            
+        except Exception as e:
+            print(f"[MCP] MCP 도구 로드 실패: {e}")
+            mcp_tools = []
+    
+    return mcp_tools
+
+async def get_mcp_tools():
+    """비동기적으로 MCP 도구를 가져오는 함수 (기존 호환성 유지)"""
+    global mcp_tools
+    if mcp_tools is None:
+        client = MultiServerMCPClient(
+            {
+                "googlemap": {
+                    "url": os.getenv("GOOGLE_MAP_MCP_URL"),
+                    "transport": "streamable_http",
+                }
+            }
+        )
+        mcp_tools = await client.get_tools()
+    return mcp_tools
 
 class MessageService:
     def __init__(self):
         self.message_dao = MessageDAO()
-        self.agent_executor = create_agent_executor()
-        self.graph = build_graph().compile()
+        self._agent_executor = None  # 지연 초기화를 위해 None으로 설정
+        self._graph = None  # 지연 초기화를 위해 None으로 설정
         self.active_contexts: Dict[str, MessageContext] = {}  # 세션별 활성 컨텍스트
+
+    @property
+    def agent_executor(self):
+        """Agent executor를 지연 초기화하는 프로퍼티"""
+        if self._agent_executor is None:
+            # 동기적으로 실행하기 위해 asyncio 사용
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                self._agent_executor = loop.run_until_complete(create_agent_executor())
+            except RuntimeError:
+                # 새로운 이벤트 루프 생성
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._agent_executor = loop.run_until_complete(create_agent_executor())
+                loop.close()
+        return self._agent_executor
+
+    @property
+    def graph(self):
+        """Graph를 지연 초기화하는 프로퍼티"""
+        if self._graph is None:
+            # MCP 도구를 실제로 가져와서 사용
+            tools = get_mcp_tools_sync()
+            print(f"[Graph] {len(tools)}개의 MCP 도구로 그래프를 빌드합니다.")
+            self._graph = build_graph(tools).compile()
+        return self._graph
 
     def _serialize_message(self, message: Any) -> Dict[str, Any]:
         """Serialize message data for API response"""
