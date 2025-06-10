@@ -96,13 +96,14 @@ class MessageContext:
 
         self.current_tool_call_chunks = []
 
-    def add_tool_result(self, tool_name: str, result: Any) -> None:
+    def add_tool_result(self, result: Any) -> None:
         """도구 실행 결과를 추가합니다."""
         # 도구 호출 ID가 이미 처리되었는지 확인
         tool_call_id = None
         if isinstance(result, dict):
             tool_call_id = str(result.get("metadata", {}).get("tool_call_id", ""))
             
+        tool_name = str(result.get("metadata", {}).get("tool_name", "unknown"))
         message = self._create_message(
             role="tool",
             content=str(result),

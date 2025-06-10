@@ -166,15 +166,11 @@ class MessageService:
                         processed_list = list(
                             processor.process_tool_message(msg_chunk))
                         for processed in processed_list:
-                            context.add_tool_result(
-                                tool_name=processed.get("metadata", {}).get(
-                                    "tool_name", "unknown"),
-                                result=processed
-                            )
+                            context.add_tool_result(processed)
                             if processed.get('content'):
                                 tool_results_buffer.append({
                                     'type': 'toolmessage',
-                                    'content': processed.get('content', ""),
+                                    'content': processed.get('content'),
                                     'metadata': {
                                         **processed.get('metadata', {}),
                                         "tool_response": True
