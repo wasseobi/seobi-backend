@@ -31,7 +31,10 @@ def get_interest_user_prompt(message_list, user_keywords=None):
 
 # 세션 요약 프롬프트
 SESSION_SUMMARY_SYSTEM_PROMPT = (
-    "다음 대화 전체를 바탕으로 세션의 제목과 설명을 생성해주세요. 제목은 20자 이내, 설명은 100자 이내로 작성하고, 응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."
+    "다음 유저 문장들을 바탕으로 세션의 제목과 설명을 생성해주세요."
+    "반드시 제목과 설명을 만들어야 합니다." 
+    "만약 대화가 부족하거나 적절한 제목과 설명을 만들 수 없다면 제목과 설명을 만들지 않고 title과 description 키를 포함한 빈 문자열을 반환해주세요."
+    "제목은 20자 이내, 설명은 100자 이내로 작성하고, 응답은 JSON 형식으로 'title'과 'description' 키를 포함해야 합니다."
 )
 
 SESSION_SUMMARY_USER_PROMPT = ("다음 대화를 바탕으로 세션의 제목과 설명을 생성해주세요: \n\n")

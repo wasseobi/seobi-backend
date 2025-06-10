@@ -91,9 +91,12 @@ class SessionService:
             description = result.get('description')
             
             if not title:
-                title = (description or response)[:20]
+                title = "당신을 이해하고 보조하는 비서, 서비입니다."
             if not description:
-                description = response[:100]
+                description = ("서비를 사용해주셔서 감사합니다. "
+                               "서비는 Microsoft AI School 6기 수강생 중 1팀이 진행한 마지막 프로젝트의 결과물입니다. "
+                               "이 프로젝트는 최초 개발 당시 총 7명의 수강생이 참여했으며, 팀원은 다음과 같습니다.\n\n"
+                               "권동훈, 김기덕, 김용휘, 김지강, 박주은, 박주형, 이현령")
             session = self.session_dao.update(
                 session_id,
                 title=title,
