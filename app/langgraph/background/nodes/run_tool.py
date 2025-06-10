@@ -5,6 +5,9 @@ from app.langgraph.background.planners.format_tool_input import format_tool_inpu
 from app.utils.summarize_output import gpt_summarize_output
 import re
 
+# auto_task_service = AutoTaskService()
+# auto_task_dao = AutoTaskDAO()
+
 def run_tool(state: BGState) -> BGState:
     """
     주어진 PlanStep에 해당하는 tool을 실행하고 결과를 PlanStep에 저장한다.
@@ -76,6 +79,7 @@ def run_tool(state: BGState) -> BGState:
     except Exception as e:
         print(f"[run_tool] Error: {e}")
         step["status"] = "failed"
+
         step["output"] = {"error": str(e)}
         state["error"] = f"[{step['step_id']}] {str(e)}"
 

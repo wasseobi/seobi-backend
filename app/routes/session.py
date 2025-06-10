@@ -6,9 +6,11 @@ from app.services.session_service import SessionService
 from app.services.message_service import MessageService
 from app.services.interest_service import InterestService
 from app.services.user_service import UserService
+from app.services.background_service import BackgroundService
 from app.services.auto_task_service import AutoTaskService
 from app.utils.auth_middleware import require_auth
 from app.utils.agent_state_store import AgentStateStore
+from app.utils.auto_task_utils import safe_background_response
 from app.utils.app_config import is_dev_mode
 from app.utils.prompt.service_prompts import (
     SESSION_SUMMARY_SYSTEM_PROMPT,
@@ -85,6 +87,7 @@ interest_service = InterestService()
 user_service = UserService()
 cleanup_service = CleanupService()
 auto_task_service = AutoTaskService()
+background_service = BackgroundService()
 
 
 @ns.route('/open')
@@ -206,6 +209,8 @@ class SessionClose(Resource):
             
             log.info(f"[{datetime.now()}] 관심사 추출 백그라운드 시작됨 - API 응답 즉시 반환")
 
+            user_id = str(session["user_id"])
+
             # 1-3. 세션 cleanup 실행
             log.info(f"[{datetime.now()}] Cleanup 시작")
 
@@ -225,6 +230,7 @@ class SessionClose(Resource):
                     # cleanup 완료 후 auto task 생성도 백그라운드에서 실행
                     if cleanup_result and not cleanup_result.get("error") and cleanup_result.get("generated_tasks"):
                         run_auto_task_creation(cleanup_result)
+                        run_background_auto_task(user_id)
                         
                 except Exception as e:
                     log.error(f"[{datetime.now()}] Cleanup 백그라운드 에러: {str(e)}")
@@ -249,14 +255,31 @@ class SessionClose(Resource):
                 except Exception as e:
                     log.error(f"[{datetime.now()}] Auto task 백그라운드 에러: {str(e)}")
 
+                        # 1.4 백그라운드 자동 업무 실행
+            def run_background_auto_task(user_id):
+                try:
+                    log.info(f"[{datetime.now()}] Background Auto task 백그라운드 스레드 시작")
+                    start_time = time.time()
+                    
+                    from app import create_app
+                    app = create_app()
+                    with app.app_context():
+                        background_result = background_service.background_auto_task(str(user_id))
+                        background_result = safe_background_response(background_result)
+                        print("[DEBUG] background_result:", background_result)
+                        log.info(f"[{datetime.now()}] Background auto task 결과: {background_result}")
+
+                    end_time = time.time()
+                    log.info(f"[{datetime.now()}] Background auto task 백그라운드 완료 - 소요시간: {end_time - start_time:.2f}초")
+                except Exception as e:
+                    log.error(f"[{datetime.now()}] Background auto task 백그라운드 에러: {str(e)}")
+
             # 백그라운드에서 cleanup 실행 (join 없이)
             cleanup_thread = threading.Thread(target=run_cleanup)
             cleanup_thread.daemon = True  # 메인 프로세스 종료 시 함께 종료
             cleanup_thread.start()
 
             log.info(f"[{datetime.now()}] Cleanup 백그라운드 시작됨 - API 응답 즉시 반환")
-
-            user_id = str(session["user_id"])
 
             # 세션 종료 시 AgentState에서 user_memory 업데이트
             def run_user_memory_update():

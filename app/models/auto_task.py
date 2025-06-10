@@ -1,6 +1,6 @@
 from app.models.db import db
 import uuid
-from sqlalchemy.dialects.postgresql import UUID, ENUM
+from sqlalchemy.dialects.postgresql import UUID, ENUM, JSONB
 from datetime import datetime, timezone
 
 class AutoTask(db.Model):
@@ -16,9 +16,9 @@ class AutoTask(db.Model):
     preferred_at = db.Column(db.DateTime(timezone=True), nullable=True)  # 유저 선호 실행시각 (예: "매일 7시" 등)
     active = db.Column(db.Boolean, default=True, nullable=False)    # 활성화/비활성화(ON/OFF) 상태
     task_list = db.Column(db.JSON, nullable=True) # 종속성 업무
-    tool = db.Column(db.Text, nullable=True)
-    linked_service = db.Column(db.Text, nullable=True)
-    current_step = db.Column(db.Text, nullable=True)    # 현재 실행 중인 step_id(진행중 관리)
+    tool = db.Column(JSONB, nullable=True)
+    linked_service = db.Column(JSONB, nullable=True)
+    current_step = db.Column(JSONB, nullable=True)    # 현재 실행 중인 step_id(진행중 관리)
     status = db.Column(ENUM('undone', 'doing', 'done', 'failed', 'cancelled', name='auto_task_status'), nullable=False, default='undone')
     output = db.Column(db.JSON, nullable=True)
     meta = db.Column(db.JSON, nullable=True)    # 확장 필드(상태/세부 설정 등 자유 확장)
