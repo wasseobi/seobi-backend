@@ -63,8 +63,9 @@ WEEKLY_ACHIEVEMENTS_PROMPT = """# 주간 성과 요약
 {data}
 """
 
-WEEKLY_CONVERSATION_PROMPT = """# 주간 대화/관심사 요약
-이번 주 대화 내용과 새로운 관심사를 분석해주세요.
+WEEKLY_CONVERSATION_PROMPT = """
+# 주간 대화/관심사 요약
+이번 주 대화 내용과 새로운 관심사를 분석해주세요. 관심사 변화와 주요 대화 주제에 관한 내용만을 포함해야 합니다.
 
 [관심사 변화]
 {interests_data}
