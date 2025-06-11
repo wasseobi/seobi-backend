@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime
 
 from app.utils.time import TimeUtils
-from app.utils.prompt.monthly_report_prompts import (
+from app.utils.prompt.reports.monthly_report_prompts import (
     MONTHLY_ACHIEVEMENTS_PROMPT,
     WEEKLY_TRENDS_PROMPT,
     INTEREST_TRENDS_PROMPT,

@@ -26,9 +26,9 @@ class GenerateReport:
         elif report_type == 'weekly':
             markdown = self.weekly_report_generator.generate_weekly_report(user_id, tz)
             script = self.weekly_report_generator.generate_weekly_report_script(user_id, markdown, tz)
-        elif report_type == 'monthly':
-            markdown = self.monthly_report_generator.generate_monthly_report(user_id, tz)
-            script = self.monthly_report_generator.generate_monthly_report_script(user_id, markdown, tz)
+        # elif report_type == 'monthly':
+        #     markdown = self.monthly_report_generator.generate_monthly_report(user_id, tz)
+        #     script = self.monthly_report_generator.generate_monthly_report_script(user_id, markdown, tz)
         else:
             raise ValueError(f"지원하지 않는 report_type: {report_type}")
             
