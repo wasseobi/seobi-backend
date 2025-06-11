@@ -1,40 +1,42 @@
 # Seobi Backend
 
-Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 사용하며, SQLAlchemy를 ORM으로 사용합니다.
+Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 사용하며, SQLAlchemy를 ORM으로 사용합니다. LangGraph를 활용한 AI 에이전트 시스템과 다양한 도구 연동을 지원합니다.
 
 ## 7. 향후 개발 계획 및 LangGraph 연동
 
 ### LangGraph 기반 AI/도구 호출 시스템 개발 로드맵
 
-#### 1) LangGraph 연동 구조 설계 및 기본 구현
+#### 1) LangGraph 연동 구조 설계 및 기본 구현 ✅
 
 - [x] `app/langgraph/` 디렉터리 내에 builder, tools, workflow, utils 등 모듈 분리
 - [x] ToolNode 및 반복 tool call 구조 구현 (Azure OpenAI 연동 포함)
 - [x] LLM이 문제 해결 시까지 tool call 반복 및 조건부 분기 로직 적용
 
-#### 2) 서비스/라우트 통합 및 엔드포인트 확장
+#### 2) 서비스/라우트 통합 및 엔드포인트 확장 ✅
 
 - [x] 기존 Flask 서비스(`app/services/`)와 LangGraph 연동 서비스(`langgraph_service.py`) 분리 및 통합
 - [x] `/messages` 등 주요 엔드포인트에서 LangGraph 기반 AI/도구 호출 지원
 
-#### 3) 도구 함수 확장 및 관리
+#### 3) 도구 함수 확장 및 관리 🔄
 
-- [ ] 실제 서비스에 필요한 도구 함수(예: 예약, TTS, STT, 외부 API 등) 추가 및 관리
-- [ ] 도구 등록/관리 인터페이스 및 문서화
+- [x] 기본 도구 함수 구현 (검색, 일정, 날씨, 메모리)
+- [x] 실제 서비스에 필요한 추가 도구 함수 구현
+- [x] 도구 등록/관리 인터페이스 및 문서화
 
-#### 4) 상태 관리 및 대화 세션 확장
+#### 4) 상태 관리 및 대화 세션 확장 ✅
 
 - [x] LangGraph 실행 상태, tool call 결과, 대화 이력 등 세션 기반 관리
 - [x] DB 연동 및 세션별 대화 흐름 저장
 
-#### 5) 테스트 및 예외 처리 강화
+#### 5) 테스트 및 예외 처리 강화 🔄
 
 - [x] LangGraph 기반 워크플로우 단위/통합 테스트 작성
-- [ ] 도구 실패/예외 상황에 대한 graceful fallback 처리
+- [x] 도구 실패/예외 상황에 대한 graceful fallback 처리
 
-#### 6) 고도화 및 확장
+#### 6) 고도화 및 확장 📋
 
-- [ ] LangGraph 기반 멀티툴 조합, 복합 질의 처리, 실시간/비동기 처리 등 고도화
+- [ ] LangGraph 기반 멀티툴 조합, 복합 질의 처리
+- [x] 실시간/비동기 처리 등 고도화
 - [ ] LangGraph 기반 워크플로우 시각화 및 관리 도구 개발
 
 ---
@@ -47,58 +49,77 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 seobi-backend/
 │
 ├── app/
-│   ├── __init__.py
-│   ├── dao/                  # 데이터 접근 객체(DAO) 모음
-│   │   ├── base.py
-│   │   └── user_dao.py
-│   ├── langgraph/            # LangGraph 연동 및 도구 관련 코드
-│   ├── models/               # 데이터베이스 모델 정의
-│   │   ├── __init__.py
-│   │   ├── db.py
-│   │   ├── mcp_server.py
-│   │   ├── mcp_server_activation.py
-│   │   ├── message.py
-│   │   ├── session.py
-│   │   └── user.py
-│   ├── routes/               # API 엔드포인트
-│   │   ├── __init__.py
-│   │   ├── mcp_server.py
-│   │   ├── mcp_server_activation.py
-│   │   ├── message.py
-│   │   ├── session.py
-│   │   └── user.py
-│   ├── schemas/              # Pydantic 등 스키마 정의
-│   │   └── user_schema.py
-│   ├── services/             # 비즈니스 로직
-│   │   └── user_service.py
-│   └── utils/                # 유틸리티 함수 및 외부 연동
-│       └── openai_client.py
-│
-├── certs/                    # 인증서 등 보안 관련 파일
-│   └── certificate.pem
-├── migrations/               # Alembic 마이그레이션
-│   ├── alembic.ini
-│   ├── env.py
-│   ├── README
-│   ├── script.py.mako
-│   └── versions/
-├── config.py                 # 환경 설정
-├── main.py                   # 애플리케이션 진입점
-├── requirements.txt          # 의존성 목록
-├── pyproject.toml            # 프로젝트 메타데이터
-└── uv.lock                   # uv 패키지 매니저 lock 파일
+│   ├── __init__.py                 # Flask 앱 초기화
+│   ├── dao/                        # 데이터 접근 객체(DAO)
+│   ├── langgraph/                  # LangGraph AI 에이전트 시스템
+│   │   ├── agent/                  # 메인 에이전트
+│   │   ├── background/             # 백그라운드 업무 처리
+│   │   ├── cleanup/                # 대화 정리 및 분석
+│   │   ├── parsing_agent/          # 자연어 파싱 에이전트
+│   │   ├── general_agent/          # 일반 에이전트
+│   │   ├── insight/                # 인사이트 생성
+│   │   └── tools/                  # 도구 함수들
+│   │       ├── search.py           # 검색 도구
+│   │       ├── weather.py          # 날씨 도구
+│   │       ├── schedule.py         # 일정 도구
+│   │       └── memory.py           # 메모리 도구
+│   ├── models/                     # 데이터베이스 모델
+│   ├── routes/                     # API 엔드포인트
+│   │   └── debug/                  # 디버그용 엔드포인트
+│   ├── schemas/                    # API 스키마 정의
+│   ├── services/                   # 비즈니스 로직
+│   │   └── reports/                # 리포트 관련 서비스
+│   └── utils/                      # 유틸리티 함수
+├── tests/                          # 테스트 코드
+├── migrations/                     # Alembic 마이그레이션
+├── config.py                       # 환경 설정
+├── main.py                         # 애플리케이션 진입점
+├── requirements.txt                # 의존성 목록
+├── pyproject.toml                  # 프로젝트 메타데이터
+├── uv.lock                         # uv 패키지 매니저 lock 파일
+├── pytest.ini                      # pytest 설정
+├── .python-version                 # Python 버전
+└── .gitignore                      # Git 무시 파일
 ```
 
 ## 2. 주요 기능
 
-- 사용자 관리 (User CRUD)
-- 세션 관리 (Session CRUD)
-- 메시지 관리 (Message CRUD)
-- MCP 서버 관리 (MCPServer CRUD)
-- MCP 서버 활성화 관리 (ActiveMCPServer CRUD)
-- 일정 관리 (Schedule CRUD)
-- 리포트 관리 (Report CRUD)
-- 인사이트 아티클 관리 (InsightArticle CRUD)
+### 2.1 사용자 관리
+- 사용자 등록, 조회, 수정, 삭제 (CRUD)
+- JWT 기반 인증 시스템
+- Google OAuth 연동
+
+### 2.2 세션 관리
+- 대화 세션 생성 및 관리
+- 세션별 대화 이력 저장
+- 세션 상태 추적 (진행중/완료)
+
+### 2.3 메시지 관리
+- 실시간 메시지 스트리밍
+- 메시지 벡터 임베딩 (pgvector)
+- 키워드 추출 및 메타데이터 관리
+
+### 2.4 AI 에이전트 시스템
+- LangGraph 기반 대화 에이전트
+- 도구 호출 및 결과 처리
+- 대화 요약 및 정리
+
+### 2.5 Model Context Protocol(MCP) 도구 시스템
+- **검색 도구**: 웹 검색, Google 뉴스
+- **일정 관리**: 일정 생성, 조회, 수정
+- **날씨 정보**: 일일 날씨 예보
+- **메모리 시스템**: 유사 메시지 검색, 인사이트 아티클
+- **Model Context Protocol 서버 등록**: 외부 도구 연동
+
+### 2.6 자동 업무 시스템
+- 백그라운드 업무 실행
+- 업무 단계별 의존성 관리
+- 업무 상태 추적 및 결과 저장
+
+### 2.7 인사이트 시스템
+- 대화 내용 기반 인사이트 생성
+- 키워드 및 관심사 연동
+- TTS 스크립트 생성
 
 ## 3. 기술 스택
 
@@ -112,6 +133,9 @@ seobi-backend/
 ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C.svg?style=for-the-badge&logo=LangGraph&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C.svg?style=for-the-badge&logo=LangChain&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991.svg?style=for-the-badge&logo=OpenAI&logoColor=white)
+![Model Context Protocol](https://img.shields.io/badge/Model%20Context%20Protocol-FF6B6B.svg?style=for-the-badge&logo=model-context-protocol&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D.svg?style=for-the-badge&logo=Redis&logoColor=white)
+![pgvector](https://img.shields.io/badge/pgvector-336791.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ### Dev & Ops
 
@@ -120,6 +144,8 @@ seobi-backend/
 ![Swagger](https://img.shields.io/badge/Swagger-85EA2D.svg?style=for-the-badge&logo=Swagger&logoColor=black)
 ![OpenSSL](https://img.shields.io/badge/OpenSSL-721412.svg?style=for-the-badge&logo=OpenSSL&logoColor=white)
 ![Postgresql](https://img.shields.io/badge/PostgreSQL-4169E1.svg?style=for-the-badge&logo=PostgreSQL&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9EDC.svg?style=for-the-badge&logo=Pytest&logoColor=white)
+![Coverage](https://img.shields.io/badge/Coverage-0070C0.svg?style=for-the-badge&logo=Coverage&logoColor=white)
 
 ### Database
 
@@ -187,17 +213,6 @@ uv export -o requirements.txt
 개발모드 시, JWT 토큰 필요 없음. 배포 시, False로 수정하여 JWT 토큰 검증 이후에 백엔드 API 호출 가능합니다.
 
 ## 5. API 엔드포인트
-
-각 기능별로 다음과 같은 엔드포인트가 구현되어 있습니다:
-
-- `/users`: 사용자 관리
-- `/sessions`: 세션 관리
-- `/messages`: 메시지 관리
-- `/mcp_servers`: MCP 서버 관리
-- `/mcp_server_activations`: MCP 서버 활성화 관리
-- `/schedule`: 일정 관리
-- `/report`: 리포트 관리
-- `/insight_article`: 인사이트 아티클 관리
 
 ### API 문서화 (Swagger UI)
 
