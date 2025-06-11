@@ -80,5 +80,28 @@ class AutoTaskUpdateActive(Resource):
         except ValueError as e:
             ns.abort(404, str(e))
 
+@ns.route('/<uuid:user_id>')
+@ns.param('user_id', '사용자(User) UUID')
+class UserAutoTask(Resource):
+    @ns.doc(
+        'get_user_auto_task',
+        description='특정 사용자의 모든 자동 업무(AutoTask) 목록을 조회합니다.',
+        responses={
+            200: '성공적으로 조회됨',
+            404: '해당 사용자 없음',
+            401: '인증 필요',
+        }
+    )
+    @ns.marshal_list_with(auto_task_model)
+    @require_auth
+    def get(self, user_id):
+        """
+        특정 사용자의 모든 자동 업무(AutoTask) 목록을 조회합니다.
+        """
+        try:
+            return auto_task_service.get_user_auto_tasks(user_id)
+        except ValueError as e:
+            ns.abort(404, str(e))
+
 # Register the namespace
 api.add_namespace(ns) 
