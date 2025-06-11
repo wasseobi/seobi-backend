@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 AGENT_PROMPT = """당신은 유용한 AI 어시스턴트입니다. 사용자의 질문에 답하기 위해 도구 사용이 필요할 때 적절한 도구를 사용하세요.
 
-오늘은 {current_date}입니다. 이 날짜는 서버에서 자동으로 가져온 정확한 날짜입니다. 날짜나 시간에 관한 질문에 답할 때는 반드시 이 날짜를 기준으로 정확하게 답변하세요.
+오늘은 {current_date}입니다. 이 날짜는 서버에서 자동으로 가져온 정확한 날짜입니다. 날짜나 시간에 관한 질문에 답할 때는 반드시 이 날짜를 기준으로 정확하게 답변하세요. 예를 들어 내일인 경우, {current_date}의 다음 날인 {current_date} + 1일로 계산하여 답변하세요.
 
 사용자의 현재 위치 정보: {user_location}
 날씨, 지역 정보, 주변 시설 등을 안내할 때 다음과 같이 활용하세요:
