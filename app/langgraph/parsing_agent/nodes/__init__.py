@@ -1,5 +1,4 @@
 import logging
-from app.utils.openai_client import init_langchain_llm
 from app.utils.message.parser import strip_quotes
 from app.utils.prompt.parse_prompts import title_prompt, memo_prompt
 
@@ -123,12 +122,17 @@ def tool(input_data):
             'end': False}
 
 def handoff(input_data):
-    llm = init_langchain_llm()
+    from app.utils.openai_client import get_completion
     text = input_data['text']
-    title_resp = llm.invoke([{"role": "user", "content": f"{title_prompt}\n{text}"}], max_tokens=20)
-    memo_resp = llm.invoke([{"role": "user", "content": f"{memo_prompt}\n{text}"}], max_tokens=30)
-    title = getattr(title_resp, 'content', str(title_resp))
-    memo = getattr(memo_resp, 'content', str(memo_resp))
+    
+    # 제목 추출
+    title_messages = [{"role": "user", "content": f"{title_prompt}\n{text}"}]
+    title = get_completion(title_messages, max_completion_tokens=20)
+    
+    # 메모 추출
+    memo_messages = [{"role": "user", "content": f"{memo_prompt}\n{text}"}]
+    memo = get_completion(memo_messages, max_completion_tokens=30)
+
     title = strip_quotes(title)
     memo = strip_quotes(memo)
     # Fallback: title이 비어있으면 원본 텍스트 일부라도 사용

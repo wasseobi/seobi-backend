@@ -5,7 +5,7 @@ from app.utils.text_cleaner import clean_simple_text
 
 
 @tool
-def create_schedule_llm(text: str) -> dict:
+def create_schedule_llm(text: str) -> str:
     """
     새로운 일정을 추가하는 도구입니다.
     - "일정 추가", "회의 잡아줘", "스케줄 등록" 등 일정/스케줄 관련 명령에만 사용하세요.
@@ -13,7 +13,7 @@ def create_schedule_llm(text: str) -> dict:
     Args:
         text (str): 일정 내용(자연어)
     Returns:
-        dict: 생성된 일정 정보 및 안내 메시지
+        str: 생성된 일정 정보 및 안내 메시지
     """
     schedule_service = ScheduleService()
     user_id = None
@@ -32,22 +32,8 @@ def create_schedule_llm(text: str) -> dict:
         raise ValueError("user_id는 반드시 UUID 형식이어야 합니다.")
     schedule = schedule_service.create_llm(user_id, text)
     # 안내 메시지를 최상단에 배치
-    message = f"'{clean_simple_text(schedule.title)}' 일정이 등록되었습니다! 필요시 준비물: {clean_simple_text(schedule.memo) if schedule.memo else '없음'}"
-    result = {
-        'message': message,
-        'id': str(schedule.id),
-        'user_id': str(schedule.user_id),
-        'title': clean_simple_text(schedule.title),
-        'repeat': schedule.repeat,
-        'start_at': schedule.start_at.isoformat() if schedule.start_at else None,
-        'finish_at': schedule.finish_at.isoformat() if schedule.finish_at else None,
-        'location': clean_simple_text(schedule.location),
-        'status': schedule.status,
-        'memo': clean_simple_text(schedule.memo),
-        'linked_service': schedule.linked_service,
-        'created_at': schedule.created_at.isoformat() if hasattr(schedule, 'created_at') and schedule.created_at else None,
-    }
-    return result
+
+    return f"{schedule.title}하는 일정이 등록되었습니다.\n준비물 : {schedule.memo or '없음'}\n장소 : {schedule.location or '없음'}\n시작 시간: {schedule.start_at}"
 
 
 @tool

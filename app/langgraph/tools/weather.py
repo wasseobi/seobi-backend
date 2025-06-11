@@ -156,6 +156,7 @@ def _get_location_key(location: str) -> Tuple[str, str]:
 def weather_daily_forecast(location: str, days: int = 1) -> str:
     """
     해당 위치의 일일 날씨 예보를 조회합니다.
+    장소의 경우, 도시나 행정구역, 또는 지역 이름으로 제공하세요.
     - 날씨 정보 표시 규칙:
         1. 날짜 표시 형식: YYYY년 MM월 DD일 (예: 2025년 6월 9일)
         2. 요일 표시 절대 금지 - 어떤 상황에서도 요일을 언급하지 마세요

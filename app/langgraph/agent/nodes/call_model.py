@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import pytz
 from typing import Dict, List, Any, Union
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
@@ -137,7 +138,7 @@ def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Uni
             else:
                 state.clear_tool_state()
             
-        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        current_date = datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y년 %m월 %d일")
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
             messages=messages,
