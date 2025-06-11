@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from uuid import UUID
 
-from app.utils.prompt.monthly_report_prompts import (
+from app.utils.prompt.reports.monthly_report_prompts import (
     MONTHLY_REPORT_PROMPT,
     MONTHLY_SCRIPT_PROMPT
 )
