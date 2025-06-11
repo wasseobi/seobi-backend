@@ -1,5 +1,5 @@
 from app.dao.message_dao import MessageDAO
-from app.models import Session
+from app.dao.session_dao import SessionDAO
 from app.utils.message.message_context import MessageContext
 
 from app.utils.openai_client import get_embedding, get_completion
@@ -15,13 +15,90 @@ import uuid
 from datetime import datetime, timezone
 import json
 import numpy as np
+from langchain_mcp_adapters.client import MultiServerMCPClient
+import os
+import dotenv
+
+dotenv.load_dotenv()
+
+mcp_tools = None
+
+def get_mcp_tools_sync():
+    """동기적으로 MCP 도구를 가져오는 함수"""
+    global mcp_tools
+    if mcp_tools is None:
+        try:
+            # 환경 변수 확인
+            google_map_url = os.getenv("GOOGLE_MAP_MCP_URL")
+            if not google_map_url:
+                print("[경고] GOOGLE_MAP_MCP_URL 환경 변수가 설정되지 않았습니다.")
+                mcp_tools = []
+                return mcp_tools
+            
+            # MCP 클라이언트 생성 및 도구 가져오기
+            client = MultiServerMCPClient(
+                {
+                    "googlemap": {
+                        "url": google_map_url,
+                        "transport": "streamable_http",
+                    }
+                }
+            )
+            
+            # 동기적으로 도구 가져오기 (실제로는 async이지만 여기서는 간단히 처리)
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                mcp_tools = loop.run_until_complete(client.get_tools())
+            except RuntimeError:
+                # 새로운 이벤트 루프 생성
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                mcp_tools = loop.run_until_complete(client.get_tools())
+                loop.close()
+                
+            print(f"[MCP] {len(mcp_tools)}개의 MCP 도구를 로드했습니다.")
+            
+        except Exception as e:
+            print(f"[MCP] MCP 도구 로드 실패: {e}")
+            mcp_tools = []
+    
+    return mcp_tools
 
 class MessageService:
     def __init__(self):
         self.message_dao = MessageDAO()
-        self.agent_executor = create_agent_executor()
-        self.graph = build_graph().compile()
+        self.session_dao = SessionDAO()
+        self._agent_executor = None  # 지연 초기화를 위해 None으로 설정
+        self._graph = None  # 지연 초기화를 위해 None으로 설정
         self.active_contexts: Dict[str, MessageContext] = {}  # 세션별 활성 컨텍스트
+
+    @property
+    def agent_executor(self):
+        """Agent executor를 지연 초기화하는 프로퍼티"""
+        if self._agent_executor is None:
+            # 동기적으로 실행하기 위해 asyncio 사용
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                self._agent_executor = loop.run_until_complete(create_agent_executor())
+            except RuntimeError:
+                # 새로운 이벤트 루프 생성
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._agent_executor = loop.run_until_complete(create_agent_executor())
+                loop.close()
+        return self._agent_executor
+
+    @property
+    def graph(self):
+        """Graph를 지연 초기화하는 프로퍼티"""
+        if self._graph is None:
+            # MCP 도구를 실제로 가져와서 사용
+            tools = get_mcp_tools_sync()
+            print(f"[Graph] {len(tools)}개의 MCP 도구로 그래프를 빌드합니다.")
+            self._graph = build_graph(tools).compile()
+        return self._graph
 
     def _serialize_message(self, message: Any) -> Dict[str, Any]:
         """Serialize message data for API response"""
@@ -50,7 +127,7 @@ class MessageService:
 
     def get_session_messages(self, session_id: uuid.UUID) -> List[Dict]:
         """Get all messages in a session"""
-        session = Session.query.get(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
 
@@ -58,23 +135,11 @@ class MessageService:
         serialized = [self._serialize_message(msg) for msg in messages]
         return serialized
 
-    def get_conversation_history(self, session_id: uuid.UUID) -> List[Dict[str, str]]:
-        """Get conversation history formatted for AI completion"""
-        session = Session.query.get(session_id)
-        if not session:
-            raise ValueError('Session not found')
-
-        messages = self.message_dao.get_all_by_session_id(session_id)
-        return [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]
-
     def create_message(self, session_id: uuid.UUID, user_id: uuid.UUID,
                        content: str, role: str, metadata) -> Dict:
         """Create a new message (임베딩 벡터 및 키워드 벡터 포함)""" 
 
-        session = Session.query.get(session_id)
+        session = self.session_dao.get_by_id(session_id)
         if not session:
             raise ValueError('Session not found')
         if session.finish_at:
@@ -82,32 +147,25 @@ class MessageService:
 
         try:
             vector = get_embedding(content)
-        except Exception as e:
+        except Exception:
             vector = None
 
-        # --- 키워드 추출 및 임베딩 추가 ---
         keyword_text = None
         keyword_vector = None
-        try:
-            # 단일 메시지 content에서 키워드 추출 프롬프트 구성
-            messages = [
-                {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
-                {"role": "user", "content": content}
-            ]
-            keywords_response = get_completion(messages)
-            print("[디버그] LLM 키워드 추출 응답:", keywords_response)
-            keywords = json.loads(keywords_response)
-            if isinstance(keywords, list) and keywords:
-                keyword_text = ", ".join(keywords)
-                # 첫 번째 키워드만 임베딩 (여러 개면 확장 가능)
-                keyword_vector = get_embedding(keywords[0])
-                print(f"[디버그] 추출 키워드: {keyword_text}, 임베딩: {keyword_vector[:5]}...")
-            else:
-                print("[디버그] 키워드 추출 결과 없음 또는 형식 오류:", keywords)
-        except Exception as e:
-            print("[에러] 키워드 추출/임베딩 실패:", e)
-            keyword_text = None
-            keyword_vector = None
+        # NOTE(GideokKim): 키워드 추출 기능을 사용하지 않아서 삭제함.
+        # try:
+        #     messages = [
+        #         {"role": "system", "content": "아래 문장에서 핵심 키워드를 1~3개만 JSON 배열로 뽑아줘. 불필요한 설명 없이 배열만 출력."},
+        #         {"role": "user", "content": content}
+        #     ]
+        #     keywords_response = get_completion(messages)
+        #     keywords = json.loads(keywords_response)
+        #     if isinstance(keywords, list) and keywords:
+        #         keyword_text = ", ".join(keywords)
+        #         keyword_vector = get_embedding(keywords[0])
+        # except Exception:
+        #     keyword_text = None
+        #     keyword_vector = None
 
         message = self.message_dao.create(
             session_id, user_id, content, role, vector, metadata,
@@ -320,24 +378,22 @@ class MessageService:
     def update_message_vectors(self, user_id: uuid.UUID = None) -> Dict[str, Any]:
         """기존 메시지들의 벡터를 업데이트합니다."""
         try:
-            # 특정 사용자 또는 전체 메시지 조회
-            if user_id:
-                messages = self.message_dao.get_all_by_user_id(user_id)
-            else:
-                messages = self.message_dao.get_all()
+            messages = self.message_dao.get_all_by_user_id(user_id)
 
             total = len(messages)
             updated = 0
             errors = 0
 
             for msg in messages:
-                if msg.vector is None:  # 벡터가 없는 메시지만 업데이트
-                    try:
-                        vector = get_embedding(msg.content)
-                        self.message_dao.update(msg.id, vector=vector)
-                        updated += 1
-                    except Exception as e:
-                        errors += 1
+                if msg.vector:
+                    continue
+                
+                try:
+                    vector = get_embedding(msg.content)
+                    self.message_dao.update(str(msg.id), vector=vector)
+                    updated += 1
+                except Exception:
+                    errors += 1
 
             result = {
                 "total": total,
