@@ -42,6 +42,8 @@ def write_result_to_db(state: BGState) -> BGState:
         state["finished"] = True
         return state
 
-    # state["finished"] = False   # NOTE: 모든 main + sub task 합쳐서 결과 만드는 노드 나오면 False 로 변경
+    # 초기화
+    # state["finished"] = True  # NOTE: 모든 main + sub task 합쳐서 결과 만드는 노드 나오면 False 로 변경
+    state["current_step"] = None
     print(f"[DEBUG][write_result_to_db] state 반환: {state}")
     return state

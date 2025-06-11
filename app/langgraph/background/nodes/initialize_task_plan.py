@@ -45,6 +45,7 @@ def initialize_task_plan(state: BGState) -> BGState:
 
     # ready_queue는 별도 런타임에서 depends_on 만족 시 계산
     task["plan"] = plan
+    print(f"[DEBUG][initialize_task_plan] plan keys: {list(plan.keys())}")
 
     # --- 위상 정렬 (Kahn's Algorithm)
     indegree = defaultdict(int)
@@ -74,5 +75,6 @@ def initialize_task_plan(state: BGState) -> BGState:
     # 결과 적용
     task["ready_queue"] = sorted_steps  # ✅ 의존 순서 기반 전체 실행 순서
     state["task"] = task
+    print(f"[DEBUG][initialize_task_plan] ready_queue: {sorted_steps}")
     
     return state

@@ -10,7 +10,7 @@ from app.langgraph.background.nodes.evaluate_step import evaluate_step
 from app.langgraph.background.nodes.finalize_task_result import finalize_task_result
 from app.langgraph.background.nodes.write_result_to_db import write_result_to_db
 from app.langgraph.background.nodes.aggregate_result_to_db import aggregate_result_to_db
-from app.langgraph.background.nodes.mark_step_completed import 
+from app.langgraph.background.nodes.mark_step_completed import mark_step_completed
 from app.langgraph.background.edges.bg_edges import route_after_dequeue, route_after_evaluation, route_after_fetch
 
 def build_background_graph() -> StateGraph:
@@ -24,6 +24,7 @@ def build_background_graph() -> StateGraph:
     workflow.add_node("finalize_task_result", finalize_task_result)
     workflow.add_node("write_result_to_db", write_result_to_db)
     workflow.add_node("aggregate_result_to_db", aggregate_result_to_db)
+    workflow.add_node("mark_step_completed", mark_step_completed)
 
     workflow.set_entry_point("fetch_next_task")
     workflow.set_finish_point("aggregate_result_to_db")
@@ -40,11 +41,11 @@ def build_background_graph() -> StateGraph:
     })
     workflow.add_edge("run_tool", "evaluate_step")
     workflow.add_conditional_edges("evaluate_step", route_after_evaluation, {
-        "success": "dequeue_ready_step",
+        "success": "mark_step_completed",
         "retry": "run_tool",                # NOTE: retry 될 때 tool_input 업데이트 돼서 되도록 하기
-        "fail": "finalize_task_result"
+        "fail": "mark_step_completed"
     })
-    workflow.add_edge("evaluate_step", "evaluate_step")
+    workflow.add_edge("mark_step_completed", "dequeue_ready_step")
     workflow.add_edge("finalize_task_result", "write_result_to_db")
     workflow.add_edge("write_result_to_db", "fetch_next_task")
 

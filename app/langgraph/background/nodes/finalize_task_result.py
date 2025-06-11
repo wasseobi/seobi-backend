@@ -58,7 +58,7 @@ AI 도구 실행 결과 요약 (step_outputs): {step_outputs}
 
 def finalize_task_result(state: BGState) -> BGState:
     print(f"[DEBUG][finalize_task_result] state: {state}")
-    
+
     task = state.get("task")
     print(f"[DEBUG][finalize_task_result] state['task']: {task}")
     if not task:
@@ -146,7 +146,6 @@ def finalize_task_result(state: BGState) -> BGState:
         task["finish_at"] = datetime.now(timezone.utc)
 
         state["task"] = task
-        state["finished"] = True
         print(f"[DEBUG][finalize_task_result] state 반환: {state}")
 
     return state

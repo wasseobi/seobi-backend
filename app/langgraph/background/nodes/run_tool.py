@@ -84,8 +84,12 @@ def run_tool(state: BGState) -> BGState:
         state["error"] = f"[{step['step_id']}] {str(e)}"
 
     # 상태 반영
+    print(f"[DEBUG][run_tool] 상태 반영 전: step={step}")
+    print(f"[DEBUG][run_tool] 상태 반영 전: task={task}")
     task["plan"][step["step_id"]] = step
     state["task"] = task
     state["step"] = step
+    print(f"[DEBUG][run_tool] 상태 반영 후: state['task']={state['task']}")
+    print(f"[DEBUG][run_tool] 상태 반영 후: state['step']={state['step']}")
 
     return state
