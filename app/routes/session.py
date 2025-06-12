@@ -435,7 +435,7 @@ class MessageSend(Resource):
             ns.abort(500, str(e))
 
 
-@ns.route('/<uuid:user_id>')
+@ns.route('/u/<uuid:user_id>')
 class UserSessions(Resource):
     @ns.doc('사용자 세션 목록',
             description='특정 사용자의 모든 채팅 세션 목록을 가져옵니다.',
@@ -459,6 +459,29 @@ class UserSessions(Resource):
         except Exception as e:
             ns.abort(400, f"Failed to get user sessions: {str(e)}")
 
+@ns.route('/<uuid:session_id>')
+class UserSessions(Resource):
+    @ns.doc('특정 세션 정보',
+            description='특정 세션 정보를 가져옵니다.',
+            security='Bearer' if not is_dev_mode() else None,
+            params={
+                'Authorization': {
+                    'description': 'Bearer <jwt>',
+                    'in': 'header',
+                    'required': not is_dev_mode()
+                }
+            })
+    @ns.response(200, '세션 목록 조회 성공', [session_close_response])
+    @ns.response(400, '잘못된 요청')
+    @ns.response(401, '인증 실패')
+    @require_auth
+    def get(self, session_id):
+        """특정 세션의 정보를 가져옵니다."""
+        try:
+            session = session_service.get_session(session_id)
+            return session
+        except Exception as e:
+            ns.abort(400, f"Failed to get user sessions: {str(e)}")
 
 @ns.route('/<uuid:session_id>/m')
 class SessionMessages(Resource):
