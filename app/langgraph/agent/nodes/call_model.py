@@ -11,6 +11,7 @@ from datetime import datetime
 from app.utils.openai_client import init_langchain_llm
 from app.utils.message.converter import convert_to_openai_messages
 from app.utils.message.formatter import format_message_content, format_message_list
+from app.services.user_service import UserService
 from ...tools import agent_tools
 from ..agent_state import AgentState
 from ....utils.prompt.agent_prompt import prompt
@@ -66,10 +67,13 @@ def format_tool_results(tool_results: List[Any]) -> Dict:
 
 def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Union[Dict, AgentState]:
     """LLM을 호출하고 응답을 생성하는 노드."""
+    user_service = UserService()
     try:
         # state가 dict인지 AgentState인지 확인
         is_dict = isinstance(state, dict)
-        
+        user = user_service.get_user_by_id(
+            state["user_id"] if is_dict else state.user_id)
+        user_name = user["username"] if user else None
         # 기본 state 구조 확인 및 초기화
         if is_dict:
             messages = state["messages"]
@@ -142,6 +146,7 @@ def call_model(state: Union[Dict, AgentState], mcp_tools: List[BaseTool]) -> Uni
         # LLM에 전달할 메시지 포맷팅
         formatted_messages = prompt.format_messages(
             messages=messages,
+            user_name=user_name,
             user_location=user_location or "위치 정보 없음",
             current_date=current_date,
             summary=summary or "이전 대화 요약 없음",
