@@ -6,36 +6,6 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 
 ### LangGraph 기반 AI/도구 호출 시스템 개발 로드맵
 
-#### 1) LangGraph 연동 구조 설계 및 기본 구현
-
-- [x] `app/langgraph/` 디렉터리 내에 builder, tools, workflow, utils 등 모듈 분리
-- [x] ToolNode 및 반복 tool call 구조 구현 (Azure OpenAI 연동 포함)
-- [x] LLM이 문제 해결 시까지 tool call 반복 및 조건부 분기 로직 적용
-
-#### 2) 서비스/라우트 통합 및 엔드포인트 확장
-
-- [x] 기존 Flask 서비스(`app/services/`)와 LangGraph 연동 서비스(`langgraph_service.py`) 분리 및 통합
-- [x] `/messages` 등 주요 엔드포인트에서 LangGraph 기반 AI/도구 호출 지원
-
-#### 3) 도구 함수 확장 및 관리
-
-- [ ] 실제 서비스에 필요한 도구 함수(예: 예약, TTS, STT, 외부 API 등) 추가 및 관리
-- [ ] 도구 등록/관리 인터페이스 및 문서화
-
-#### 4) 상태 관리 및 대화 세션 확장
-
-- [x] LangGraph 실행 상태, tool call 결과, 대화 이력 등 세션 기반 관리
-- [x] DB 연동 및 세션별 대화 흐름 저장
-
-#### 5) 테스트 및 예외 처리 강화
-
-- [x] LangGraph 기반 워크플로우 단위/통합 테스트 작성
-- [ ] 도구 실패/예외 상황에 대한 graceful fallback 처리
-
-#### 6) 고도화 및 확장
-
-- [ ] LangGraph 기반 멀티툴 조합, 복합 질의 처리, 실시간/비동기 처리 등 고도화
-- [ ] LangGraph 기반 워크플로우 시각화 및 관리 도구 개발
 
 ---
 
