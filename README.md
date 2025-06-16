@@ -55,9 +55,9 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 - LangGraph를 활용한 AI/도구 호출 워크플로우 관리
 - OpenAI API 연동을 통한 AI 기능 제공
 
-#### MCP (Message Control Protocol)
+#### MCP (Model Context Protocol)
 
-MCP는 메시지 관리 및 서버 활성화와 관련된 기능을 제공합니다. 주요 기능은 다음과 같습니다:
+주요 기능은 다음과 같습니다:
 
 - **메시지 관리**: 사용자와의 메시지 교환을 관리하며, 대화 흐름을 유지
 - **서버 활성화 관리**: MCP 서버의 활성화 상태를 관리하고, 필요한 경우 서버를 활성화/비활성화
