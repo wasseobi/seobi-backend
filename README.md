@@ -57,10 +57,8 @@ Flask 기반의 백엔드 API 서버입니다. PostgreSQL 데이터베이스를 
 
 #### MCP (Model Context Protocol)
 
-주요 기능은 다음과 같습니다:
+생성형 AI 모델이 외부 시스템과 연동하거나 특정 컨텍스트(맥락)를 이해하고 활용할 수 있도록 돕는 Anthropic에서 발표한 프로토콜로 주요 기능은은 다음과 같습니다:
 
-- **메시지 관리**: 사용자와의 메시지 교환을 관리하며, 대화 흐름을 유지
-- **서버 활성화 관리**: MCP 서버의 활성화 상태를 관리하고, 필요한 경우 서버를 활성화/비활성화
 - **도구 관리**:
   - 주요 도구:
     - `search_web`: 웹 검색을 수행
@@ -129,45 +127,6 @@ LangGraph는 AI 기반의 도구 호출 및 워크플로우 관리를 위한 핵
      5. 작업 완료 처리
    - 실패/재시도 처리
    - 결과 데이터베이스 저장
-
-#### MCP (Message Control Protocol)
-
-MCP는 메시지 관리 및 서버 활성화와 관련된 핵심 프로토콜입니다. 구현 내용은 다음과 같습니다:
-
-1. **클라이언트 구현**
-   ```python
-   client = MultiServerMCPClient({
-       "googlemap": {
-           "url": os.getenv("GOOGLE_MAP_MCP_URL"),
-           "transport": "streamable_http",
-       }
-   })
-   ```
-
-2. **도구 통합**
-   - 내장 도구:
-     - `search_web`: 웹 검색
-     - `google_news`: 뉴스 검색
-     - `google_search_expansion`: 검색어 확장
-     - `insight_article`: 인사이트 생성
-     - `create_schedule_llm`: 일정 생성
-     - `weather_daily_forecast`: 날씨 예보
-
-3. **메시지 처리**
-   - 스트리밍 응답 지원
-   - 도구 호출 결과 버퍼링
-   - 비동기 처리
-   - 오류 복구
-
-4. **상태 관리**
-   - Redis 기반 상태 저장
-   - 사용자별 컨텍스트 관리
-   - 장기/단기 메모리 구분
-
-5. **보안 및 인증**
-   - 사용자 인증
-   - 도구 접근 제어
-   - 세션 관리
 
 ## 4. 프로젝트 구조
 
